@@ -184,10 +184,8 @@ body {
     appearance: none;
     background: transparent;
     cursor: pointer;
-    writing-mode: bt-lr;
-    /* IE/Edge */
-    -webkit-appearance: slider-vertical;
-    /* Webkit */
+    writing-mode: vertical-lr;
+    direction: rtl;
 }
 
 .radius-badge {
