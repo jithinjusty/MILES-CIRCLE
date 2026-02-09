@@ -4,15 +4,13 @@ export default function SplashScreen({ onComplete }) {
     const [fadeOut, setFadeOut] = useState(false)
 
     useEffect(() => {
-        // Start fade out after 2 seconds
         const fadeTimer = setTimeout(() => {
             setFadeOut(true)
-        }, 2000)
+        }, 2500)
 
-        // Complete after fade animation
         const completeTimer = setTimeout(() => {
             onComplete()
-        }, 2800)
+        }, 3000)
 
         return () => {
             clearTimeout(fadeTimer)
@@ -22,12 +20,14 @@ export default function SplashScreen({ onComplete }) {
 
     return (
         <div className={`splash-screen ${fadeOut ? 'fade-out' : ''}`}>
-            <img
-                src="/logo.png"
-                alt="Miles Circle"
-                className="splash-logo"
-            />
-            <p className="splash-tagline">Draw your Circle</p>
+            <div className="splash-content">
+                <img
+                    src="/logo.png"
+                    alt="Miles Circle"
+                    className="splash-logo-animated"
+                />
+                <h1 className="splash-tagline-animated">Draw your Circle</h1>
+            </div>
         </div>
     )
 }

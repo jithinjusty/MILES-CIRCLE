@@ -55,6 +55,7 @@ function App() {
     const [showSettings, setShowSettings] = useState(false);
     const [isMapInteracting, setIsMapInteracting] = useState(false);
     const [onboardingStep, setOnboardingStep] = useState(0);
+    const [feedTrigger, setFeedTrigger] = useState(0);
     const sliderTimer = useRef(null);
 
     useEffect(() => {
@@ -206,7 +207,7 @@ function App() {
                                     <p style={{ color: 'var(--accent-red)', fontWeight: 'bold', marginBottom: '4px' }}>Miles Circle</p>
                                     Welcome to your circle! You are currently looking at a <strong>{radius} mile</strong> radius around you.
                                 </div>
-                                <Feed position={position} radius={radius} />
+                                <Feed position={position} radius={radius} refreshTrigger={feedTrigger} />
                             </div>
 
                             <div className="chat-input-wrapper">
@@ -333,7 +334,10 @@ function App() {
                         <CreatePostModal
                             position={position}
                             onClose={() => setShowCreatePost(false)}
-                            onPostCreated={() => setShowCreatePost(false)}
+                            onPostCreated={() => {
+                                setShowCreatePost(false);
+                                setFeedTrigger(prev => prev + 1);
+                            }}
                         />
                     )}
                 </>

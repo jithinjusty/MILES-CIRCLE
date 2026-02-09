@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PostCard from './PostCard'
 
-export default function Feed({ position, radius }) {
+export default function Feed({ position, radius, refreshTrigger }) {
     const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -43,7 +43,7 @@ export default function Feed({ position, radius }) {
 
     useEffect(() => {
         fetchPosts()
-    }, [position, radius])
+    }, [position, radius, refreshTrigger])
 
     if (loading && posts.length === 0) {
         return (
