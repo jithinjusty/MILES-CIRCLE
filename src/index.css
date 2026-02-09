@@ -1,0 +1,79 @@
+:root {
+  --color-brand-red: #D2554E;
+  --color-cream: #EDE9E2;
+  --color-charcoal: #0E0E0E;
+  --color-white-soft: #FAFAFA;
+  --color-gray-ui: #8E8E8E;
+  
+  --font-family: 'Outfit', sans-serif;
+  
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-full: 9999px;
+  
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.1);
+  --shadow-float: 0 8px 32px rgba(0,0,0,0.15);
+  
+  --z-map: 0;
+  --z-overlay: 10;
+  --z-controls: 20;
+  --z-modal: 100;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* App-like feel */
+  font-family: var(--font-family);
+  background-color: var(--color-cream);
+  color: var(--color-charcoal);
+  font-size: 16px;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Map Container Override */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: var(--color-cream);
+  font-family: var(--font-family);
+}
+
+/* Custom UI Utilities */
+.btn-primary {
+  background-color: var(--color-brand-red);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: var(--radius-full);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s, background-color 0.2s;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:active {
+  transform: scale(0.96);
+}
+
+.frosted-glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}

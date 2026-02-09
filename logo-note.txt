@@ -1,0 +1,9 @@
+/* Since I cannot programmatically remove backgrounds from images in this environment,
+   here are your options:
+
+   1. Use an online tool like remove.bg to remove the black background from your logo
+   2. Or provide me with a PNG version that already has transparency
+   3. For now, I'll update the CSS to handle the black background nicely
+
+   Your original logo is saved as: public/logo-original.jpg
+*/
