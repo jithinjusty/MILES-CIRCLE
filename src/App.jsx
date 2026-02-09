@@ -10,16 +10,13 @@ import AuthOverlay from './components/AuthOverlay'
 import CreatePostModal from './components/CreatePostModal'
 import Feed from './components/Feed'
 
-// Fix for default marker icon
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
+// Simplified marker fix - no bulky icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
-L.Marker.prototype.options.icon = DefaultIcon;
 
 function MapController({ center, radius, isInteracting }) {
     const map = useMap();
@@ -39,7 +36,7 @@ function MapController({ center, radius, isInteracting }) {
 function App() {
     const [showSplash, setShowSplash] = useState(true)
     const [session, setSession] = useState(null)
-    const [profile, setProfile] = useState(null)
+    const [profile, setProfile] = useState({});
     const [radius, setRadius] = useState(1);
     const [position, setPosition] = useState([40.7128, -74.0060]);
     const [locationAvailable, setLocationAvailable] = useState(false);
@@ -115,7 +112,8 @@ function App() {
 
     const getInitial = () => {
         const name = profile?.full_name || session?.user?.email || '';
-        return name?.[0]?.toUpperCase() || '?';
+        if (!name) return '?';
+        return name[0].toUpperCase();
     }
 
     return (
@@ -127,21 +125,23 @@ function App() {
             {session && (
                 <>
                     {/* MAP BACKGROUND */}
-                    <MapContainer center={position} zoom={13} zoomControl={false} className="map-view">
-                        <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-                        {locationAvailable && <Marker position={position} />}
-                        <Circle
-                            center={position}
-                            pathOptions={{ color: '#D2554E', fillColor: '#D2554E', fillOpacity: 0.1, weight: 2, dashArray: '4, 8' }}
-                            radius={radius * 1609.34}
-                        />
-                        <MapController center={position} radius={radius} isInteracting={isMapInteracting} />
-                    </MapContainer>
+                    <div className="map-wrapper" style={{ position: 'absolute', inset: 0 }}>
+                        <MapContainer key={`${position[0]}-${position[1]}`} center={position} zoom={13} zoomControl={false} className="map-view">
+                            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                            {locationAvailable && <Marker position={position} />}
+                            <Circle
+                                center={position}
+                                pathOptions={{ color: '#D2554E', fillColor: '#D2554E', fillOpacity: 0.1, weight: 2, dashArray: '4, 8' }}
+                                radius={radius * 1609.34}
+                            />
+                            <MapController center={position} radius={radius} isInteracting={isMapInteracting} />
+                        </MapContainer>
+                    </div>
 
                     {/* FOREGROUND UI */}
                     <div className="chat-interface">
                         <header className="app-header-new">
-                            <img src="/logo.png" alt="MILES" className="header-logo-new" />
+                            <h1 style={{ color: 'var(--accent-red)', fontSize: '1.2rem', fontWeight: '900', letterSpacing: '1px' }}>MILES</h1>
                             <div className="user-avatar-btn" onClick={() => setShowSettings(true)}>
                                 {getInitial()}
                             </div>
@@ -216,7 +216,11 @@ function App() {
                                     />
                                     <button
                                         className="auth-btn-primary"
-                                        onClick={() => handleUpdateProfile({ full_name: profile.full_name, mobile: profile.mobile })}
+                                        onClick={() => {
+                                            if (profile?.full_name?.trim()) {
+                                                handleUpdateProfile({ full_name: profile.full_name, mobile: profile.mobile });
+                                            }
+                                        }}
                                     >
                                         Continue
                                     </button>
@@ -265,7 +269,7 @@ function App() {
                                             onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
                                         />
                                     </div>
-                                    <button className="auth-btn-primary" onClick={() => handleUpdateProfile({ full_name: profile.full_name })}>Save Changes</button>
+                                    <button className="auth-btn-primary" onClick={() => handleUpdateProfile({ full_name: profile?.full_name })}>Save Changes</button>
                                     <button className="btn-secondary" onClick={handleLogout} style={{ marginTop: '1rem' }}>Log Out</button>
                                 </div>
                             </div>
