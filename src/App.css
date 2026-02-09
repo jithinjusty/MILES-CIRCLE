@@ -72,10 +72,7 @@ body {
     justify-content: space-between;
     align-items: center;
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
-}
-
-.header-logo-new {
-    height: 32px;
+    z-index: 20;
 }
 
 .user-avatar-btn {
@@ -94,10 +91,6 @@ body {
     transition: transform 0.2s;
 }
 
-.user-avatar-btn:hover {
-    transform: scale(1.05);
-}
-
 .chat-center-container {
     flex: 1;
     display: flex;
@@ -108,6 +101,12 @@ body {
     width: 100%;
     max-width: 800px;
     margin: 0 auto;
+    pointer-events: none;
+    /* Allow clicks through to map except on children */
+}
+
+.chat-center-container>* {
+    pointer-events: auto;
 }
 
 .chat-messages-scroll {
@@ -158,14 +157,9 @@ body {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: opacity 0.2s;
 }
 
-.chat-send-btn:hover {
-    opacity: 0.9;
-}
-
-/* Radius Slider */
+/* Vertical Slider Fix */
 .side-slider-container {
     position: absolute;
     right: 24px;
@@ -185,33 +179,26 @@ body {
 }
 
 .range-vertical {
-    height: 250px;
-    width: 4px;
+    height: 200px;
+    width: 30px;
     appearance: none;
-    background: #333;
-    border-radius: 2px;
-    outline: none;
-}
-
-.range-vertical::-webkit-slider-thumb {
-    appearance: none;
-    width: 16px;
-    height: 16px;
-    background: var(--accent-red);
-    border-radius: 50%;
+    background: transparent;
     cursor: pointer;
-    box-shadow: 0 0 10px rgba(210, 85, 78, 0.4);
+    writing-mode: bt-lr;
+    /* IE/Edge */
+    -webkit-appearance: slider-vertical;
+    /* Webkit */
 }
 
 .radius-badge {
     background: var(--accent-red);
     color: white;
-    padding: 6px 0px;
-    width: 38px;
-    text-align: center;
+    padding: 6px 8px;
     border-radius: 12px;
     font-weight: 800;
     font-size: 0.75rem;
+    min-width: 40px;
+    text-align: center;
 }
 
 /* Message Cards */
@@ -224,7 +211,7 @@ body {
     align-self: flex-start;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    transition: transform 0.2s;
+    word-break: break-word;
 }
 
 .message-card.mine {
@@ -234,6 +221,19 @@ body {
 }
 
 /* Auth & Onboarding Styling */
+.auth-overlay-new {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
 .auth-container {
     width: 100%;
     max-width: 420px;
@@ -241,27 +241,19 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 2rem;
-}
-
-.auth-logo-section {
-    text-align: center;
-    width: 100%;
+    padding: 20px;
 }
 
 .auth-logo-main {
     width: 240px;
-    margin: 0 auto;
-    display: block;
     margin-bottom: 0.5rem;
 }
 
 .auth-tagline {
     color: #888;
     font-size: 1rem;
-    font-weight: 400;
-    margin-top: 0;
     text-align: center;
-    width: 100%;
+    font-weight: 400;
 }
 
 .onboarding-card {
@@ -288,7 +280,6 @@ body {
     color: #444;
     cursor: pointer;
     padding-bottom: 8px;
-    transition: color 0.3s;
 }
 
 .auth-tab.active {
@@ -311,16 +302,23 @@ body {
     color: white;
     font-size: 1rem;
     outline: none;
-    transition: border-color 0.2s;
 }
 
-.auth-input-classic:focus {
-    border-color: var(--accent-red);
+.auth-btn-primary {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent-red);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-weight: 700;
+    cursor: pointer;
 }
 
 .auth-divider-classic {
     display: flex;
     align-items: center;
+    width: 100%;
     margin: 2rem 0;
     color: #333;
     font-size: 0.8rem;
@@ -332,10 +330,6 @@ body {
     content: '';
     flex: 1;
     border-bottom: 1px solid #222;
-}
-
-.auth-divider-classic span {
-    padding: 0 15px;
 }
 
 .auth-btn-google {
@@ -350,11 +344,6 @@ body {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.auth-btn-google:hover {
-    background-color: #f0f0f0;
 }
 
 /* Splash Screen & Animations */
@@ -377,7 +366,6 @@ body {
 
 .splash-logo-animated {
     width: 450px;
-    /* 3x bigger roughly */
     animation: splashReveal 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards,
         splashPulse 3s ease-in-out infinite alternate 1.5s;
     opacity: 0;
@@ -436,17 +424,7 @@ body {
     pointer-events: none;
 }
 
-@media (max-width: 600px) {
-    .splash-logo-animated {
-        width: 280px;
-    }
-
-    .auth-logo-main {
-        width: 180px;
-    }
-}
-
-/* Modal Core */
+/* Modals & Onboarding */
 .modal-overlay,
 .onboarding-overlay {
     position: fixed;
@@ -459,7 +437,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(5px);
+    backdrop-filter: blur(10px);
 }
 
 .modal-close {
@@ -487,5 +465,20 @@ body {
 @keyframes spin {
     to {
         transform: rotate(360deg);
+    }
+}
+
+@media (max-width: 600px) {
+    .splash-logo-animated {
+        width: 280px;
+    }
+
+    .auth-logo-main {
+        width: 180px;
+    }
+
+    .side-slider-container {
+        right: 12px;
+        transform: translateY(-50%) scale(0.85);
     }
 }

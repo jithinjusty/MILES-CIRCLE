@@ -207,7 +207,7 @@ function App() {
                                     <p style={{ color: 'var(--accent-red)', fontWeight: 'bold', marginBottom: '4px' }}>Miles Circle</p>
                                     Welcome to your circle! You are currently looking at a <strong>{radius} mile</strong> radius around you.
                                 </div>
-                                <Feed position={position} radius={radius} refreshTrigger={feedTrigger} />
+                                <Feed position={position} radius={radius} refreshTrigger={feedTrigger} session={session} />
                             </div>
 
                             <div className="chat-input-wrapper">
