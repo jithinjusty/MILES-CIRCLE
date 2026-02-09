@@ -1,23 +1,22 @@
 import { useState, useEffect } from 'react'
-import { X, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PostCard from './PostCard'
 
-export default function Feed({ position, radius, onClose }) {
+export default function Feed({ position, radius }) {
     const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
+    const [currentUserId, setCurrentUserId] = useState(null)
 
     const fetchPosts = async () => {
         setLoading(true)
         setError(null)
 
         try {
-            // PostGIS query to get posts within radius
-            const radiusMeters = radius * 1609.34 // Convert miles to meters
-            const userPoint = `POINT(${position[1]} ${position[0]})`
+            const { data: { user } } = await supabase.auth.getUser()
+            setCurrentUserId(user?.id)
 
-            // Use RPC call for complex PostGIS query
             const { data, error: queryError } = await supabase
                 .rpc('get_posts_within_radius', {
                     user_lat: position[0],
@@ -26,7 +25,6 @@ export default function Feed({ position, radius, onClose }) {
                 })
 
             if (queryError) throw queryError
-
             setPosts(data || [])
         } catch (err) {
             console.error('Feed fetch error:', err)
@@ -40,61 +38,40 @@ export default function Feed({ position, radius, onClose }) {
         fetchPosts()
     }, [position, radius])
 
-    return (
-        <div className="feed-overlay">
-            <div className="feed-container frosted-glass">
-                <div className="feed-header">
-                    <h2 className="feed-title">
-                        Your Circle Feed
-                        <span className="feed-subtitle">{radius} mile{radius !== 1 ? 's' : ''}</span>
-                    </h2>
-                    <div className="feed-actions">
-                        <button className="icon-btn" onClick={fetchPosts} title="Refresh">
-                            <RefreshCw size={20} />
-                        </button>
-                        <button className="icon-btn" onClick={onClose}>
-                            <X size={24} />
-                        </button>
-                    </div>
-                </div>
-
-                <div className="feed-content">
-                    {loading && (
-                        <div className="feed-loading">
-                            <div className="spinner"></div>
-                            <p>Loading posts...</p>
-                        </div>
-                    )}
-
-                    {error && (
-                        <div className="feed-error">
-                            <p>{error}</p>
-                            <button className="btn-secondary" onClick={fetchPosts}>
-                                Try Again
-                            </button>
-                        </div>
-                    )}
-
-                    {!loading && !error && posts.length === 0 && (
-                        <div className="feed-empty">
-                            <p>No posts in your circle yet.</p>
-                            <p className="text-muted">Be the first to share something!</p>
-                        </div>
-                    )}
-
-                    {!loading && !error && posts.length > 0 && (
-                        <div className="feed-posts">
-                            {posts.map((post) => (
-                                <PostCard
-                                    key={post.id}
-                                    post={post}
-                                    userPosition={position}
-                                />
-                            ))}
-                        </div>
-                    )}
-                </div>
+    if (loading && posts.length === 0) {
+        return (
+            <div className="feed-loading">
+                <div className="spinner"></div>
             </div>
+        )
+    }
+
+    if (error) {
+        return (
+            <div className="feed-error">
+                <p>{error}</p>
+                <button className="auth-link-btn" onClick={fetchPosts}>Try Again</button>
+            </div>
+        )
+    }
+
+    if (posts.length === 0) {
+        return (
+            <div className="feed-empty">
+                <p style={{ color: '#666' }}>No one in this circle has shared anything yet...</p>
+            </div>
+        )
+    }
+
+    return (
+        <div className="feed-posts" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+            {posts.map((post) => (
+                <PostCard
+                    key={post.id}
+                    post={post}
+                    isMine={post.user_id === currentUserId}
+                />
+            ))}
         </div>
     )
 }

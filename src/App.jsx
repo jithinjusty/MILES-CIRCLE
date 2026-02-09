@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet'
-import { Plus, List } from 'lucide-react'
+import { Plus, List, Send, User, Map as MapIcon, X } from 'lucide-react'
 import './App.css'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -10,10 +10,9 @@ import AuthOverlay from './components/AuthOverlay'
 import CreatePostModal from './components/CreatePostModal'
 import Feed from './components/Feed'
 
-// Fix for default marker icon in React Leaflet
+// Fix for default marker icon
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
 let DefaultIcon = L.icon({
     iconUrl: icon,
     shadowUrl: iconShadow,
@@ -22,202 +21,266 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Sub-component to handle map effects (The "Globe Effect")
-function MapController({ center, radius }) {
+function MapController({ center, radius, isInteracting }) {
     const map = useMap();
-
     useEffect(() => {
         if (!map) return;
-
-        // Wait for map to be fully initialized
-        map.whenReady(() => {
-            try {
-                // Calculate bounds for the circle
-                const meters = radius * 1609.34;
-                // Create a temporary circle to get bounds (purely logical)
-                const circle = L.circle(center, { radius: meters });
-
-                map.fitBounds(circle.getBounds(), {
-                    padding: [20, 20], // Minimal padding to fill screen
-                    animate: true,
-                    duration: 1.2, // Smooth animation
-                    easeLinearity: 0.25
-                });
-            } catch (error) {
-                console.warn('Map bounds calculation failed:', error);
-            }
+        const meters = radius * 1609.34;
+        const circle = L.circle(center, { radius: meters });
+        map.fitBounds(circle.getBounds(), {
+            padding: [50, 50],
+            animate: true,
+            duration: isInteracting ? 0.5 : 1.2
         });
-    }, [center, radius, map]);
-
+    }, [center, radius, map, isInteracting]);
     return null;
 }
 
 function App() {
     const [showSplash, setShowSplash] = useState(true)
     const [session, setSession] = useState(null)
-    const [radius, setRadius] = useState(1); // miles
-    const [position, setPosition] = useState([40.7128, -74.0060]); // NYC Default
+    const [profile, setProfile] = useState(null)
+    const [radius, setRadius] = useState(1);
+    const [position, setPosition] = useState([40.7128, -74.0060]);
     const [locationAvailable, setLocationAvailable] = useState(false);
     const [showCreatePost, setShowCreatePost] = useState(false);
     const [showFeed, setShowFeed] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
+    const [isMapInteracting, setIsMapInteracting] = useState(false);
+    const [onboardingStep, setOnboardingStep] = useState(0); // 0 = none, 1 = basic info, 2 = tour
+    const sliderTimer = useRef(null);
 
     useEffect(() => {
-        // 1. Check active session
+        // Initial session check
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session)
+            if (session) fetchProfile(session.user.id)
         })
 
-        const {
-            data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session)
+            if (session) fetchProfile(session.user.id)
+            else setProfile(null)
         })
 
-        // 2. Get User Location (Phase 1 simplistic approach)
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((pos) => {
-                const { latitude, longitude } = pos.coords;
-                setPosition([latitude, longitude]);
+                setPosition([pos.coords.latitude, pos.coords.longitude]);
                 setLocationAvailable(true);
-            }, (err) => {
-                console.error("Location error:", err);
-                // Fallback to default or ask permission (handled by browser)
-            }, {
-                enableHighAccuracy: true
-            });
+            }, null, { enableHighAccuracy: true });
         }
-
         return () => subscription.unsubscribe()
     }, [])
 
-    // Handlers
-    const handleRadiusChange = (e) => {
-        setRadius(parseFloat(e.target.value));
-    };
+    const fetchProfile = async (userId) => {
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .single()
+
+        if (data) {
+            setProfile(data)
+            if (!data.onboarding_completed) setOnboardingStep(1)
+        }
+    }
+
+    const handleUpdateProfile = async (updates) => {
+        const { error } = await supabase
+            .from('profiles')
+            .update(updates)
+            .eq('id', session.user.id)
+
+        if (!error) {
+            setProfile({ ...profile, ...updates })
+            if (updates.onboarding_completed) setOnboardingStep(0)
+            else if (onboardingStep === 1) setOnboardingStep(2)
+        }
+    }
+
+    const handleSliderInteract = (isStarting) => {
+        setIsMapInteracting(isStarting);
+        if (sliderTimer.current) clearTimeout(sliderTimer.current);
+
+        if (!isStarting) {
+            sliderTimer.current = setTimeout(() => {
+                setIsMapInteracting(false);
+            }, 1500); // Wait a bit before blurring back
+        }
+    }
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
     }
 
-    const handlePostCreated = () => {
-        setShowCreatePost(false)
-        // Optionally refresh feed or show success message
+    const getInitial = () => {
+        if (profile?.full_name) return profile.full_name[0].toUpperCase();
+        if (session?.user?.email) return session.user.email[0].toUpperCase();
+        return '?';
     }
 
     return (
-        <div className="app-container">
-            {/* SPLASH SCREEN */}
+        <div className={`app-container ${isMapInteracting ? 'map-mode' : 'chat-mode'}`}>
             {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
 
-            {/* AUTH CHECK */}
             {!showSplash && !session && <AuthOverlay />}
 
-            {/* MAP LAYER */}
-            <MapContainer
-                center={position}
-                zoom={13}
-                zoomControl={false}
-                className="map-view"
-            >
-                <TileLayer
-                    // CartoDB Voyager - Clean, cream-ish, premium style
-                    attribution='&copy; CARTO'
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                />
-
-                {/* User Location */}
-                {locationAvailable && <Marker position={position} />}
-
-                {/* The Radius Circle */}
-                <Circle
-                    center={position}
-                    pathOptions={{
-                        color: '#D2554E',
-                        fillColor: '#D2554E',
-                        fillOpacity: 0.08,
-                        weight: 2,
-                        dashArray: '4, 8',
-                        className: 'breathing-circle'
-                    }}
-                    radius={radius * 1609.34}
-                />
-
-                <MapController center={position} radius={radius} />
-            </MapContainer>
-
-            {/* UI OVERLAY */}
-            <header className="app-header frosted-glass">
-                <img src="/logo.png" alt="Miles Circle Logo" className="header-logo" />
-                {session && (
-                    <button
-                        onClick={handleLogout}
-                        className="header-btn"
-                    >
-                        Log Out
-                    </button>
-                )}
-            </header>
-
-            {/* RADIUS CONTROL */}
             {session && (
-                <div className="radius-control-container frosted-glass">
-                    <div className="radius-info">
-                        <span>Radius: </span>
-                        <span className="text-red" style={{ fontSize: '1.4em', fontWeight: '800' }}>{radius}</span>
-                        <span style={{ fontSize: '0.9em', color: '#666' }}> miles</span>
+                <>
+                    {/* MAP BACKGROUND */}
+                    <MapContainer center={position} zoom={13} zoomControl={false} className="map-view">
+                        <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                        {locationAvailable && <Marker position={position} />}
+                        <Circle
+                            center={position}
+                            pathOptions={{ color: '#D2554E', fillColor: '#D2554E', fillOpacity: 0.1, weight: 2, dashArray: '4, 8' }}
+                            radius={radius * 1609.34}
+                        />
+                        <MapController center={position} radius={radius} isInteracting={isMapInteracting} />
+                    </MapContainer>
+
+                    {/* FOREGROUND UI */}
+                    <div className="chat-interface">
+                        <header className="app-header-new">
+                            <img src="/logo.png" alt="MILES" className="header-logo-new" />
+                            <div className="user-avatar-btn" onClick={() => setShowSettings(true)}>
+                                {getInitial()}
+                            </div>
+                        </header>
+
+                        <div className="chat-center-container">
+                            <div className="chat-messages-scroll">
+                                <div className="message-card">
+                                    <p style={{ color: 'var(--accent-red)', fontWeight: 'bold', marginBottom: '4px' }}>Miles Circle</p>
+                                    Welcome to your circle! You are currently looking at a <strong>{radius} mile</strong> radius around you.
+                                </div>
+                                <Feed position={position} radius={radius} />
+                            </div>
+
+                            <div className="chat-input-wrapper">
+                                <button className="chat-send-btn" style={{ background: 'transparent', border: '1px solid #333' }} onClick={() => setShowFeed(!showFeed)}>
+                                    <List size={20} />
+                                </button>
+                                <input
+                                    type="text"
+                                    className="chat-input-main"
+                                    placeholder="Share something with your circle..."
+                                    onFocus={() => setShowCreatePost(true)}
+                                    readOnly
+                                />
+                                <button className="chat-send-btn" onClick={() => setShowCreatePost(true)}>
+                                    <Send size={20} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* RIGHT SIDE SLIDER */}
+                        <div className="side-slider-container">
+                            <span className="radius-badge">{radius}m</span>
+                            <input
+                                type="range"
+                                className="range-vertical"
+                                min="0.5" max="50" step="0.5"
+                                value={radius}
+                                onChange={(e) => setRadius(parseFloat(e.target.value))}
+                                onMouseDown={() => handleSliderInteract(true)}
+                                onMouseUp={() => handleSliderInteract(false)}
+                                onTouchStart={() => handleSliderInteract(true)}
+                                onTouchEnd={() => handleSliderInteract(false)}
+                            />
+                            <MapIcon size={20} color="#666" />
+                        </div>
                     </div>
 
-                    <input
-                        type="range"
-                        min="0.5"
-                        max="50"
-                        step="0.5"
-                        value={radius}
-                        onChange={handleRadiusChange}
-                        className="radius-slider"
-                    />
+                    {/* ONBOARDING FLOW */}
+                    {onboardingStep === 1 && (
+                        <div className="onboarding-overlay">
+                            <div className="onboarding-card">
+                                <h2 className="onboarding-title">Welcome!</h2>
+                                <p className="onboarding-text">Let's set up your local profile.</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Full Name"
+                                        className="auth-input-classic"
+                                        style={{ background: '#222', border: '1px solid #444', color: 'white' }}
+                                        value={profile?.full_name || ''}
+                                        onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Mobile Number (Optional)"
+                                        className="auth-input-classic"
+                                        style={{ background: '#222', border: '1px solid #444', color: 'white' }}
+                                        value={profile?.mobile || ''}
+                                        onChange={(e) => setProfile({ ...profile, mobile: e.target.value })}
+                                    />
+                                    <button
+                                        className="auth-btn-primary"
+                                        onClick={() => handleUpdateProfile({ full_name: profile.full_name, mobile: profile.mobile })}
+                                    >
+                                        Continue
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-                    <p style={{ fontSize: '0.75rem', color: '#888', marginTop: '0.5rem', fontWeight: 500 }}>
-                        Draw your circle
-                    </p>
-                </div>
-            )}
+                    {onboardingStep === 2 && (
+                        <div className="onboarding-overlay">
+                            <div className="onboarding-card">
+                                <h2 className="onboarding-title">App Tour</h2>
+                                <p className="onboarding-text">
+                                    Your world is defined by the radius on the right.
+                                    Drag the slider to see further or closer.
+                                </p>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button className="btn-secondary" style={{ flex: 1 }} onClick={() => handleUpdateProfile({ onboarding_completed: true })}>Skip</button>
+                                    <button className="auth-btn-primary" style={{ flex: 1 }} onClick={() => handleUpdateProfile({ onboarding_completed: true })}>Got it!</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-            {/* FLOATING ACTION BUTTONS */}
-            {session && (
-                <div className="fab-container">
-                    <button
-                        className="fab fab-primary"
-                        onClick={() => setShowCreatePost(true)}
-                        title="Create Post"
-                    >
-                        <Plus size={28} strokeWidth={2.5} />
-                    </button>
-                    <button
-                        className="fab fab-secondary"
-                        onClick={() => setShowFeed(true)}
-                        title="View Feed"
-                    >
-                        <List size={28} strokeWidth={2.5} />
-                    </button>
-                </div>
-            )}
+                    {/* SETTINGS MODAL */}
+                    {showSettings && (
+                        <div className="modal-overlay">
+                            <div className="onboarding-card" style={{ position: 'relative' }}>
+                                <button className="modal-close" style={{ position: 'absolute', top: '20px', right: '20px' }} onClick={() => setShowSettings(false)}>
+                                    <X size={24} />
+                                </button>
+                                <User size={48} color="var(--accent-red)" style={{ marginBottom: '1rem' }} />
+                                <h2 style={{ marginBottom: '2rem' }}>Account Details</h2>
+                                <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: '#666' }}>Email (Stored)</label>
+                                        <div style={{ padding: '12px', background: '#222', borderRadius: '8px', color: '#aaa' }}>{session.user.email}</div>
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: '#666' }}>Full Name</label>
+                                        <input
+                                            type="text"
+                                            className="auth-input-classic"
+                                            style={{ background: '#222', border: '1px solid #444', color: 'white' }}
+                                            value={profile?.full_name || ''}
+                                            onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                                        />
+                                    </div>
+                                    <button className="auth-btn-primary" onClick={() => handleUpdateProfile({ full_name: profile.full_name })}>Save Changes</button>
+                                    <button className="btn-secondary" onClick={handleLogout} style={{ marginTop: '1rem' }}>Log Out</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-            {/* MODALS */}
-            {showCreatePost && (
-                <CreatePostModal
-                    position={position}
-                    onClose={() => setShowCreatePost(false)}
-                    onPostCreated={handlePostCreated}
-                />
-            )}
-
-            {showFeed && (
-                <Feed
-                    position={position}
-                    radius={radius}
-                    onClose={() => setShowFeed(false)}
-                />
+                    {showCreatePost && (
+                        <CreatePostModal
+                            position={position}
+                            onClose={() => setShowCreatePost(false)}
+                            onPostCreated={() => setShowCreatePost(false)}
+                        />
+                    )}
+                </>
             )}
         </div>
     )

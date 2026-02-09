@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X } from 'lucide-react'
+import { X, Send } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function CreatePostModal({ position, onClose, onPostCreated }) {
@@ -8,7 +8,7 @@ export default function CreatePostModal({ position, onClose, onPostCreated }) {
     const [error, setError] = useState(null)
 
     const handleSubmit = async (e) => {
-        e.preventDefault()
+        if (e) e.preventDefault()
         if (!content.trim()) return
 
         setLoading(true)
@@ -23,7 +23,6 @@ export default function CreatePostModal({ position, onClose, onPostCreated }) {
                 return
             }
 
-            // Format location as WKT (Well-Known Text) for PostGIS
             const locationWKT = `POINT(${position[1]} ${position[0]})`
 
             const { error: insertError } = await supabase
@@ -38,7 +37,6 @@ export default function CreatePostModal({ position, onClose, onPostCreated }) {
 
             if (insertError) throw insertError
 
-            // Success!
             setContent('')
             onPostCreated?.()
             onClose()
@@ -51,11 +49,11 @@ export default function CreatePostModal({ position, onClose, onPostCreated }) {
     }
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-card frosted-glass" onClick={(e) => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h2 className="modal-title">Create Post</h2>
-                    <button className="modal-close" onClick={onClose}>
+        <div className="modal-overlay" onClick={onClose} style={{ background: 'rgba(0,0,0,0.85)' }}>
+            <div className="onboarding-card" onClick={(e) => e.stopPropagation()} style={{ padding: '2rem', maxWidth: '600px' }}>
+                <div className="modal-header" style={{ marginBottom: '1.5rem' }}>
+                    <h2 className="modal-title" style={{ color: 'white' }}>New Message</h2>
+                    <button className="icon-btn" onClick={onClose} style={{ color: '#666' }}>
                         <X size={24} />
                     </button>
                 </div>
@@ -63,31 +61,33 @@ export default function CreatePostModal({ position, onClose, onPostCreated }) {
                 <form onSubmit={handleSubmit} className="post-form">
                     <textarea
                         className="post-textarea"
-                        placeholder="What's happening in your circle? Ask a question, share info..."
+                        placeholder="What's happening in your circle?"
+                        style={{ background: '#111', border: '1px solid #333', color: 'white', fontSize: '1.1rem' }}
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                         maxLength={500}
-                        rows={5}
+                        rows={6}
                         autoFocus
                     />
-                    <div className="post-meta">
-                        <span className="char-count">{content.length}/500</span>
+                    <div className="post-meta" style={{ marginTop: '0.5rem' }}>
+                        <span className="char-count" style={{ color: '#444' }}>{content.length}/500</span>
                     </div>
 
                     {error && (
-                        <div className="error-message">{error}</div>
+                        <div className="error-message" style={{ background: '#311', color: '#f55', marginTop: '1rem' }}>{error}</div>
                     )}
 
-                    <div className="modal-actions">
-                        <button type="button" className="btn-secondary" onClick={onClose}>
+                    <div className="modal-actions" style={{ marginTop: '2rem' }}>
+                        <button type="button" className="btn-secondary" style={{ background: 'transparent', border: '1px solid #333' }} onClick={onClose}>
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            className="btn-primary"
+                            className="auth-btn-primary"
                             disabled={loading || !content.trim()}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                         >
-                            {loading ? 'Posting...' : 'Post to Circle'}
+                            {loading ? 'Sending...' : <><Send size={18} /> Send to Circle</>}
                         </button>
                     </div>
                 </form>
