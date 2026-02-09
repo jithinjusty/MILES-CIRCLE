@@ -19,7 +19,7 @@ export default function PostCard({ post, isMine }) {
             {!isMine && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                     <div className="user-avatar-btn" style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}>
-                        {(post.full_name || post.user_email)?.[0].toUpperCase()}
+                        {(post.full_name || post.user_email)?.[0]?.toUpperCase() || '?'}
                     </div>
                     <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--accent-red)' }}>
                         {post.full_name || post.user_email?.split('@')[0]}

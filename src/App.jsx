@@ -114,9 +114,8 @@ function App() {
     }
 
     const getInitial = () => {
-        if (profile?.full_name) return profile.full_name[0].toUpperCase();
-        if (session?.user?.email) return session.user.email[0].toUpperCase();
-        return '?';
+        const name = profile?.full_name || session?.user?.email || '';
+        return name?.[0]?.toUpperCase() || '?';
     }
 
     return (
