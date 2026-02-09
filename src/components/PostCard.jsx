@@ -26,7 +26,7 @@ export default function PostCard({ post, isMine }) {
                     <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--accent-red)' }}>
                         {name}
                     </span>
-                    <span style={{ fontSize: '0.7rem', color: '#666' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#999' }}>
                         {formatTimeAgo(post?.created_at)}
                     </span>
                 </div>
@@ -38,7 +38,7 @@ export default function PostCard({ post, isMine }) {
 
             {isMine && (
                 <div style={{ textAlign: 'right', marginTop: '4px' }}>
-                    <span style={{ fontSize: '0.7rem', color: '#666' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#999' }}>
                         {formatTimeAgo(post?.created_at)}
                     </span>
                 </div>
