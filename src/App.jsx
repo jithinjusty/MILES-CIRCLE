@@ -10,13 +10,7 @@ import AuthOverlay from './components/AuthOverlay'
 import CreatePostModal from './components/CreatePostModal'
 import Feed from './components/Feed'
 
-// Simplified marker fix - no bulky icons
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+const INITIAL_POSITION = [40.7128, -74.0060];
 
 function MapController({ center, radius, isInteracting }) {
     const map = useMap();
@@ -35,38 +29,64 @@ function MapController({ center, radius, isInteracting }) {
 
 function App() {
     const [showSplash, setShowSplash] = useState(true)
+    const [authLoading, setAuthLoading] = useState(true);
     const [session, setSession] = useState(null)
     const [profile, setProfile] = useState({});
     const [radius, setRadius] = useState(1);
-    const [position, setPosition] = useState([40.7128, -74.0060]);
+    const [position, setPosition] = useState(INITIAL_POSITION);
+    const [runtimeError, setRuntimeError] = useState(null);
     const [locationAvailable, setLocationAvailable] = useState(false);
     const [showCreatePost, setShowCreatePost] = useState(false);
     const [showFeed, setShowFeed] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [isMapInteracting, setIsMapInteracting] = useState(false);
-    const [onboardingStep, setOnboardingStep] = useState(0); // 0 = none, 1 = basic info, 2 = tour
+    const [onboardingStep, setOnboardingStep] = useState(0);
     const sliderTimer = useRef(null);
 
     useEffect(() => {
+        console.log("App mounted, checking session...");
+        // Safe Leaflet fix
+        try {
+            delete L.Icon.Default.prototype._getIconUrl;
+            L.Icon.Default.mergeOptions({
+                iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+                iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+            });
+        } catch (e) { console.error("Leaflet fix failed", e); }
+
         // Initial session check
         supabase.auth.getSession().then(({ data: { session } }) => {
-            setSession(session)
-            if (session) fetchProfile(session.user.id)
-        })
+            console.log("Session fetched:", session?.user?.email);
+            setSession(session);
+            if (session) fetchProfile(session.user.id);
+            setAuthLoading(false);
+        }).catch(err => {
+            console.error("Auth error:", err);
+            setRuntimeError(err.message);
+            setAuthLoading(false);
+        });
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setSession(session)
-            if (session) fetchProfile(session.user.id)
-            else setProfile(null)
-        })
+            console.log("Auth state changed:", _event, session?.user?.email);
+            setSession(session);
+            if (session) fetchProfile(session.user.id);
+            else {
+                setProfile({});
+                setOnboardingStep(0);
+            }
+            setAuthLoading(false);
+        });
 
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((pos) => {
-                setPosition([pos.coords.latitude, pos.coords.longitude]);
-                setLocationAvailable(true);
+                if (pos?.coords) {
+                    setPosition([pos.coords.latitude, pos.coords.longitude]);
+                    setLocationAvailable(true);
+                }
             }, null, { enableHighAccuracy: true });
         }
-        return () => subscription.unsubscribe()
+        return () => subscription?.unsubscribe()
     }, [])
 
     const fetchProfile = async (userId) => {
@@ -112,17 +132,36 @@ function App() {
 
     const getInitial = () => {
         const name = profile?.full_name || session?.user?.email || '';
-        if (!name) return '?';
-        return name[0].toUpperCase();
+        return name?.[0]?.toUpperCase() || '?';
+    }
+
+    if (runtimeError) {
+        return (
+            <div style={{ background: 'black', color: 'red', padding: '20px', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                <div>
+                    <h2>Application Error</h2>
+                    <p>{runtimeError}</p>
+                    <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', background: 'white', border: 'none', borderRadius: '5px', marginTop: '20px' }}>Reload</button>
+                </div>
+            </div>
+        )
+    }
+
+    if (authLoading && !showSplash) {
+        return (
+            <div style={{ background: 'black', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div className="spinner"></div>
+            </div>
+        )
     }
 
     return (
         <div className={`app-container ${isMapInteracting ? 'map-mode' : 'chat-mode'}`}>
             {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
 
-            {!showSplash && !session && <AuthOverlay />}
+            {!showSplash && !authLoading && !session && <AuthOverlay />}
 
-            {session && (
+            {!showSplash && !authLoading && session && (
                 <>
                     {/* MAP BACKGROUND */}
                     <div className="map-wrapper" style={{ position: 'absolute', inset: 0 }}>

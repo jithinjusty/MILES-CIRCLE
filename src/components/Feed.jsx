@@ -14,7 +14,8 @@ export default function Feed({ position, radius }) {
         setError(null)
 
         try {
-            const { data: { user } } = await supabase.auth.getUser()
+            const authResponse = await supabase.auth.getUser()
+            const user = authResponse?.data?.user;
             setCurrentUserId(user?.id)
 
             const { data, error: queryError } = await supabase
