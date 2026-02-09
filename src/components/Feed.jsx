@@ -18,11 +18,17 @@ export default function Feed({ position, radius }) {
             const user = authResponse?.data?.user;
             setCurrentUserId(user?.id)
 
+            if (!position || isNaN(position[0]) || isNaN(position[1])) {
+                console.warn("Skipping feed fetch: Invalid position");
+                setLoading(false);
+                return;
+            }
+
             const { data, error: queryError } = await supabase
                 .rpc('get_posts_within_radius', {
-                    user_lat: position[0],
-                    user_lng: position[1],
-                    radius_miles: radius
+                    user_lat: parseFloat(position[0]),
+                    user_lng: parseFloat(position[1]),
+                    radius_miles: parseFloat(radius) || 1
                 })
 
             if (queryError) throw queryError

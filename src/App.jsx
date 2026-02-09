@@ -15,14 +15,28 @@ const INITIAL_POSITION = [40.7128, -74.0060];
 function MapController({ center, radius, isInteracting }) {
     const map = useMap();
     useEffect(() => {
-        if (!map) return;
-        const meters = radius * 1609.34;
-        const circle = L.circle(center, { radius: meters });
-        map.fitBounds(circle.getBounds(), {
-            padding: [50, 50],
-            animate: true,
-            duration: isInteracting ? 0.5 : 1.2
-        });
+        if (!map || !center || isNaN(center[0]) || isNaN(center[1])) return;
+
+        // Use a safe calculation for bounds to avoid 'layerPointToLatLng' crash
+        const metersPerDegree = 111320;
+        const latDelta = (radius * 1609.34) / metersPerDegree;
+        // Lon delta depends on latitude
+        const lngDelta = (radius * 1609.34) / (metersPerDegree * Math.cos(center[0] * Math.PI / 180));
+
+        const bounds = [
+            [center[0] - latDelta, center[1] - lngDelta],
+            [center[0] + latDelta, center[1] + lngDelta]
+        ];
+
+        try {
+            map.fitBounds(bounds, {
+                padding: [50, 50],
+                animate: true,
+                duration: isInteracting ? 0.5 : 1.2
+            });
+        } catch (e) {
+            console.warn("Map fitBounds failed gently:", e);
+        }
     }, [center, radius, map, isInteracting]);
     return null;
 }
@@ -165,7 +179,7 @@ function App() {
                 <>
                     {/* MAP BACKGROUND */}
                     <div className="map-wrapper" style={{ position: 'absolute', inset: 0 }}>
-                        <MapContainer key={`${position[0]}-${position[1]}`} center={position} zoom={13} zoomControl={false} className="map-view">
+                        <MapContainer center={position} zoom={13} zoomControl={false} className="map-view">
                             <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
                             {locationAvailable && <Marker position={position} />}
                             <Circle
