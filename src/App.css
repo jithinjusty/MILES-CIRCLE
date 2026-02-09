@@ -338,7 +338,7 @@
 
 .auth-container {
     width: 100%;
-    max-width: 440px;
+    max-width: 480px;
     display: flex;
     flex-direction: column;
     gap: 3.5rem;
@@ -370,6 +370,42 @@
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
+.auth-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    border-bottom: 2px solid #F0F0F0;
+    padding-bottom: 0.5rem;
+}
+
+.auth-tab {
+    background: none;
+    border: none;
+    font-family: var(--font-family);
+    font-size: 1rem;
+    font-weight: 600;
+    color: #999;
+    cursor: pointer;
+    padding: 0.5rem 0.25rem;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.auth-tab.active {
+    color: var(--color-brand-red);
+}
+
+.auth-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -0.5rem;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--color-brand-red);
+    border-radius: 3px;
+}
+
 .auth-form-classic {
     display: flex;
     flex-direction: column;
@@ -396,6 +432,28 @@
 
 .auth-input-classic::placeholder {
     color: #999;
+}
+
+.auth-options {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.auth-link-btn {
+    background: none;
+    border: none;
+    font-family: var(--font-family);
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--color-gray-ui);
+    cursor: pointer;
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+.auth-link-btn:hover {
+    color: var(--color-brand-red);
+    opacity: 1;
 }
 
 .auth-btn-primary {

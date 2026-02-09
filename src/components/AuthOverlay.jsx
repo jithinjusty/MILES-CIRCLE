@@ -1,27 +1,54 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-export default function AuthOverlay({ onLogin }) {
+export default function AuthOverlay() {
     const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [message, setMessage] = useState(null)
+    const [isSignUp, setIsSignUp] = useState(false)
+    const [useMagicLink, setUseMagicLink] = useState(false)
 
-    const handleMagicLink = async (e) => {
+    const handleAuth = async (e) => {
         e.preventDefault()
         setLoading(true)
         setMessage(null)
 
-        const { error } = await supabase.auth.signInWithOtp({
-            email,
-            options: {
-                emailRedirectTo: window.location.origin,
-            },
-        })
+        let result;
+        if (useMagicLink) {
+            result = await supabase.auth.signInWithOtp({
+                email,
+                options: {
+                    emailRedirectTo: window.location.origin,
+                },
+            })
+        } else if (isSignUp) {
+            result = await supabase.auth.signUp({
+                email,
+                password,
+                options: {
+                    emailRedirectTo: window.location.origin,
+                }
+            })
+        } else {
+            result = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            })
+        }
+
+        const { error, data } = result;
 
         if (error) {
             setMessage({ type: 'error', text: error.message })
         } else {
-            setMessage({ type: 'success', text: 'Check your email for the magic link!' })
+            if (useMagicLink) {
+                setMessage({ type: 'success', text: 'Check your email for the magic link!' })
+            } else if (isSignUp && data?.user && data?.session === null) {
+                setMessage({ type: 'success', text: 'Signup successful! Please confirm your email.' })
+            } else {
+                setMessage({ type: 'success', text: 'Successfully logged in!' })
+            }
         }
         setLoading(false)
     }
@@ -29,6 +56,9 @@ export default function AuthOverlay({ onLogin }) {
     const handleGoogleLogin = async () => {
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
+            options: {
+                redirectTo: window.location.origin
+            }
         })
         if (error) setMessage({ type: 'error', text: error.message })
     }
@@ -36,27 +66,65 @@ export default function AuthOverlay({ onLogin }) {
     return (
         <div className="auth-overlay-new">
             <div className="auth-container">
-                {/* Logo Section */}
                 <div className="auth-logo-section">
                     <img src="/logo.png" alt="Miles Circle" className="auth-logo-main" />
                     <h2 className="auth-tagline">Draw your circle. Connect locally.</h2>
                 </div>
 
-                {/* Form Section */}
                 <div className="auth-form-section">
-                    <form onSubmit={handleMagicLink} className="auth-form-classic">
+                    <div className="auth-tabs">
+                        <button
+                            className={`auth-tab ${!isSignUp ? 'active' : ''}`}
+                            onClick={() => { setIsSignUp(false); setUseMagicLink(false); }}
+                        >
+                            Log In
+                        </button>
+                        <button
+                            className={`auth-tab ${isSignUp ? 'active' : ''}`}
+                            onClick={() => { setIsSignUp(true); setUseMagicLink(false); }}
+                        >
+                            Sign Up
+                        </button>
+                    </div>
+
+                    <form onSubmit={handleAuth} className="auth-form-classic">
                         <input
                             type="email"
-                            placeholder="Enter your email"
+                            placeholder="Email address"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="auth-input-classic"
                             required
                         />
+
+                        {!useMagicLink && (
+                            <input
+                                type="password"
+                                placeholder="Password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="auth-input-classic"
+                                required
+                                minLength={6}
+                            />
+                        )}
+
                         <button type="submit" className="auth-btn-primary" disabled={loading}>
-                            {loading ? 'Sending...' : 'Sign in with Email'}
+                            {loading ? 'Processing...' : (
+                                useMagicLink ? 'Send Magic Link' : (isSignUp ? 'Create Account' : 'Sign In')
+                            )}
                         </button>
                     </form>
+
+                    <div className="auth-options">
+                        <button
+                            type="button"
+                            className="auth-link-btn"
+                            onClick={() => setUseMagicLink(!useMagicLink)}
+                        >
+                            {useMagicLink ? 'Use Password instead' : 'Email me a login link'}
+                        </button>
+                    </div>
 
                     <div className="auth-divider-classic">
                         <span>or</span>
@@ -69,7 +137,7 @@ export default function AuthOverlay({ onLogin }) {
                             <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.71 0-.593.102-1.17.282-1.71V4.96H.957C.347 6.175 0 7.55 0 9.002c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05" />
                             <path d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.426 0 9.003 0 5.485 0 2.44 2.017.96 4.958L3.967 7.29c.708-2.127 2.692-3.71 5.036-3.71z" fill="#EA4335" />
                         </svg>
-                        Sign in with Google
+                        Continue with Google
                     </button>
 
                     {message && (
@@ -82,3 +150,4 @@ export default function AuthOverlay({ onLogin }) {
         </div>
     )
 }
+
