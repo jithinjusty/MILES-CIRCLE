@@ -67,6 +67,7 @@ function App() {
     const [uploading, setUploading] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [viewingProfile, setViewingProfile] = useState(null);
+    const [isSavingChanges, setIsSavingChanges] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showInstallBanner, setShowInstallBanner] = useState(false);
     const sliderTimer = useRef(null);
