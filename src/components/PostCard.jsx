@@ -20,8 +20,8 @@ export default function PostCard({ post, isMine }) {
         <div className={`message-card ${isMine ? 'mine' : ''}`}>
             {!isMine && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <div className="user-avatar-btn" style={{ width: '24px', height: '24px', fontSize: '0.7rem' }}>
-                        {avatar}
+                    <div className="user-avatar-btn" style={{ width: '24px', height: '24px', fontSize: '0.7rem', overflow: 'hidden' }}>
+                        {post?.avatar_url ? <img src={post.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : avatar}
                     </div>
                     <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--accent-red)' }}>
                         {name}

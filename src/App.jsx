@@ -60,7 +60,11 @@ function App() {
     const [messageContent, setMessageContent] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [isSliderHidden, setIsSliderHidden] = useState(false);
+    const [locationError, setLocationError] = useState(null);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const sliderTimer = useRef(null);
+    const watchId = useRef(null);
 
     const handleSliderInteract = (isStarting) => {
         setIsMapInteracting(isStarting);
@@ -108,15 +112,54 @@ function App() {
             setAuthLoading(false);
         });
 
+        const updateLocation = () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        if (pos?.coords) {
+                            setPosition([pos.coords.latitude, pos.coords.longitude]);
+                            setLocationAvailable(true);
+                            setLocationError(null);
+                        }
+                    },
+                    (err) => {
+                        console.error("Location error:", err);
+                        if (err.code === 1) setLocationError("PERMISSION_DENIED");
+                        else setLocationError("LOCATION_UNAVAILABLE");
+                        setLocationAvailable(false);
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
+            } else {
+                setLocationError("NOT_SUPPORTED");
+            }
+        };
+
+        // Initial location and continuous watch
+        updateLocation();
+
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition((pos) => {
-                if (pos?.coords) {
-                    setPosition([pos.coords.latitude, pos.coords.longitude]);
-                    setLocationAvailable(true);
-                }
-            }, null, { enableHighAccuracy: true });
+            watchId.current = navigator.geolocation.watchPosition(
+                (pos) => {
+                    if (pos?.coords) {
+                        setPosition([pos.coords.latitude, pos.coords.longitude]);
+                        setLocationAvailable(true);
+                        setLocationError(null);
+                    }
+                },
+                null,
+                { enableHighAccuracy: true }
+            );
         }
-        return () => subscription?.unsubscribe()
+
+        // Re-verify every 5 minutes as requested
+        const verifyInterval = setInterval(updateLocation, 5 * 60 * 1000);
+
+        return () => {
+            if (subscription) subscription.unsubscribe();
+            if (watchId.current) navigator.geolocation.clearWatch(watchId.current);
+            clearInterval(verifyInterval);
+        }
     }, [])
 
     const fetchProfile = async (userId) => {
@@ -194,9 +237,54 @@ function App() {
         // Link action just focuses the input which is already the case
     }
 
+    const handleUploadAvatar = async (event) => {
+        try {
+            setUploading(true);
+            if (!event.target.files || event.target.files.length === 0) {
+                throw new Error('You must select an image to upload.');
+            }
+
+            const file = event.target.files[0];
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${session.user.id}-${Math.random()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            let { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+
+            await handleUpdateProfile({ avatar_url: publicUrl });
+            alert('Profile picture updated!');
+        } catch (error) {
+            console.error('Error uploading avatar:', error.message);
+            alert("Avatar upload failed: " + error.message);
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const getInitial = () => {
         const name = profile?.full_name || session?.user?.email || '';
         return name?.[0]?.toUpperCase() || '?';
+    }
+
+    if (locationError === 'PERMISSION_DENIED') {
+        return (
+            <div style={{ background: 'black', color: 'white', padding: '40px', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                <div className="onboarding-card">
+                    <MapIcon size={64} color="var(--accent-red)" style={{ marginBottom: '20px' }} />
+                    <h2 style={{ color: 'var(--accent-red)', marginBottom: '10px' }}>Service Unavailable</h2>
+                    <p style={{ color: '#888', marginBottom: '30px' }}>Miles Circle is a location-based platform. Please enable location permissions in your browser settings to continue.</p>
+                    <button onClick={() => window.location.reload()} className="auth-btn-primary">Retry Access</button>
+                </div>
+            </div>
+        )
     }
 
     if (runtimeError) {
@@ -397,6 +485,24 @@ function App() {
                                 <User size={48} color="var(--accent-red)" style={{ marginBottom: '1rem' }} />
                                 <h2 style={{ marginBottom: '2rem' }}>Account Details</h2>
                                 <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
+                                        <div className="user-avatar-btn" style={{ width: '64px', height: '64px', fontSize: '1.5rem' }}>
+                                            {profile?.avatar_url ? <img src={profile.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : getInitial()}
+                                        </div>
+                                        <div>
+                                            <label htmlFor="avatar-upload" className="btn-secondary" style={{ cursor: 'pointer', fontSize: '0.9rem', padding: '8px 12px' }}>
+                                                {uploading ? 'Uploading...' : 'Change Photo'}
+                                            </label>
+                                            <input
+                                                type="file"
+                                                id="avatar-upload"
+                                                accept="image/*"
+                                                onChange={handleUploadAvatar}
+                                                disabled={uploading}
+                                                style={{ display: 'none' }}
+                                            />
+                                        </div>
+                                    </div>
                                     <div>
                                         <label style={{ fontSize: '0.8rem', color: '#666' }}>Email (Stored)</label>
                                         <div style={{ padding: '12px', background: '#222', borderRadius: '8px', color: '#aaa' }}>{session.user.email}</div>
@@ -412,7 +518,24 @@ function App() {
                                         />
                                     </div>
                                     <button className="auth-btn-primary" onClick={() => handleUpdateProfile({ full_name: profile?.full_name })}>Save Changes</button>
-                                    <button className="btn-secondary" onClick={handleLogout} style={{ marginTop: '1rem' }}>Log Out</button>
+
+                                    {!showLogoutConfirm ? (
+                                        <button
+                                            className="btn-secondary"
+                                            onClick={() => setShowLogoutConfirm(true)}
+                                            style={{ marginTop: '2.5rem', borderColor: '#444', color: '#888' }}
+                                        >
+                                            Log Out
+                                        </button>
+                                    ) : (
+                                        <div style={{ marginTop: '2.5rem', padding: '15px', background: 'rgba(210, 85, 78, 0.1)', borderRadius: '12px', border: '1px solid var(--accent-red)' }}>
+                                            <p style={{ fontSize: '0.9rem', marginBottom: '15px', textAlign: 'center' }}>Are you sure you want to log out?</p>
+                                            <div style={{ display: 'flex', gap: '10px' }}>
+                                                <button className="auth-btn-primary" style={{ flex: 1 }} onClick={handleLogout}>Yes, Log Out</button>
+                                                <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowLogoutConfirm(false)}>Cancel</button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
