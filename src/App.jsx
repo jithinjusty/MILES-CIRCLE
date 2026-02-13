@@ -193,9 +193,10 @@ function App() {
             if (updates.onboarding_completed) setOnboardingStep(0)
             else if (onboardingStep === 1) setOnboardingStep(2)
 
-            // If explicit save from settings, close modal
+            // If explicit save from settings, close modal and ensure we are in chat mode (feed)
             if (!updates.onboarding_completed && onboardingStep === 0) {
                 setShowSettings(false);
+                setIsMapInteracting(false);
             }
         } catch (err) {
             console.error("Profile update failed:", err);
