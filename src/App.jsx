@@ -69,7 +69,7 @@ function App() {
         if (!isStarting) {
             sliderTimer.current = setTimeout(() => {
                 setIsMapInteracting(false);
-            }, 1500); // Wait a bit before blurring back
+            }, 500); // Shorter delay for snappier feedback
         }
     }
 

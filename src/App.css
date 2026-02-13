@@ -73,6 +73,12 @@ body {
     align-items: center;
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
     z-index: 20;
+    transition: opacity 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.app-container.map-mode .app-header-new {
+    opacity: 0;
+    pointer-events: none;
 }
 
 .user-avatar-btn {
@@ -103,6 +109,12 @@ body {
     height: 100%;
     overflow: hidden;
     /* Contain the scroll area */
+    pointer-events: none;
+    transition: opacity 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.app-container.map-mode .chat-center-container {
+    opacity: 0;
     pointer-events: none;
 }
 
