@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, Send } from 'lucide-react'
+import { X, Send, MapPin, Link as LinkIcon, Paperclip } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 export default function CreatePostModal({ position, onClose, onPostCreated }) {
@@ -69,7 +69,38 @@ export default function CreatePostModal({ position, onClose, onPostCreated }) {
                         rows={6}
                         autoFocus
                     />
-                    <div className="post-meta" style={{ marginTop: '0.5rem' }}>
+                    <div className="post-meta" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                        <div className="post-tools" style={{ display: 'flex', gap: '15px' }}>
+                            <button
+                                type="button"
+                                className="tool-btn"
+                                onClick={() => {
+                                    const mapsUrl = `https://www.google.com/maps?q=${position[0]},${position[1]}`;
+                                    setContent(prev => prev + (prev ? ' ' : '') + mapsUrl);
+                                }}
+                                title="Share Current Location"
+                                style={{ background: 'transparent', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                            >
+                                <MapPin size={20} />
+                                <span style={{ fontSize: '0.8rem' }}>Location</span>
+                            </button>
+                            <button
+                                type="button"
+                                className="tool-btn"
+                                onClick={() => {
+                                    const url = prompt('Enter a link to share:');
+                                    if (url) {
+                                        const formattedUrl = url.startsWith('http') ? url : `https://${url}`;
+                                        setContent(prev => prev + (prev ? ' ' : '') + formattedUrl);
+                                    }
+                                }}
+                                title="Share Link"
+                                style={{ background: 'transparent', border: 'none', color: '#666', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                            >
+                                <LinkIcon size={20} />
+                                <span style={{ fontSize: '0.8rem' }}>Link</span>
+                            </button>
+                        </div>
                         <span className="char-count" style={{ color: '#444' }}>{content.length}/500</span>
                     </div>
 

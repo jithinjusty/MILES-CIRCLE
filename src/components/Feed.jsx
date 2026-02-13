@@ -32,7 +32,7 @@ export default function Feed({ position, radius, refreshTrigger, session }) {
                 throw queryError;
             }
 
-            setPosts(data || [])
+            setPosts((data || []).slice(0, 100))
         } catch (err) {
             console.error('Feed fetch error:', err)
             setError(err.message || 'Failed to load posts')
@@ -74,7 +74,7 @@ export default function Feed({ position, radius, refreshTrigger, session }) {
     }
 
     return (
-        <div className="feed-posts" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
+        <div className="feed-posts" style={{ display: 'flex', flexDirection: 'column-reverse', gap: '1.5rem', width: '100%' }}>
             {posts.map((post) => (
                 <PostCard
                     key={post.id}

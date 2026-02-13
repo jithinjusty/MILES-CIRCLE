@@ -203,13 +203,13 @@ function App() {
 
                         <div className="chat-center-container">
                             <div className="chat-messages-scroll">
+                                <Feed position={position} radius={radius} refreshTrigger={feedTrigger} session={session} />
                                 <div className="message-card">
                                     <p style={{ color: 'var(--accent-red)', fontWeight: 'bold', marginBottom: '4px' }}>Miles Circle</p>
                                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                                         Welcome to your circle! You are currently looking at a <strong>{radius} mile</strong> radius around you.
                                     </p>
                                 </div>
-                                <Feed position={position} radius={radius} refreshTrigger={feedTrigger} session={session} />
                             </div>
 
                             <div className="chat-input-wrapper">

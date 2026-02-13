@@ -33,7 +33,12 @@ export default function PostCard({ post, isMine }) {
             )}
 
             <div className="message-text" style={{ color: 'white', fontSize: '0.95rem', lineHeight: '1.4' }}>
-                {post?.content || ''}
+                {post?.content ? post.content.split(/(\s+)/).map((part, i) => {
+                    if (part.match(/^https?:\/\//)) {
+                        return <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-red)', textDecoration: 'none', wordBreak: 'break-all' }}>{part}</a>
+                    }
+                    return part;
+                }) : ''}
             </div>
 
             {isMine && (
