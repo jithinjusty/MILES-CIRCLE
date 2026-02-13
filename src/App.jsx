@@ -11,7 +11,7 @@ import CreatePostModal from './components/CreatePostModal'
 import Feed from './components/Feed'
 import PhotoEditor from './components/PhotoEditor'
 
-const INITIAL_POSITION = [40.7128, -74.0060];
+const INITIAL_POSITION = null; // No default location, must be detected
 
 function MapController({ center, radius, isInteracting }) {
     const map = useMap();
@@ -56,6 +56,7 @@ function App() {
     const [showSettings, setShowSettings] = useState(false);
     const [isMapInteracting, setIsMapInteracting] = useState(false);
     const [onboardingStep, setOnboardingStep] = useState(0);
+    const [tourStep, setTourStep] = useState(1);
     const [feedTrigger, setFeedTrigger] = useState(0);
     const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
     const [messageContent, setMessageContent] = useState('');
@@ -335,156 +336,201 @@ function App() {
 
             {!showSplash && !authLoading && session && (
                 <>
-                    {/* MAP BACKGROUND */}
-                    <div className="map-wrapper" style={{ position: 'absolute', inset: 0 }}>
-                        <MapContainer center={position} zoom={13} zoomControl={false} className="map-view">
-                            <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-                            {locationAvailable && <Marker position={position} />}
-                            <Circle
-                                center={position}
-                                pathOptions={{ color: '#D2554E', fillColor: '#D2554E', fillOpacity: 0.1, weight: 2, dashArray: '4, 8' }}
-                                radius={radius * 1609.34}
-                            />
-                            <MapController center={position} radius={radius} isInteracting={isMapInteracting} />
-                        </MapContainer>
-                    </div>
-
-                    {/* FOREGROUND UI */}
-                    <div className="chat-interface">
-                        <header className="app-header-new">
-                            <h1 style={{ color: 'var(--accent-red)', fontSize: '1.2rem', fontWeight: '900', letterSpacing: '1px' }}>MILES</h1>
-                            <div className="user-avatar-btn" onClick={() => setShowSettings(true)} style={{ width: '36px', height: '36px' }}>
-                                {profile?.avatar_url ? (
-                                    <img src={profile.avatar_url} alt="Profile" />
-                                ) : getInitial()}
-                            </div>
-                        </header>
-
-                        <div className="chat-center-container">
-                            <div className="chat-messages-scroll">
-                                <Feed
-                                    position={position}
-                                    radius={radius}
-                                    refreshTrigger={feedTrigger}
-                                    session={session}
-                                    onUserClick={(userId) => {
-                                        supabase.from('profiles').select('*').eq('id', userId).single().then(({ data }) => {
-                                            if (data) setViewingProfile(data);
-                                        });
-                                    }}
-                                />
-                                <div className="message-card">
-                                    <p style={{ color: 'var(--accent-red)', fontWeight: 'bold', marginBottom: '4px' }}>Miles Circle</p>
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                        Welcome to your circle! You are currently looking at a <strong>{radius} mile</strong> radius around you.
-                                    </p>
+                    {/* LOCATING BUFFER */}
+                    {!locationAvailable && !locationError && (
+                        <div className="locating-overlay">
+                            <div className="locating-content">
+                                <div className="pulse-circle">
+                                    <MapPin size={40} color="var(--accent-red)" />
+                                </div>
+                                <h2>Identifying your Circle...</h2>
+                                <p>We're pinpointing your coordinates to connect you with those nearby.</p>
+                                <div className="loading-bar-wrap">
+                                    <div className="loading-bar-fill"></div>
                                 </div>
                             </div>
+                        </div>
+                    )}
 
-                            <form className="chat-input-wrapper" onSubmit={handleSendMessage}>
-                                {showAttachmentMenu && (
-                                    <div className="attachment-menu-popover">
-                                        <button type="button" className="menu-item" onClick={() => handleAttachmentAction('photo')}>
-                                            <div className="menu-icon-circle"><Image size={20} /></div>
-                                            <span>Photos</span>
-                                        </button>
-                                        <button type="button" className="menu-item" onClick={() => handleAttachmentAction('file')}>
-                                            <div className="menu-icon-circle"><Paperclip size={20} /></div>
-                                            <span>Files</span>
-                                        </button>
-                                        <button type="button" className="menu-item" onClick={() => handleAttachmentAction('location')}>
-                                            <div className="menu-icon-circle"><MapIcon size={20} /></div>
-                                            <span>Location</span>
-                                        </button>
+                    {/* LOCATION ERROR */}
+                    {locationError && (
+                        <div className="locating-overlay">
+                            <div className="locating-content error">
+                                <Globe size={48} color="var(--accent-red)" />
+                                <h2>Location Access Required</h2>
+                                <p>
+                                    Miles relies on your proximity to function.
+                                    Please ensure location permissions are granted and GPS is active.
+                                </p>
+                                <button className="auth-btn-primary" onClick={() => window.location.reload()}>
+                                    Retry Connection
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MAP BACKGROUND */}
+                    <div className="map-wrapper" style={{ position: 'absolute', inset: 0, opacity: locationAvailable ? 1 : 0.3, filter: locationAvailable ? 'none' : 'blur(5px)' }}>
+                        {locationAvailable && (
+                            <MapContainer center={position} zoom={13} zoomControl={false} className="map-view">
+                                <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                                <Marker position={position} />
+                                <Circle
+                                    center={position}
+                                    pathOptions={{ color: '#D2554E', fillColor: '#D2554E', fillOpacity: 0.1, weight: 2, dashArray: '4, 8' }}
+                                    radius={radius * 1609.34}
+                                />
+                                <MapController center={position} radius={radius} isInteracting={isMapInteracting} />
+                            </MapContainer>
+                        )}
+                    </div>
+
+                    {/* FOREGROUND UI - ONLY SHOW IF LOCATION READY */}
+                    {locationAvailable && (
+                        <div className="chat-interface">
+                            <header className="app-header-new">
+                                <h1 style={{ color: 'var(--accent-red)', fontSize: '1.2rem', fontWeight: '900', letterSpacing: '1px' }}>MILES</h1>
+                                <div className="user-avatar-btn" onClick={() => setShowSettings(true)} style={{ width: '36px', height: '36px' }}>
+                                    {profile?.avatar_url ? (
+                                        <img src={profile.avatar_url} alt="Profile" />
+                                    ) : getInitial()}
+                                </div>
+                            </header>
+
+                            <div className="chat-center-container">
+                                <div className="chat-messages-scroll">
+                                    <Feed
+                                        position={position}
+                                        radius={radius}
+                                        refreshTrigger={feedTrigger}
+                                        session={session}
+                                        onUserClick={(userId) => {
+                                            supabase.from('profiles').select('*').eq('id', userId).single().then(({ data }) => {
+                                                if (data) setViewingProfile(data);
+                                            });
+                                        }}
+                                    />
+                                    <div className="message-card">
+                                        <p style={{ color: 'var(--accent-red)', fontWeight: 'bold', marginBottom: '4px' }}>Miles Circle</p>
+                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                            Welcome to your circle! You are currently looking at a <strong>{radius} mile</strong> radius around you.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <form className="chat-input-wrapper" onSubmit={handleSendMessage}>
+                                    {showAttachmentMenu && (
+                                        <div className="attachment-menu-popover">
+                                            <button type="button" className="menu-item" onClick={() => handleAttachmentAction('photo')}>
+                                                <div className="menu-icon-circle"><Image size={20} /></div>
+                                                <span>Photos</span>
+                                            </button>
+                                            <button type="button" className="menu-item" onClick={() => handleAttachmentAction('file')}>
+                                                <div className="menu-icon-circle"><Paperclip size={20} /></div>
+                                                <span>Files</span>
+                                            </button>
+                                            <button type="button" className="menu-item" onClick={() => handleAttachmentAction('location')}>
+                                                <div className="menu-icon-circle"><MapIcon size={20} /></div>
+                                                <span>Location</span>
+                                            </button>
+                                        </div>
+                                    )}
+                                    <button
+                                        type="button"
+                                        className={`chat-action-btn ${showAttachmentMenu ? 'active' : ''}`}
+                                        onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                                    >
+                                        <Plus size={24} style={{ transform: showAttachmentMenu ? 'rotate(45deg)' : 'none', transition: 'transform 0.3s ease' }} />
+                                    </button>
+                                    <input
+                                        type="text"
+                                        className="chat-input-main"
+                                        placeholder="Message Circle..."
+                                        value={messageContent}
+                                        onChange={(e) => setMessageContent(e.target.value)}
+                                        disabled={isSending}
+                                    />
+                                    <button
+                                        type="submit"
+                                        className="chat-send-btn-new"
+                                        disabled={!messageContent.trim() || isSending}
+                                        style={{ opacity: messageContent.trim() ? 1 : 0.4 }}
+                                    >
+                                        {isSending ? <div className="spinner" style={{ width: '18px', height: '18px', borderWidth: '2px' }}></div> : <Send size={18} />}
+                                    </button>
+                                </form>
+                            </div>
+
+                            {/* RIGHT SIDE SLIDER */}
+                            <div className={`side-slider-container ${isSliderHidden ? 'collapsed' : ''}`}>
+                                <button
+                                    className="slider-toggle-btn"
+                                    onClick={() => setIsSliderHidden(!isSliderHidden)}
+                                    title={isSliderHidden ? 'Show Slider' : 'Hide Slider'}
+                                >
+                                    {isSliderHidden ? <Eye size={18} /> : <EyeOff size={18} />}
+                                </button>
+                                {!isSliderHidden && (
+                                    <div className="slider-controls-wrap">
+                                        <span className="radius-badge">{radius}m</span>
+                                        <input
+                                            type="range"
+                                            className="range-vertical"
+                                            min="0.5" max="50" step="0.5"
+                                            value={radius}
+                                            onChange={(e) => setRadius(parseFloat(e.target.value))}
+                                            onMouseDown={() => handleSliderInteract(true)}
+                                            onMouseUp={() => handleSliderInteract(false)}
+                                            onTouchStart={() => handleSliderInteract(true)}
+                                            onTouchEnd={() => handleSliderInteract(false)}
+                                        />
+                                        <MapIcon size={20} color="#666" />
                                     </div>
                                 )}
-                                <button
-                                    type="button"
-                                    className={`chat-action-btn ${showAttachmentMenu ? 'active' : ''}`}
-                                    onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                                >
-                                    <Plus size={24} style={{ transform: showAttachmentMenu ? 'rotate(45deg)' : 'none', transition: 'transform 0.3s ease' }} />
-                                </button>
-                                <input
-                                    type="text"
-                                    className="chat-input-main"
-                                    placeholder="Message Circle..."
-                                    value={messageContent}
-                                    onChange={(e) => setMessageContent(e.target.value)}
-                                    disabled={isSending}
-                                />
-                                <button
-                                    type="submit"
-                                    className="chat-send-btn-new"
-                                    disabled={!messageContent.trim() || isSending}
-                                    style={{ opacity: messageContent.trim() ? 1 : 0.4 }}
-                                >
-                                    {isSending ? <div className="spinner" style={{ width: '18px', height: '18px', borderWidth: '2px' }}></div> : <Send size={18} />}
-                                </button>
-                            </form>
+                            </div>
                         </div>
-
-                        {/* RIGHT SIDE SLIDER */}
-                        <div className={`side-slider-container ${isSliderHidden ? 'collapsed' : ''}`}>
-                            <button
-                                className="slider-toggle-btn"
-                                onClick={() => setIsSliderHidden(!isSliderHidden)}
-                                title={isSliderHidden ? 'Show Slider' : 'Hide Slider'}
-                            >
-                                {isSliderHidden ? <Eye size={18} /> : <EyeOff size={18} />}
-                            </button>
-                            {!isSliderHidden && (
-                                <div className="slider-controls-wrap">
-                                    <span className="radius-badge">{radius}m</span>
-                                    <input
-                                        type="range"
-                                        className="range-vertical"
-                                        min="0.5" max="50" step="0.5"
-                                        value={radius}
-                                        onChange={(e) => setRadius(parseFloat(e.target.value))}
-                                        onMouseDown={() => handleSliderInteract(true)}
-                                        onMouseUp={() => handleSliderInteract(false)}
-                                        onTouchStart={() => handleSliderInteract(true)}
-                                        onTouchEnd={() => handleSliderInteract(false)}
-                                    />
-                                    <MapIcon size={20} color="#666" />
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    )}
 
                     {/* ONBOARDING FLOW */}
                     {onboardingStep === 1 && (
-                        <div className="onboarding-overlay">
-                            <div className="onboarding-card">
-                                <h2 className="onboarding-title">Welcome!</h2>
-                                <p className="onboarding-text">Let's set up your local profile.</p>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                    <input
-                                        type="text"
-                                        placeholder="Full Name"
-                                        className="auth-input-classic"
-                                        style={{ background: '#222', border: '1px solid #444', color: 'white' }}
-                                        value={profile?.full_name || ''}
-                                        onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Mobile Number (Optional)"
-                                        className="auth-input-classic"
-                                        style={{ background: '#222', border: '1px solid #444', color: 'white' }}
-                                        value={profile?.mobile || ''}
-                                        onChange={(e) => setProfile({ ...profile, mobile: e.target.value })}
-                                    />
+                        <div className="onboarding-overlay" style={{ zIndex: 3000 }}>
+                            <div className="onboarding-card-premium">
+                                <div className="onboarding-header">
+                                    <div className="icon-badge" style={{ background: 'var(--accent-red)', color: 'white', padding: '10px', borderRadius: '12px', marginBottom: '15px' }}><User size={24} /></div>
+                                    <h2 className="onboarding-title" style={{ color: 'white', fontSize: '1.5rem', marginBottom: '8px' }}>Welcome to the Circle</h2>
+                                    <p className="onboarding-text" style={{ color: '#aaa', fontSize: '0.9rem', marginBottom: '25px' }}>Let's craft your digital identity before you explore.</p>
+                                </div>
+                                <div className="onboarding-body" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                    <div className="input-group-premium">
+                                        <label style={{ display: 'block', color: '#666', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>Full Name</label>
+                                        <input
+                                            type="text"
+                                            placeholder="John Doe"
+                                            style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '14px', color: 'white', outline: 'none' }}
+                                            value={profile?.full_name || ''}
+                                            onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                                        />
+                                    </div>
+                                    <div className="input-group-premium">
+                                        <label style={{ display: 'block', color: '#666', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>Mobile Number (Optional)</label>
+                                        <input
+                                            type="text"
+                                            placeholder="+1 234 567 890"
+                                            style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '14px', color: 'white', outline: 'none' }}
+                                            value={profile?.mobile || ''}
+                                            onChange={(e) => setProfile({ ...profile, mobile: e.target.value })}
+                                        />
+                                    </div>
                                     <button
-                                        className="auth-btn-primary"
+                                        className="btn-onboarding-next"
+                                        style={{ background: 'var(--accent-red)', color: 'white', border: 'none', borderRadius: '12px', padding: '16px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', transition: 'all 0.3s' }}
                                         onClick={() => {
                                             if (profile?.full_name?.trim()) {
                                                 handleUpdateProfile({ full_name: profile.full_name, mobile: profile.mobile });
                                             }
                                         }}
                                     >
-                                        Continue
+                                        Establish Persona
                                     </button>
                                 </div>
                             </div>
@@ -492,20 +538,63 @@ function App() {
                     )}
 
                     {onboardingStep === 2 && (
-                        <div className="onboarding-overlay">
-                            <div className="onboarding-card">
-                                <h2 className="onboarding-title">App Tour</h2>
-                                <p className="onboarding-text">
-                                    Your world is defined by the radius on the right.
-                                    Drag the slider to see further or closer.
-                                </p>
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                    <button className="btn-secondary" style={{ flex: 1 }} onClick={() => handleUpdateProfile({ onboarding_completed: true })}>Skip</button>
-                                    <button className="auth-btn-primary" style={{ flex: 1 }} onClick={() => handleUpdateProfile({ onboarding_completed: true })}>Got it!</button>
+                        <div className="onboarding-overlay" style={{ zIndex: 3000 }}>
+                            <div className="onboarding-card-premium tour-card" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '40px', width: '90%', maxWidth: '450px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
+                                <div className="tour-steps-indicator" style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '30px' }}>
+                                    {[1, 2, 3, 4].map(s => (
+                                        <div key={s} className={`step-dot ${tourStep === s ? 'active' : ''}`} style={{ width: tourStep === s ? '24px' : '8px', height: '8px', borderRadius: '4px', background: tourStep === s ? 'var(--accent-red)' : '#333', transition: 'all 0.3s' }}></div>
+                                    ))}
+                                </div>
+
+                                {tourStep === 1 && (
+                                    <div className="tour-content anim-fade-in">
+                                        <div className="tour-icon-wrap" style={{ color: 'var(--accent-red)', marginBottom: '20px' }}><Globe size={48} /></div>
+                                        <h3 style={{ color: 'white', marginBottom: '12px' }}>Your Radius, Your World</h3>
+                                        <p style={{ color: '#888', lineHeight: '1.6' }}>Miles connects you with people within a specific range. Use the slider on the right to adjust your circle from 0.5 to 50 miles.</p>
+                                    </div>
+                                )}
+
+                                {tourStep === 2 && (
+                                    <div className="tour-content anim-fade-in">
+                                        <div className="tour-icon-wrap" style={{ color: 'var(--accent-red)', marginBottom: '20px' }}><MessageCircle size={48} /></div>
+                                        <h3 style={{ color: 'white', marginBottom: '12px' }}>The Local Feed</h3>
+                                        <p style={{ color: '#888', lineHeight: '1.6' }}>Share updates, photos, and files with everyone in your current radius. Every message is a beacon in your local community.</p>
+                                    </div>
+                                )}
+
+                                {tourStep === 3 && (
+                                    <div className="tour-content anim-fade-in">
+                                        <div className="tour-icon-wrap" style={{ color: 'var(--accent-red)', marginBottom: '20px' }}><MapIcon size={48} /></div>
+                                        <h3 style={{ color: 'white', marginBottom: '12px' }}>Interactive Proximity</h3>
+                                        <p style={{ color: '#888', lineHeight: '1.6' }}>The map behind the chat highlights your active zone. You'll only receive and send messages within that defined area.</p>
+                                    </div>
+                                )}
+
+                                {tourStep === 4 && (
+                                    <div className="tour-content anim-fade-in">
+                                        <div className="tour-icon-wrap" style={{ color: 'var(--accent-red)', marginBottom: '20px' }}><Share2 size={48} /></div>
+                                        <h3 style={{ color: 'white', marginBottom: '12px' }}>Digital Identity</h3>
+                                        <p style={{ color: '#888', lineHeight: '1.6' }}>Enhance your profile with social links. Control exactly what others see with our granular privacy toggles.</p>
+                                    </div>
+                                )}
+
+                                <div className="tour-footer" style={{ marginTop: '40px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {tourStep < 4 ? (
+                                        <button className="btn-tour-next" style={{ background: 'var(--accent-red)', color: 'white', border: 'none', borderRadius: '12px', padding: '14px', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => setTourStep(prev => prev + 1)}>
+                                            Next Step
+                                        </button>
+                                    ) : (
+                                        <button className="btn-onboarding-next" style={{ background: 'var(--accent-red)', color: 'white', border: 'none', borderRadius: '12px', padding: '14px', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => handleUpdateProfile({ onboarding_completed: true })}>
+                                            Enter the Circle
+                                        </button>
+                                    )}
+                                    <button className="tour-skip" style={{ background: 'transparent', border: 'none', color: '#666', fontSize: '0.9rem', cursor: 'pointer' }} onClick={() => handleUpdateProfile({ onboarding_completed: true })}>Skip Tour</button>
                                 </div>
                             </div>
                         </div>
                     )}
+
+
 
                     {/* SETTINGS MODAL */}
                     {showSettings && (
