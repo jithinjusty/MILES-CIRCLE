@@ -67,7 +67,8 @@ function App() {
     const [uploading, setUploading] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [viewingProfile, setViewingProfile] = useState(null);
-    const [isSavingChanges, setIsSavingChanges] = useState(false);
+    const [deferredPrompt, setDeferredPrompt] = useState(null);
+    const [showInstallBanner, setShowInstallBanner] = useState(false);
     const sliderTimer = useRef(null);
     const watchId = useRef(null);
 
@@ -82,9 +83,41 @@ function App() {
         }
     }
 
+    const updateLocation = () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    if (pos?.coords) {
+                        setPosition([pos.coords.latitude, pos.coords.longitude]);
+                        setLocationAvailable(true);
+                        setLocationError(null);
+                    }
+                },
+                (err) => {
+                    console.error("Location error:", err);
+                    if (err.code === 1) setLocationError("PERMISSION_DENIED");
+                    else setLocationError("LOCATION_UNAVAILABLE");
+                    setLocationAvailable(false);
+                },
+                { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+            );
+        } else {
+            setLocationError("NOT_SUPPORTED");
+        }
+    };
+
+    const handleInstallClick = async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setDeferredPrompt(null);
+            setShowInstallBanner(false);
+        }
+    };
+
     useEffect(() => {
         console.log("App mounted, checking session...");
-        // Safe Leaflet fix
         try {
             delete L.Icon.Default.prototype._getIconUrl;
             L.Icon.Default.mergeOptions({
@@ -94,55 +127,27 @@ function App() {
             });
         } catch (e) { console.error("Leaflet fix failed", e); }
 
-        // Initial session check
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            console.log("Session fetched:", session?.user?.email);
-            setSession(session);
-            if (session) fetchProfile(session.user.id);
-            setAuthLoading(false);
-        }).catch(err => {
-            console.error("Auth error:", err);
-            setRuntimeError(err.message);
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+            setShowInstallBanner(true);
+        });
+
+        supabase.auth.getSession().then(({ data: { session: s } }) => {
+            setSession(s);
+            if (s) fetchProfile(s.user.id);
             setAuthLoading(false);
         });
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            console.log("Auth state changed:", _event, session?.user?.email);
-            setSession(session);
-            if (session) fetchProfile(session.user.id);
-            else {
-                setProfile({});
-                setOnboardingStep(0);
-            }
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+            setSession(s);
+            if (s) fetchProfile(s.user.id);
+            else { setProfile({}); setOnboardingStep(0); }
             setAuthLoading(false);
         });
 
-        const updateLocation = () => {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        if (pos?.coords) {
-                            setPosition([pos.coords.latitude, pos.coords.longitude]);
-                            setLocationAvailable(true);
-                            setLocationError(null);
-                        }
-                    },
-                    (err) => {
-                        console.error("Location error:", err);
-                        if (err.code === 1) setLocationError("PERMISSION_DENIED");
-                        else setLocationError("LOCATION_UNAVAILABLE");
-                        setLocationAvailable(false);
-                    },
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                );
-            } else {
-                setLocationError("NOT_SUPPORTED");
-            }
-        };
-
-        // Initial location and continuous watch
+        // Location setup
         updateLocation();
-
         if (navigator.geolocation) {
             watchId.current = navigator.geolocation.watchPosition(
                 (pos) => {
@@ -156,8 +161,6 @@ function App() {
                 { enableHighAccuracy: true }
             );
         }
-
-        // Re-verify every 5 minutes as requested
         const verifyInterval = setInterval(updateLocation, 5 * 60 * 1000);
 
         return () => {
@@ -332,7 +335,9 @@ function App() {
         <div className={`app-container ${isMapInteracting ? 'map-mode' : 'chat-mode'}`}>
             {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
 
-            {!showSplash && !authLoading && !session && <AuthOverlay />}
+            {!showSplash && !authLoading && !session && (
+                <AuthOverlay onInstall={deferredPrompt ? handleInstallClick : null} />
+            )}
 
             {!showSplash && !authLoading && session && (
                 <>
@@ -348,6 +353,12 @@ function App() {
                                 <div className="loading-bar-wrap">
                                     <div className="loading-bar-fill"></div>
                                 </div>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    style={{ marginTop: '20px', background: 'transparent', border: '1px solid #444', color: '#888', padding: '8px 16px', borderRadius: '10px', fontSize: '0.8rem', cursor: 'pointer' }}
+                                >
+                                    Stuck? Tap to Refresh
+                                </button>
                             </div>
                         </div>
                     )}

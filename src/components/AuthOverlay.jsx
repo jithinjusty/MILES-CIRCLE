@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-export default function AuthOverlay() {
+export default function AuthOverlay({ onInstall }) {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
@@ -115,6 +115,19 @@ export default function AuthOverlay() {
                         </svg>
                         Google
                     </button>
+
+                    {/* INSTALL PWA CALL TO ACTION */}
+                    <div className="auth-pwa-install-box" style={{ marginTop: '20px', padding: '15px', background: 'rgba(210, 85, 78, 0.05)', borderRadius: '15px', border: '1px dashed rgba(210, 85, 78, 0.2)' }}>
+                        {onInstall ? (
+                            <button onClick={onInstall} style={{ width: '100%', background: 'transparent', border: 'none', color: 'var(--accent-red)', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '1.2rem' }}>📱</span> Install Miles App
+                            </button>
+                        ) : (
+                            <div style={{ fontSize: '0.8rem', color: '#888', textAlign: 'center' }}>
+                                <p>To install: Tap Share <span style={{ color: 'var(--accent-red)' }}>↑</span> then <strong>"Add to Home Screen"</strong></p>
+                            </div>
+                        )}
+                    </div>
 
                     {message && (
                         <div className={`auth-message-classic ${message.type}`}>
