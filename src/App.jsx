@@ -152,27 +152,29 @@ function App() {
         if (e) e.preventDefault();
         if (!messageContent.trim() || isSending) return;
 
+        const originalContent = messageContent;
+        setMessageContent(''); // Clear immediately for live feel
         setIsSending(true);
+
         try {
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            if (!user) throw new Error("Not logged in");
 
             const locationWKT = `POINT(${position[1]} ${position[0]})`;
             const { error } = await supabase
                 .from('posts')
                 .insert([{
                     user_id: user.id,
-                    content: messageContent.trim(),
+                    content: originalContent.trim(),
                     location: locationWKT
                 }]);
 
             if (error) throw error;
-
-            setMessageContent('');
             setFeedTrigger(prev => prev + 1);
         } catch (err) {
             console.error("Failed to send message:", err);
-            alert("Failed to send message. Please try again.");
+            setMessageContent(originalContent); // Restore if failed
+            alert("Failed to send message: " + err.message);
         } finally {
             setIsSending(false);
         }

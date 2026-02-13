@@ -43,6 +43,23 @@ export default function Feed({ position, radius, refreshTrigger, session }) {
 
     useEffect(() => {
         fetchPosts()
+
+        // Subscribe to real-time changes
+        const channel = supabase
+            .channel('public:posts')
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'posts'
+            }, () => {
+                console.log("New post detected, refreshing...");
+                fetchPosts();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        }
     }, [position?.[0], position?.[1], radius, refreshTrigger])
 
     if (loading && posts.length === 0) {
