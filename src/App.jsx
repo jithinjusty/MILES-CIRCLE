@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet'
-import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe } from 'lucide-react'
+import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff } from 'lucide-react'
 import './App.css'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -59,6 +59,7 @@ function App() {
     const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
     const [messageContent, setMessageContent] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const [isSliderHidden, setIsSliderHidden] = useState(false);
     const sliderTimer = useRef(null);
 
     const handleSliderInteract = (isStarting) => {
@@ -304,20 +305,31 @@ function App() {
                         </div>
 
                         {/* RIGHT SIDE SLIDER */}
-                        <div className="side-slider-container">
-                            <span className="radius-badge">{radius}m</span>
-                            <input
-                                type="range"
-                                className="range-vertical"
-                                min="0.5" max="50" step="0.5"
-                                value={radius}
-                                onChange={(e) => setRadius(parseFloat(e.target.value))}
-                                onMouseDown={() => handleSliderInteract(true)}
-                                onMouseUp={() => handleSliderInteract(false)}
-                                onTouchStart={() => handleSliderInteract(true)}
-                                onTouchEnd={() => handleSliderInteract(false)}
-                            />
-                            <MapIcon size={20} color="#666" />
+                        <div className={`side-slider-container ${isSliderHidden ? 'collapsed' : ''}`}>
+                            <button
+                                className="slider-toggle-btn"
+                                onClick={() => setIsSliderHidden(!isSliderHidden)}
+                                title={isSliderHidden ? 'Show Slider' : 'Hide Slider'}
+                            >
+                                {isSliderHidden ? <Eye size={18} /> : <EyeOff size={18} />}
+                            </button>
+                            {!isSliderHidden && (
+                                <>
+                                    <span className="radius-badge">{radius}m</span>
+                                    <input
+                                        type="range"
+                                        className="range-vertical"
+                                        min="0.5" max="50" step="0.5"
+                                        value={radius}
+                                        onChange={(e) => setRadius(parseFloat(e.target.value))}
+                                        onMouseDown={() => handleSliderInteract(true)}
+                                        onMouseUp={() => handleSliderInteract(false)}
+                                        onTouchStart={() => handleSliderInteract(true)}
+                                        onTouchEnd={() => handleSliderInteract(false)}
+                                    />
+                                    <MapIcon size={20} color="#666" />
+                                </>
+                            )}
                         </div>
                     </div>
 
