@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet'
-import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2 } from 'lucide-react'
+import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink } from 'lucide-react'
 import './App.css'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -65,6 +65,8 @@ function App() {
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
+    const [viewingProfile, setViewingProfile] = useState(null);
+    const [isSavingChanges, setIsSavingChanges] = useState(false);
     const sliderTimer = useRef(null);
     const watchId = useRef(null);
 
@@ -178,16 +180,29 @@ function App() {
     }
 
     const handleUpdateProfile = async (updates) => {
-        const { error } = await supabase
-            .from('profiles')
-            .update(updates)
-            .eq('id', session.user.id)
+        setIsSavingChanges(true);
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update(updates)
+                .eq('id', session.user.id)
 
-        if (error) throw error;
+            if (error) throw error;
 
-        setProfile({ ...profile, ...updates })
-        if (updates.onboarding_completed) setOnboardingStep(0)
-        else if (onboardingStep === 1) setOnboardingStep(2)
+            setProfile({ ...profile, ...updates })
+            if (updates.onboarding_completed) setOnboardingStep(0)
+            else if (onboardingStep === 1) setOnboardingStep(2)
+
+            // If explicit save from settings, close modal
+            if (!updates.onboarding_completed && onboardingStep === 0) {
+                setShowSettings(false);
+            }
+        } catch (err) {
+            console.error("Profile update failed:", err);
+            alert("Failed to save changes: " + err.message);
+        } finally {
+            setIsSavingChanges(false);
+        }
     }
 
     const handleLogout = async () => {
@@ -337,16 +352,26 @@ function App() {
                     <div className="chat-interface">
                         <header className="app-header-new">
                             <h1 style={{ color: 'var(--accent-red)', fontSize: '1.2rem', fontWeight: '900', letterSpacing: '1px' }}>MILES</h1>
-                            <div className="user-avatar-btn" onClick={() => setShowSettings(true)} style={{ width: '32px', height: '32px' }}>
+                            <div className="user-avatar-btn" onClick={() => setShowSettings(true)} style={{ width: '36px', height: '36px' }}>
                                 {profile?.avatar_url ? (
-                                    <img src={profile.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                                    <img src={profile.avatar_url} alt="Profile" />
                                 ) : getInitial()}
                             </div>
                         </header>
 
                         <div className="chat-center-container">
                             <div className="chat-messages-scroll">
-                                <Feed position={position} radius={radius} refreshTrigger={feedTrigger} session={session} />
+                                <Feed
+                                    position={position}
+                                    radius={radius}
+                                    refreshTrigger={feedTrigger}
+                                    session={session}
+                                    onUserClick={(userId) => {
+                                        supabase.from('profiles').select('*').eq('id', userId).single().then(({ data }) => {
+                                            if (data) setViewingProfile(data);
+                                        });
+                                    }}
+                                />
                                 <div className="message-card">
                                     <p style={{ color: 'var(--accent-red)', fontWeight: 'bold', marginBottom: '4px' }}>Miles Circle</p>
                                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
@@ -408,7 +433,7 @@ function App() {
                                 {isSliderHidden ? <Eye size={18} /> : <EyeOff size={18} />}
                             </button>
                             {!isSliderHidden && (
-                                <>
+                                <div className="slider-controls-wrap">
                                     <span className="radius-badge">{radius}m</span>
                                     <input
                                         type="range"
@@ -422,7 +447,7 @@ function App() {
                                         onTouchEnd={() => handleSliderInteract(false)}
                                     />
                                     <MapIcon size={20} color="#666" />
-                                </>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -484,72 +509,201 @@ function App() {
                     {/* SETTINGS MODAL */}
                     {showSettings && (
                         <div className="modal-overlay">
-                            <div className="onboarding-card" style={{ position: 'relative' }}>
-                                <button className="modal-close" style={{ position: 'absolute', top: '20px', right: '20px' }} onClick={() => setShowSettings(false)}>
-                                    <X size={24} />
-                                </button>
-                                <User size={48} color="var(--accent-red)" style={{ marginBottom: '1rem' }} />
-                                <h2 style={{ marginBottom: '2rem' }}>Account Details</h2>
-                                <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
-                                        <div
-                                            className="user-avatar-btn"
-                                            style={{ width: '100px', height: '100px', fontSize: '2.5rem', border: '3px solid var(--accent-red)' }}
-                                            onClick={() => document.getElementById('avatar-upload').click()}
-                                        >
-                                            {profile?.avatar_url ? (
-                                                <img src={profile.avatar_url} alt="Profile" />
-                                            ) : getInitial()}
-                                            <div className="edit-pen-icon">
-                                                <Edit2 size={12} />
-                                            </div>
-                                        </div>
-                                        <div style={{ textAlign: 'center' }}>
-                                            <h3 style={{ margin: '0 0 4px 0' }}>{profile?.full_name || 'Anonymous User'}</h3>
-                                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>{session.user.email}</p>
-                                        </div>
-                                        <input
-                                            type="file"
-                                            id="avatar-upload"
-                                            accept="image/*"
-                                            onChange={handleUploadAvatar}
-                                            disabled={uploading}
-                                            style={{ display: 'none' }}
-                                        />
+                            <div className="settings-card-premium">
+                                <header className="modal-header-premium">
+                                    <div className="header-info">
+                                        <User size={24} color="var(--accent-red)" />
+                                        <h2>Manage Identity</h2>
                                     </div>
-                                    <div>
-                                        <label style={{ fontSize: '0.8rem', color: '#666' }}>Email (Stored)</label>
-                                        <div style={{ padding: '12px', background: '#222', borderRadius: '8px', color: '#aaa' }}>{session.user.email}</div>
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: '0.8rem', color: '#666' }}>Full Name</label>
-                                        <input
-                                            type="text"
-                                            className="auth-input-classic"
-                                            style={{ background: '#222', border: '1px solid #444', color: 'white' }}
-                                            value={profile?.full_name || ''}
-                                            onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                                        />
-                                    </div>
-                                    <button className="auth-btn-primary" onClick={() => handleUpdateProfile({ full_name: profile?.full_name })}>Save Changes</button>
+                                    <button className="modal-close-btn" onClick={() => setShowSettings(false)}>
+                                        <X size={24} />
+                                    </button>
+                                </header>
 
-                                    {!showLogoutConfirm ? (
-                                        <button
-                                            className="btn-secondary"
-                                            onClick={() => setShowLogoutConfirm(true)}
-                                            style={{ marginTop: '2.5rem', borderColor: '#444', color: '#888' }}
-                                        >
-                                            Log Out
-                                        </button>
-                                    ) : (
-                                        <div style={{ marginTop: '2.5rem', padding: '15px', background: 'rgba(210, 85, 78, 0.1)', borderRadius: '12px', border: '1px solid var(--accent-red)' }}>
-                                            <p style={{ fontSize: '0.9rem', marginBottom: '15px', textAlign: 'center' }}>Are you sure you want to log out?</p>
-                                            <div style={{ display: 'flex', gap: '10px' }}>
-                                                <button className="auth-btn-primary" style={{ flex: 1 }} onClick={handleLogout}>Yes, Log Out</button>
-                                                <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowLogoutConfirm(false)}>Cancel</button>
+                                <div className="settings-content-scroll">
+                                    {/* PHOTO SECTION */}
+                                    <section className="settings-section">
+                                        <div className="avatar-edit-large">
+                                            <div className="avatar-preview-wrap" onClick={() => document.getElementById('avatar-upload').click()}>
+                                                {profile?.avatar_url ? (
+                                                    <img src={profile.avatar_url} alt="Profile" />
+                                                ) : getInitial()}
+                                                <div className="edit-overlay"><Camera size={20} /></div>
                                             </div>
+                                            <div className="avatar-info">
+                                                <h3>{profile?.full_name || 'Your Persona'}</h3>
+                                                <p>{session.user.email}</p>
+                                            </div>
+                                            <input type="file" id="avatar-upload" accept="image/*" onChange={handleUploadAvatar} style={{ display: 'none' }} />
+                                        </div>
+                                    </section>
+
+                                    {/* BASIC INFO */}
+                                    <section className="settings-section">
+                                        <h4 className="section-title">Personal Details</h4>
+                                        <div className="input-with-privacy">
+                                            <div className="field-group">
+                                                <label>Full Name</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Enter your name"
+                                                    value={profile?.full_name || ''}
+                                                    onChange={e => setProfile({ ...profile, full_name: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="input-with-privacy">
+                                            <div className="field-group">
+                                                <label>Address</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Lighthouse Avenue, Circle Bay"
+                                                    value={profile?.address || ''}
+                                                    onChange={e => setProfile({ ...profile, address: e.target.value })}
+                                                />
+                                            </div>
+                                            <button
+                                                className={`privacy-toggle ${profile?.address_public ? 'public' : 'private'}`}
+                                                onClick={() => setProfile({ ...profile, address_public: !profile?.address_public })}
+                                                title={profile?.address_public ? "Public" : "Private"}
+                                            >
+                                                {profile?.address_public ? <Eye size={18} /> : <EyeOff size={18} />}
+                                            </button>
+                                        </div>
+                                        <div className="input-with-privacy">
+                                            <div className="field-group">
+                                                <label>Mobile Number</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="+1 234 567 890"
+                                                    value={profile?.mobile || ''}
+                                                    onChange={e => setProfile({ ...profile, mobile: e.target.value })}
+                                                />
+                                            </div>
+                                            <button
+                                                className={`privacy-toggle ${profile?.mobile_public ? 'public' : 'private'}`}
+                                                onClick={() => setProfile({ ...profile, mobile_public: !profile?.mobile_public })}
+                                                title={profile?.mobile_public ? "Public" : "Private"}
+                                            >
+                                                {profile?.mobile_public ? <Eye size={18} /> : <EyeOff size={18} />}
+                                            </button>
+                                        </div>
+                                    </section>
+
+                                    {/* SOCIAL SECTION */}
+                                    <section className="settings-section">
+                                        <h4 className="section-title">Digital Presence</h4>
+                                        {[
+                                            { id: 'facebook', icon: <Facebook size={18} />, label: 'Facebook URL' },
+                                            { id: 'linkedin', icon: <Linkedin size={18} />, label: 'LinkedIn URL' },
+                                            { id: 'instagram', icon: <Instagram size={18} />, label: 'Instagram URL' },
+                                            { id: 'youtube', icon: <Youtube size={18} />, label: 'YouTube URL' },
+                                            { id: 'whatsapp', icon: <MessageCircle size={18} />, label: 'WhatsApp Number' }
+                                        ].map(social => (
+                                            <div className="input-with-privacy" key={social.id}>
+                                                <div className="field-group">
+                                                    <div className="label-with-icon">{social.icon} <span>{social.label}</span></div>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Enter account link"
+                                                        value={profile?.[`${social.id}_url`] || profile?.[`${social.id}_number`] || ''}
+                                                        onChange={e => setProfile({ ...profile, [`${social.id}_${social.id === 'whatsapp' ? 'number' : 'url'}`]: e.target.value })}
+                                                    />
+                                                </div>
+                                                <button
+                                                    className={`privacy-toggle ${profile?.[`${social.id}_public`] ? 'public' : 'private'}`}
+                                                    onClick={() => setProfile({ ...profile, [`${social.id}_public`]: !profile?.[`${social.id}_public`] })}
+                                                    title={profile?.[`${social.id}_public`] ? "Public" : "Private"}
+                                                >
+                                                    {profile?.[`${social.id}_public`] ? <Eye size={18} /> : <EyeOff size={18} />}
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </section>
+
+                                    {/* ACTIONS */}
+                                    <div className="settings-footer">
+                                        <button className="btn-logout-stylish" onClick={() => setShowLogoutConfirm(true)}>
+                                            <div className="btn-glow"></div>
+                                            <span>Sign Out</span>
+                                        </button>
+                                        <button
+                                            className="btn-save-premium"
+                                            onClick={() => handleUpdateProfile(profile)}
+                                            disabled={isSavingChanges}
+                                        >
+                                            {isSavingChanges ? <div className="spinner-small"></div> : 'Commit Changes'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* LOGOUT CONFIRM SUB-MODAL */}
+                            {showLogoutConfirm && (
+                                <div className="confirm-overlay">
+                                    <div className="confirm-card">
+                                        <h3>End Session?</h3>
+                                        <p>You will be disconnected from the circle.</p>
+                                        <div className="confirm-actions">
+                                            <button className="btn-confirm-yes" onClick={handleLogout}>Disconnect</button>
+                                            <button className="btn-confirm-no" onClick={() => setShowLogoutConfirm(false)}>Stay Connected</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* PUBLIC PROFILE VIEWER MODAL */}
+                    {viewingProfile && (
+                        <div className="modal-overlay" onClick={() => setViewingProfile(null)}>
+                            <div className="profile-viewer-card" onClick={e => e.stopPropagation()}>
+                                <button className="modal-close-simple" onClick={() => setViewingProfile(null)}><X size={20} /></button>
+
+                                <div className="viewer-header">
+                                    <div className="viewer-avatar-large">
+                                        {viewingProfile.avatar_url ? (
+                                            <img src={viewingProfile.avatar_url} alt="" />
+                                        ) : (viewingProfile.full_name || '?')[0].toUpperCase()}
+                                    </div>
+                                    <h2>{viewingProfile.full_name || 'Circle Member'}</h2>
+                                </div>
+
+                                <div className="viewer-content">
+                                    {viewingProfile.address_public && viewingProfile.address && (
+                                        <div className="info-item">
+                                            <MapPin size={18} />
+                                            <span>{viewingProfile.address}</span>
                                         </div>
                                     )}
+                                    {viewingProfile.mobile_public && viewingProfile.mobile && (
+                                        <div className="info-item">
+                                            <Phone size={18} />
+                                            <span>{viewingProfile.mobile}</span>
+                                        </div>
+                                    )}
+
+                                    <div className="social-grid-viewer">
+                                        {[
+                                            { id: 'facebook', icon: <Facebook />, url: viewingProfile.facebook_url },
+                                            { id: 'linkedin', icon: <Linkedin />, url: viewingProfile.linkedin_url },
+                                            { id: 'instagram', icon: <Instagram />, url: viewingProfile.instagram_url },
+                                            { id: 'youtube', icon: <Youtube />, url: viewingProfile.youtube_url },
+                                            { id: 'whatsapp', icon: <MessageCircle />, url: viewingProfile.whatsapp_number ? `https://wa.me/${viewingProfile.whatsapp_number.replace(/\D/g, '')}` : null }
+                                        ].map(social => (
+                                            viewingProfile[`${social.id}_public`] && social.url && (
+                                                <a
+                                                    key={social.id}
+                                                    href={social.url.startsWith('http') ? social.url : `https://${social.url}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className={`social-link-btn ${social.id}`}
+                                                >
+                                                    {social.icon}
+                                                </a>
+                                            )
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </div>

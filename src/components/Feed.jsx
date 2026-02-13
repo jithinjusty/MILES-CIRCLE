@@ -97,6 +97,7 @@ export default function Feed({ position, radius, refreshTrigger, session }) {
                     key={post.id}
                     post={post}
                     isMine={post.user_id === session?.user?.id}
+                    onUserClick={onUserClick}
                 />
             ))}
         </div>
