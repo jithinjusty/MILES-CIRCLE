@@ -183,11 +183,11 @@ function App() {
             .update(updates)
             .eq('id', session.user.id)
 
-        if (!error) {
-            setProfile({ ...profile, ...updates })
-            if (updates.onboarding_completed) setOnboardingStep(0)
-            else if (onboardingStep === 1) setOnboardingStep(2)
-        }
+        if (error) throw error;
+
+        setProfile({ ...profile, ...updates })
+        if (updates.onboarding_completed) setOnboardingStep(0)
+        else if (onboardingStep === 1) setOnboardingStep(2)
     }
 
     const handleLogout = async () => {
@@ -337,8 +337,10 @@ function App() {
                     <div className="chat-interface">
                         <header className="app-header-new">
                             <h1 style={{ color: 'var(--accent-red)', fontSize: '1.2rem', fontWeight: '900', letterSpacing: '1px' }}>MILES</h1>
-                            <div className="user-avatar-btn" onClick={() => setShowSettings(true)}>
-                                {getInitial()}
+                            <div className="user-avatar-btn" onClick={() => setShowSettings(true)} style={{ width: '32px', height: '32px' }}>
+                                {profile?.avatar_url ? (
+                                    <img src={profile.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                                ) : getInitial()}
                             </div>
                         </header>
 
