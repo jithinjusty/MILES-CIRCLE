@@ -273,10 +273,6 @@ function App() {
                                             <div className="menu-icon-circle"><MapIcon size={20} /></div>
                                             <span>Location</span>
                                         </button>
-                                        <button type="button" className="menu-item" onClick={() => handleAttachmentAction('link')}>
-                                            <div className="menu-icon-circle"><Globe size={20} /></div>
-                                            <span>Link</span>
-                                        </button>
                                     </div>
                                 )}
                                 <button
