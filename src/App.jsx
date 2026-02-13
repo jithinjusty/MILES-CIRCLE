@@ -53,11 +53,24 @@ function App() {
     const [showCreatePost, setShowCreatePost] = useState(false);
     const [showFeed, setShowFeed] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
+    const [isMapInteracting, setIsMapInteracting] = useState(false);
+    const [onboardingStep, setOnboardingStep] = useState(0);
     const [feedTrigger, setFeedTrigger] = useState(0);
     const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
     const [messageContent, setMessageContent] = useState('');
     const [isSending, setIsSending] = useState(false);
     const sliderTimer = useRef(null);
+
+    const handleSliderInteract = (isStarting) => {
+        setIsMapInteracting(isStarting);
+        if (sliderTimer.current) clearTimeout(sliderTimer.current);
+
+        if (!isStarting) {
+            sliderTimer.current = setTimeout(() => {
+                setIsMapInteracting(false);
+            }, 1500); // Wait a bit before blurring back
+        }
+    }
 
     useEffect(() => {
         console.log("App mounted, checking session...");
@@ -128,17 +141,6 @@ function App() {
             setProfile({ ...profile, ...updates })
             if (updates.onboarding_completed) setOnboardingStep(0)
             else if (onboardingStep === 1) setOnboardingStep(2)
-        }
-    }
-
-    const handleSliderInteract = (isStarting) => {
-        setIsMapInteracting(isStarting);
-        if (sliderTimer.current) clearTimeout(sliderTimer.current);
-
-        if (!isStarting) {
-            sliderTimer.current = setTimeout(() => {
-                setIsMapInteracting(false);
-            }, 1500); // Wait a bit before blurring back
         }
     }
 
