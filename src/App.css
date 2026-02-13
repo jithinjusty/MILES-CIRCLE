@@ -16,7 +16,7 @@
 body {
     background-color: var(--bg-dark);
     color: var(--text-primary);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     overflow: hidden;
 }
 
@@ -82,19 +82,55 @@ body {
 }
 
 .user-avatar-btn {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     background: var(--accent-red);
-    color: white;
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid var(--glass-border);
+    font-weight: 900;
     cursor: pointer;
-    font-weight: 700;
-    font-size: 1.1rem;
-    transition: transform 0.2s;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+    overflow: visible;
+}
+
+.user-avatar-btn:hover {
+    transform: scale(1.05);
+    border-color: var(--accent-red);
+}
+
+.user-avatar-btn .edit-pen-icon {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    background: white;
+    color: black;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    border: 1px solid #ddd;
+    opacity: 0;
+    transform: translateY(5px);
+    transition: all 0.3s ease;
+}
+
+.user-avatar-btn:hover .edit-pen-icon {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.user-avatar-btn img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
 }
 
 .chat-center-container {
@@ -652,4 +688,178 @@ body {
 
 .tool-btn:active {
     transform: translateY(0);
+}
+
+/* PHOTO EDITOR */
+.photo-editor-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(10px);
+}
+
+.photo-editor-card {
+    background: #111;
+    width: 100%;
+    max-width: 900px;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    max-height: 90dvh;
+    overflow: hidden;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
+}
+
+.editor-header {
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.editor-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.editor-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.editor-main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    background: #000;
+}
+
+.image-preview-container {
+    flex: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    background-image: linear-gradient(45deg, #111 25%, transparent 25%),
+        linear-gradient(-45deg, #111 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #111 75%),
+        linear-gradient(-45deg, transparent 75%, #111 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+.image-preview-container img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.editor-controls {
+    flex: 1.2;
+    background: #111;
+    padding: 20px;
+    overflow-y: auto;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.controls-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #888;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+}
+
+.reset-btn {
+    margin-left: auto;
+    background: transparent;
+    border: none;
+    color: var(--accent-red);
+    font-size: 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.control-group {
+    margin-bottom: 18px;
+}
+
+.control-group label {
+    display: block;
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 8px;
+}
+
+.control-group input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent-red);
+    height: 4px;
+    background: #333;
+    border-radius: 2px;
+    outline: none;
+}
+
+.save-btn {
+    background: var(--accent-red);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(210, 85, 78, 0.4);
+}
+
+.icon-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 768px) {
+    .editor-main {
+        flex-direction: column;
+    }
+
+    .editor-controls {
+        border-left: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        flex: none;
+        max-height: 250px;
+    }
 }

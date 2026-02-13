@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet'
-import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff } from 'lucide-react'
+import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2 } from 'lucide-react'
 import './App.css'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -9,6 +9,7 @@ import SplashScreen from './components/SplashScreen'
 import AuthOverlay from './components/AuthOverlay'
 import CreatePostModal from './components/CreatePostModal'
 import Feed from './components/Feed'
+import PhotoEditor from './components/PhotoEditor'
 
 const INITIAL_POSITION = [40.7128, -74.0060];
 
@@ -63,6 +64,7 @@ function App() {
     const [locationError, setLocationError] = useState(null);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
     const sliderTimer = useRef(null);
     const watchId = useRef(null);
 
@@ -237,21 +239,23 @@ function App() {
         // Link action just focuses the input which is already the case
     }
 
-    const handleUploadAvatar = async (event) => {
+    const handleUploadAvatar = (event) => {
+        if (!event.target.files || event.target.files.length === 0) return;
+        setSelectedFile(event.target.files[0]);
+    };
+
+    const handleSaveEditedPhoto = async (blob) => {
         try {
             setUploading(true);
-            if (!event.target.files || event.target.files.length === 0) {
-                throw new Error('You must select an image to upload.');
-            }
+            setSelectedFile(null); // Close editor
 
-            const file = event.target.files[0];
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${session.user.id}-${Math.random()}.${fileExt}`;
+            const fileExt = 'jpg';
+            const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
             const filePath = `${fileName}`;
 
             let { error: uploadError } = await supabase.storage
                 .from('avatars')
-                .upload(filePath, file);
+                .upload(filePath, blob);
 
             if (uploadError) throw uploadError;
 
@@ -485,23 +489,31 @@ function App() {
                                 <User size={48} color="var(--accent-red)" style={{ marginBottom: '1rem' }} />
                                 <h2 style={{ marginBottom: '2rem' }}>Account Details</h2>
                                 <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '10px' }}>
-                                        <div className="user-avatar-btn" style={{ width: '64px', height: '64px', fontSize: '1.5rem' }}>
-                                            {profile?.avatar_url ? <img src={profile.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : getInitial()}
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
+                                        <div
+                                            className="user-avatar-btn"
+                                            style={{ width: '100px', height: '100px', fontSize: '2.5rem', border: '3px solid var(--accent-red)' }}
+                                            onClick={() => document.getElementById('avatar-upload').click()}
+                                        >
+                                            {profile?.avatar_url ? (
+                                                <img src={profile.avatar_url} alt="Profile" />
+                                            ) : getInitial()}
+                                            <div className="edit-pen-icon">
+                                                <Edit2 size={12} />
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label htmlFor="avatar-upload" className="btn-secondary" style={{ cursor: 'pointer', fontSize: '0.9rem', padding: '8px 12px' }}>
-                                                {uploading ? 'Uploading...' : 'Change Photo'}
-                                            </label>
-                                            <input
-                                                type="file"
-                                                id="avatar-upload"
-                                                accept="image/*"
-                                                onChange={handleUploadAvatar}
-                                                disabled={uploading}
-                                                style={{ display: 'none' }}
-                                            />
+                                        <div style={{ textAlign: 'center' }}>
+                                            <h3 style={{ margin: '0 0 4px 0' }}>{profile?.full_name || 'Anonymous User'}</h3>
+                                            <p style={{ margin: 0, fontSize: '0.85rem', color: '#666' }}>{session.user.email}</p>
                                         </div>
+                                        <input
+                                            type="file"
+                                            id="avatar-upload"
+                                            accept="image/*"
+                                            onChange={handleUploadAvatar}
+                                            disabled={uploading}
+                                            style={{ display: 'none' }}
+                                        />
                                     </div>
                                     <div>
                                         <label style={{ fontSize: '0.8rem', color: '#666' }}>Email (Stored)</label>
@@ -549,6 +561,14 @@ function App() {
                                 setShowCreatePost(false);
                                 setFeedTrigger(prev => prev + 1);
                             }}
+                        />
+                    )}
+
+                    {selectedFile && (
+                        <PhotoEditor
+                            file={selectedFile}
+                            onSave={handleSaveEditedPhoto}
+                            onCancel={() => setSelectedFile(null)}
                         />
                     )}
                 </>
