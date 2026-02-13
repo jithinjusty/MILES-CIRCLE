@@ -53,10 +53,10 @@ function App() {
     const [showCreatePost, setShowCreatePost] = useState(false);
     const [showFeed, setShowFeed] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
-    const [isMapInteracting, setIsMapInteracting] = useState(false);
-    const [onboardingStep, setOnboardingStep] = useState(0);
     const [feedTrigger, setFeedTrigger] = useState(0);
     const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+    const [messageContent, setMessageContent] = useState('');
+    const [isSending, setIsSending] = useState(false);
     const sliderTimer = useRef(null);
 
     useEffect(() => {
@@ -146,6 +146,49 @@ function App() {
         await supabase.auth.signOut();
     }
 
+    const handleSendMessage = async (e) => {
+        if (e) e.preventDefault();
+        if (!messageContent.trim() || isSending) return;
+
+        setIsSending(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            const locationWKT = `POINT(${position[1]} ${position[0]})`;
+            const { error } = await supabase
+                .from('posts')
+                .insert([{
+                    user_id: user.id,
+                    content: messageContent.trim(),
+                    location: locationWKT
+                }]);
+
+            if (error) throw error;
+
+            setMessageContent('');
+            setFeedTrigger(prev => prev + 1);
+        } catch (err) {
+            console.error("Failed to send message:", err);
+            alert("Failed to send message. Please try again.");
+        } finally {
+            setIsSending(false);
+        }
+    }
+
+    const handleAttachmentAction = (type) => {
+        setShowAttachmentMenu(false);
+        if (type === 'photo' || type === 'file') {
+            alert("This feature is only available for subscribed users.");
+            return;
+        }
+        if (type === 'location') {
+            const mapsUrl = `https://www.google.com/maps?q=${position[0]},${position[1]}`;
+            setMessageContent(prev => prev + (prev ? ' ' : '') + mapsUrl);
+        }
+        // Link action just focuses the input which is already the case
+    }
+
     const getInitial = () => {
         const name = profile?.full_name || session?.user?.email || '';
         return name?.[0]?.toUpperCase() || '?';
@@ -213,28 +256,29 @@ function App() {
                                 </div>
                             </div>
 
-                            <div className="chat-input-wrapper">
+                            <form className="chat-input-wrapper" onSubmit={handleSendMessage}>
                                 {showAttachmentMenu && (
                                     <div className="attachment-menu-popover">
-                                        <button className="menu-item" onClick={() => { setShowCreatePost(true); setShowAttachmentMenu(false); }}>
+                                        <button type="button" className="menu-item" onClick={() => handleAttachmentAction('photo')}>
                                             <div className="menu-icon-circle"><Image size={20} /></div>
                                             <span>Photos</span>
                                         </button>
-                                        <button className="menu-item" onClick={() => { setShowCreatePost(true); setShowAttachmentMenu(false); }}>
-                                            <div className="menu-icon-circle"><Camera size={20} /></div>
-                                            <span>Camera</span>
-                                        </button>
-                                        <button className="menu-item" onClick={() => { setShowCreatePost(true); setShowAttachmentMenu(false); }}>
+                                        <button type="button" className="menu-item" onClick={() => handleAttachmentAction('file')}>
                                             <div className="menu-icon-circle"><Paperclip size={20} /></div>
                                             <span>Files</span>
                                         </button>
-                                        <button className="menu-item" onClick={() => { setShowCreatePost(true); setShowAttachmentMenu(false); }}>
+                                        <button type="button" className="menu-item" onClick={() => handleAttachmentAction('location')}>
+                                            <div className="menu-icon-circle"><MapIcon size={20} /></div>
+                                            <span>Location</span>
+                                        </button>
+                                        <button type="button" className="menu-item" onClick={() => handleAttachmentAction('link')}>
                                             <div className="menu-icon-circle"><Globe size={20} /></div>
-                                            <span>Share Link</span>
+                                            <span>Link</span>
                                         </button>
                                     </div>
                                 )}
                                 <button
+                                    type="button"
                                     className={`chat-action-btn ${showAttachmentMenu ? 'active' : ''}`}
                                     onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
                                 >
@@ -243,14 +287,20 @@ function App() {
                                 <input
                                     type="text"
                                     className="chat-input-main"
-                                    placeholder="Share with your circle..."
-                                    onFocus={() => setShowCreatePost(true)}
-                                    readOnly
+                                    placeholder="Message Circle..."
+                                    value={messageContent}
+                                    onChange={(e) => setMessageContent(e.target.value)}
+                                    disabled={isSending}
                                 />
-                                <button className="chat-send-btn-new" onClick={() => setShowCreatePost(true)}>
-                                    <Send size={18} />
+                                <button
+                                    type="submit"
+                                    className="chat-send-btn-new"
+                                    disabled={!messageContent.trim() || isSending}
+                                    style={{ opacity: messageContent.trim() ? 1 : 0.4 }}
+                                >
+                                    {isSending ? <div className="spinner" style={{ width: '18px', height: '18px', borderWidth: '2px' }}></div> : <Send size={18} />}
                                 </button>
-                            </div>
+                            </form>
                         </div>
 
                         {/* RIGHT SIDE SLIDER */}
