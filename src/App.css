@@ -147,9 +147,10 @@ body {
     background: transparent;
     border: none;
     color: white;
-    padding: 12px;
-    font-size: 1rem;
+    padding: 12px 0;
+    font-size: 1.05rem;
     outline: none;
+    font-weight: 400;
 }
 
 .chat-send-btn {
@@ -504,6 +505,96 @@ body {
     .chat-messages-scroll {
         padding: 1rem 0.75rem 1rem 0.75rem;
     }
+}
+
+.chat-action-btn {
+    background: transparent;
+    border: none;
+    color: #888;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 4px;
+    transition: color 0.2s;
+}
+
+.chat-action-btn.active {
+    color: white;
+}
+
+.chat-send-btn-new {
+    background: white;
+    color: black;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.attachment-menu-popover {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    left: 0;
+    background: rgba(25, 25, 25, 0.95);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 28px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    width: 240px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    animation: menuPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes menuPop {
+    from {
+        transform: scale(0.9) translateY(10px);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 16px;
+    background: transparent;
+    border: none;
+    color: #eee;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 16px;
+    transition: background 0.2s;
+}
+
+.menu-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.menu-icon-circle {
+    width: 44px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
 }
 
 .tool-btn {

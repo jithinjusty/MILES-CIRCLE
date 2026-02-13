@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet'
-import { Plus, List, Send, User, Map as MapIcon, X } from 'lucide-react'
+import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe } from 'lucide-react'
 import './App.css'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -56,6 +56,7 @@ function App() {
     const [isMapInteracting, setIsMapInteracting] = useState(false);
     const [onboardingStep, setOnboardingStep] = useState(0);
     const [feedTrigger, setFeedTrigger] = useState(0);
+    const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
     const sliderTimer = useRef(null);
 
     useEffect(() => {
@@ -213,18 +214,41 @@ function App() {
                             </div>
 
                             <div className="chat-input-wrapper">
-                                <button className="chat-send-btn" style={{ background: 'transparent', border: '1px solid #333' }} onClick={() => setShowFeed(!showFeed)}>
-                                    <List size={20} />
+                                {showAttachmentMenu && (
+                                    <div className="attachment-menu-popover">
+                                        <button className="menu-item" onClick={() => { setShowCreatePost(true); setShowAttachmentMenu(false); }}>
+                                            <div className="menu-icon-circle"><Image size={20} /></div>
+                                            <span>Photos</span>
+                                        </button>
+                                        <button className="menu-item" onClick={() => { setShowCreatePost(true); setShowAttachmentMenu(false); }}>
+                                            <div className="menu-icon-circle"><Camera size={20} /></div>
+                                            <span>Camera</span>
+                                        </button>
+                                        <button className="menu-item" onClick={() => { setShowCreatePost(true); setShowAttachmentMenu(false); }}>
+                                            <div className="menu-icon-circle"><Paperclip size={20} /></div>
+                                            <span>Files</span>
+                                        </button>
+                                        <button className="menu-item" onClick={() => { setShowCreatePost(true); setShowAttachmentMenu(false); }}>
+                                            <div className="menu-icon-circle"><Globe size={20} /></div>
+                                            <span>Share Link</span>
+                                        </button>
+                                    </div>
+                                )}
+                                <button
+                                    className={`chat-action-btn ${showAttachmentMenu ? 'active' : ''}`}
+                                    onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                                >
+                                    <Plus size={24} style={{ transform: showAttachmentMenu ? 'rotate(45deg)' : 'none', transition: 'transform 0.3s ease' }} />
                                 </button>
                                 <input
                                     type="text"
                                     className="chat-input-main"
-                                    placeholder="Share something with your circle..."
+                                    placeholder="Share with your circle..."
                                     onFocus={() => setShowCreatePost(true)}
                                     readOnly
                                 />
-                                <button className="chat-send-btn" onClick={() => setShowCreatePost(true)}>
-                                    <Send size={20} />
+                                <button className="chat-send-btn-new" onClick={() => setShowCreatePost(true)}>
+                                    <Send size={18} />
                                 </button>
                             </div>
                         </div>
