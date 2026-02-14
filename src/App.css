@@ -346,6 +346,24 @@ body {
     transform: translateY(-50%) translateX(0) scale(1);
 }
 
+.slider-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.3s;
+    opacity: 0.6;
+}
+
+.slider-toggle-btn:hover {
+    opacity: 1;
+    color: white;
+}
+
 .range-vertical {
     appearance: none;
     -webkit-appearance: none;
