@@ -188,7 +188,7 @@ export default function AuthOverlay({ onInstall }) {
 
                             {isSignUp && (
                                 <div className="field-block">
-                                    <label style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>Confirm Security Password</label>
+                                    <label style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>Confirm Password</label>
                                     <input
                                         type="password"
                                         placeholder="Repeat Password"
@@ -202,7 +202,7 @@ export default function AuthOverlay({ onInstall }) {
                             )}
 
                             <button type="submit" className="btn-onboarding-next" disabled={loading} style={{ marginTop: '1.2rem' }}>
-                                {loading ? 'Authenticating...' : (isSignUp ? 'Establish Identity' : 'Enter the Circle')}
+                                {loading ? 'Authenticating...' : (isSignUp ? 'Create your Circle' : 'Enter the Circle')}
                             </button>
                         </form>
                     )}
