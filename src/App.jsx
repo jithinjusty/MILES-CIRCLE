@@ -626,7 +626,12 @@ function App() {
                                                 </div>
                                             </header>
 
-                                            <div className="chat-center-container">
+                                            <div className="chat-center-container" style={{
+                                                opacity: isMapInteracting ? 0.3 : 1,
+                                                filter: isMapInteracting ? 'blur(12px)' : 'none',
+                                                transition: 'all 0.5s cubic-bezier(0.19, 1, 0.22, 1)',
+                                                pointerEvents: isMapInteracting ? 'none' : 'auto'
+                                            }}>
                                                 <div className="chat-messages-scroll">
                                                     <Feed
                                                         position={position}
@@ -675,8 +680,22 @@ function App() {
                                                 {!isSliderHidden && (
                                                     <div className="slider-controls-wrap">
                                                         <span className="radius-badge">{radius}m</span>
-                                                        <input type="range" className="range-vertical" min="0.5" max="50" step="0.5" value={radius} onChange={e => setRadius(parseFloat(e.target.value))} onMouseDown={() => handleSliderInteract(true)} onMouseUp={() => handleSliderInteract(false)} onTouchStart={() => handleSliderInteract(true)} onTouchEnd={() => handleSliderInteract(false)} />
-                                                        <MapIcon size={20} color="#666" />
+                                                        <input
+                                                            type="range"
+                                                            className="range-vertical"
+                                                            min="0.5"
+                                                            max="50"
+                                                            step="0.5"
+                                                            value={radius}
+                                                            onChange={e => setRadius(parseFloat(e.target.value))}
+                                                            onMouseDown={() => handleSliderInteract(true)}
+                                                            onMouseUp={() => handleSliderInteract(false)}
+                                                            onTouchStart={() => handleSliderInteract(true)}
+                                                            onTouchEnd={() => handleSliderInteract(false)}
+                                                            style={{ '--range-percent': `${((radius - 0.5) / 49.5) * 100}%` }}
+                                                        />
+                                                        <span className="slider-label-vertical">Distance</span>
+                                                        <MapIcon size={20} color="var(--text-secondary)" style={{ marginTop: '10px', opacity: 0.5 }} />
                                                     </div>
                                                 )}
                                             </div>

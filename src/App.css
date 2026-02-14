@@ -320,16 +320,17 @@ body {
     top: 50%;
     transform: translateY(-50%);
     z-index: 100;
-    background: rgba(10, 10, 10, 0.8);
-    backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-    border-radius: 30px;
-    padding: 2rem 0.8rem;
+    background: rgba(10, 10, 10, 0.7);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 40px;
+    padding: 2.5rem 0.8rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 1.5rem;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
     transition: all 0.6s cubic-bezier(0.19, 1, 0.22, 1);
     pointer-events: auto;
 }
@@ -348,30 +349,47 @@ body {
 .range-vertical {
     appearance: none;
     -webkit-appearance: none;
-    width: 6px;
+    width: 8px;
     height: 240px;
-    background: rgba(255, 255, 255, 0.05);
+    background: linear-gradient(to top, var(--accent-red) var(--range-percent, 0%), rgba(255, 255, 255, 0.1) var(--range-percent, 0%));
     border-radius: 10px;
     outline: none;
     writing-mode: vertical-lr;
+    /* Keep for browser compatibility */
     cursor: pointer;
     border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: 0.3s;
 }
 
 .range-vertical::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 24px;
-    height: 24px;
-    background: var(--accent-red);
+    width: 30px;
+    height: 30px;
+    background: white;
     border-radius: 50%;
-    box-shadow: 0 0 20px rgba(var(--accent-red-rgb), 0.6);
-    border: 3px solid white;
+    box-shadow: 0 0 25px rgba(var(--accent-red-rgb), 0.8), 0 0 0 6px rgba(var(--accent-red-rgb), 0.1);
+    border: 3px solid var(--accent-red);
     cursor: pointer;
-    transition: 0.2s;
+    transition: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 2;
 }
 
 .range-vertical::-webkit-slider-thumb:hover {
-    transform: scale(1.1);
+    transform: scale(1.2);
+    box-shadow: 0 0 35px rgba(var(--accent-red-rgb), 0.9), 0 0 0 8px rgba(var(--accent-red-rgb), 0.15);
+}
+
+.slider-label-vertical {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    color: var(--text-secondary);
+    font-size: 0.65rem;
+    font-weight: 950;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    opacity: 0.4;
+    margin-top: 15px;
+    user-select: none;
 }
 
 .radius-badge {
