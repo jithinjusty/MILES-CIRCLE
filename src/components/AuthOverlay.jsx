@@ -76,8 +76,17 @@ export default function AuthOverlay({ onInstall }) {
             }
             setMessage({ type: 'error', text: errorText })
         } else {
-            if (isSignUp && data?.user && data?.session === null) {
-                setMessage({ type: 'success', text: 'Verification email sent! Please check your inbox.' })
+            if (isSignUp && data?.user) {
+                // If identities array is empty, the user already exists (Supabase security feature)
+                if (data.user.identities && data.user.identities.length === 0) {
+                    setMessage({ type: 'error', text: 'This email ID is already registered with Miles Circle.' });
+                    setLoading(false);
+                    return;
+                }
+
+                if (data.session === null) {
+                    setMessage({ type: 'success', text: 'Verification email sent! Please check your inbox.' });
+                }
             }
         }
         setLoading(false)
