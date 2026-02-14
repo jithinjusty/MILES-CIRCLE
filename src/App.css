@@ -820,11 +820,15 @@ body {
 .locating-overlay {
     position: fixed;
     inset: 0;
-    z-index: 500;
+    z-index: 9000;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     background: var(--bg-dark);
+    overflow-y: auto;
+    padding: 3rem 1rem 3rem;
+    -webkit-overflow-scrolling: touch;
 }
 
 .locating-content {
@@ -923,8 +927,13 @@ body {
     background: var(--bg-dark);
     z-index: 3000;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    overflow-y: auto;
+    padding: 3rem 1rem 3rem;
+    /* Extra top padding for logo visibility */
+    -webkit-overflow-scrolling: touch;
 }
 
 .auth-btn-secondary {

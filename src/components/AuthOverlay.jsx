@@ -93,13 +93,13 @@ export default function AuthOverlay({ onInstall }) {
     return (
         <div className="auth-overlay-new">
             <div className="auth-container anim-fade-in">
-                <div className="brand-header-premium" style={{ textAlign: 'center', marginBottom: '3rem' }}>
-                    <div className="logo-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '1rem' }}>
-                        <div className="pulse-circle" style={{ width: '60px', height: '60px' }}>
+                <div className="brand-header-premium" style={{ textAlign: 'center', marginBottom: '1.5rem', width: '100%' }}>
+                    <div className="logo-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '0.5rem' }}>
+                        <div className="pulse-circle" style={{ width: '64px', height: '64px' }}>
                             <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         </div>
                     </div>
-                    <p className="auth-tagline" style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>Connect with your local circle.</p>
+                    <p className="auth-tagline" style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>Connect with your local circle.</p>
                 </div>
 
                 <div className="onboarding-card-premium" style={{ width: '100%', maxWidth: '440px' }}>

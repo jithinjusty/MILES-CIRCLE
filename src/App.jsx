@@ -417,6 +417,13 @@ function App() {
                     {!session && isRecovering && (
                         <div className="auth-overlay-new">
                             <div className="auth-container anim-fade-in">
+                                <div className="brand-header-premium" style={{ textAlign: 'center', marginBottom: '1.5rem', width: '100%' }}>
+                                    <div className="logo-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '0.5rem' }}>
+                                        <div className="pulse-circle" style={{ width: '64px', height: '64px' }}>
+                                            <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                        </div>
+                                    </div>
+                                </div>
                                 <div className="onboarding-card-premium" style={{ width: '100%', maxWidth: '440px' }}>
                                     <div className="onboarding-header" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
                                         <div className="pulse-circle" style={{ width: '80px', height: '80px', margin: '0 auto 1.5rem' }}>
@@ -448,6 +455,13 @@ function App() {
                             {/* ONBOARDING FLOW */}
                             {onboardingStep > 0 && (
                                 <div className="onboarding-overlay" style={{ zIndex: 3000 }}>
+                                    <div className="brand-header-premium" style={{ textAlign: 'center', marginBottom: '2rem', width: '100%' }}>
+                                        <div className="logo-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '0.5rem' }}>
+                                            <div className="pulse-circle" style={{ width: '64px', height: '64px' }}>
+                                                <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                            </div>
+                                        </div>
+                                    </div>
                                     {onboardingStep === 1 && (
                                         <div className="onboarding-card-premium anim-fade-in">
                                             <div className="onboarding-header" style={{ marginBottom: '2.5rem' }}>
@@ -517,6 +531,13 @@ function App() {
                                     {(!locationAvailable || locationError) && (
                                         <div className="locating-overlay anim-fade-in" style={{ zIndex: 9000 }}>
                                             <div className="locating-card-premium">
+                                                <div className="brand-header-premium" style={{ textAlign: 'center', marginBottom: '2rem', width: '100%' }}>
+                                                    <div className="logo-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '0.5rem' }}>
+                                                        <div className="pulse-circle" style={{ width: '64px', height: '64px' }}>
+                                                            <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                        </div>
+                                                    </div>
+                                                </div>
                                                 <div className="status-icon-wrap" style={{ marginBottom: '2rem' }}>
                                                     {locationError ? (
                                                         <div className="icon-badge error" style={{ background: 'rgba(210, 85, 78, 0.1)', color: 'var(--accent-red)' }}>
