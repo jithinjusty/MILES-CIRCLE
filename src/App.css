@@ -914,6 +914,42 @@ body {
     font-size: 0.95rem;
 }
 
+.btn-onboarding-next {
+    width: 100%;
+    padding: 20px;
+    background: var(--accent-red);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-size: 1.1rem;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    box-shadow: 0 15px 35px rgba(var(--accent-red-rgb), 0.4);
+    transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-onboarding-next:hover {
+    transform: translateY(-4px) scale(1.02);
+    box-shadow: 0 20px 45px rgba(var(--accent-red-rgb), 0.6);
+    background: #ff4d4d;
+    /* Slightly brighter red */
+}
+
+.btn-onboarding-next:active {
+    transform: translateY(-2px) scale(1);
+}
+
+.btn-onboarding-next:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
 .pulse-circle-mini {
     position: relative;
 }
