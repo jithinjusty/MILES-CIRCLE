@@ -285,17 +285,6 @@ export default function AuthOverlay({ onInstall }) {
                         </>
                     )}
 
-                    <div className="auth-pwa-install-box" style={{ marginTop: '2.5rem', padding: '1.5rem', background: 'var(--glass-bg)', borderRadius: '20px', border: '1px dashed var(--glass-border)', textAlign: 'center' }}>
-                        {onInstall ? (
-                            <button onClick={onInstall} style={{ width: '100%', background: 'transparent', border: 'none', color: 'var(--accent-red)', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                                <span style={{ fontSize: '1.4rem' }}>📱</span> Install App
-                            </button>
-                        ) : (
-                            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                                <p>To install: Tap Share <span style={{ color: 'var(--accent-red)', fontWeight: '900' }}>↑</span> then<br /><strong>"Add to Home Screen"</strong></p>
-                            </div>
-                        )}
-                    </div>
                 </div>
 
                 {showTerms && (
