@@ -525,10 +525,26 @@ body {
     transform: rotate(90deg) scale(1.1);
 }
 
+.settings-main-content h2,
+.settings-main-content h3,
+.settings-main-content h4 {
+    color: white !important;
+}
+
 .panel-header h2 {
     font-size: 2rem;
     font-weight: 900;
     margin-bottom: 8px;
+    color: white !important;
+}
+
+.panel-header h3 {
+    color: white !important;
+}
+
+.card-info h4 {
+    color: white !important;
+    margin-bottom: 4px;
 }
 
 .panel-header p {
@@ -686,6 +702,7 @@ body {
 .social-links-manager h4 {
     margin-bottom: 1.5rem;
     font-size: 1.2rem;
+    color: white !important;
 }
 
 .social-row {
