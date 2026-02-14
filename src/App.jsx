@@ -762,7 +762,13 @@ function App() {
                                                                 {['facebook', 'linkedin', 'instagram', 'youtube', 'whatsapp'].map(key => (
                                                                     <div key={key} className="social-row">
                                                                         <div className="social-input-wrap">
-                                                                            <span className="social-icon-tag">{key[0].toUpperCase()}</span>
+                                                                            <span className={`social-icon-tag color-${key}`}>
+                                                                                {key === 'facebook' && <Facebook size={16} />}
+                                                                                {key === 'linkedin' && <Linkedin size={16} />}
+                                                                                {key === 'instagram' && <Instagram size={16} />}
+                                                                                {key === 'youtube' && <Youtube size={16} />}
+                                                                                {key === 'whatsapp' && <MessageCircle size={16} />}
+                                                                            </span>
                                                                             <input type="text" placeholder={`${key.charAt(0).toUpperCase() + key.slice(1)} ${key === 'whatsapp' ? 'Number' : 'Link'}`} value={profile[`${key}_url`] || profile[`${key}_number`] || ''} onChange={e => setProfile({ ...profile, [`${key}_${key === 'whatsapp' ? 'number' : 'url'}`]: e.target.value })} />
                                                                         </div>
                                                                         <button className={`privacy-toggle-text ${profile[`${key}_public`] ? 'on' : 'off'}`} onClick={() => setProfile({ ...profile, [`${key}_public`]: !profile[`${key}_public`] })}>{profile[`${key}_public`] ? 'PUBLIC' : 'PRIVATE'}</button>
