@@ -69,84 +69,62 @@ export default function PhotoEditor({ file, onSave, onCancel }) {
 
     return (
         <div className="photo-editor-overlay">
-            <div className="photo-editor-card">
-                <div className="editor-header">
-                    <h3>Edit Photo</h3>
-                    <div className="editor-actions">
-                        <button onClick={onCancel} className="icon-btn"><X size={20} /></button>
-                        <button onClick={handleSave} className="save-btn"><Check size={20} /> Save</button>
+            <div className="photo-editor-card anim-fade-in" style={{ maxWidth: '1000px', height: '90vh' }}>
+                <header className="modal-header-premium" style={{ borderBottom: '1px solid var(--glass-border)', padding: '1.5rem 2rem' }}>
+                    <div className="header-info">
+                        <Sliders size={24} color="var(--accent-red)" />
+                        <h2>Enhance Photo</h2>
                     </div>
-                </div>
+                    <div className="editor-actions" style={{ display: 'flex', gap: '12px' }}>
+                        <button onClick={onCancel} className="nav-item" style={{ background: 'var(--glass-bg)', color: 'var(--text-secondary)' }}><X size={20} /></button>
+                        <button onClick={handleSave} className="btn-save-settings" style={{ padding: '10px 24px', display: 'flex', alignItems: 'center', gap: '8px' }}><Check size={20} /> Apply Edits</button>
+                    </div>
+                </header>
 
-                <div className="editor-main">
-                    <div className="image-preview-container">
+                <div className="editor-main" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+                    <div className="image-preview-container" style={{ flex: 2, background: '#080808', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
                         <img
                             ref={imgRef}
                             src={imageSrc}
                             alt="Edit preview"
-                            style={{ filter: getFilterString() }}
+                            style={{ filter: getFilterString(), maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: '12px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}
                         />
                         <canvas ref={canvasRef} style={{ display: 'none' }} />
                     </div>
 
-                    <div className="editor-controls">
-                        <div className="controls-header">
-                            <Sliders size={16} /> <span>Adjust</span>
-                            <button onClick={resetFilters} className="reset-btn"><RotateCcw size={14} /> Reset</button>
+                    <div className="editor-controls" style={{ flex: 1, background: 'var(--panel-bg)', padding: '2.5rem', overflowY: 'auto', borderLeft: '1px solid var(--glass-border)' }}>
+                        <div className="controls-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Adjustment Tools</span>
+                            <button onClick={resetFilters} className="reset-btn" style={{ background: 'transparent', border: 'none', color: 'var(--accent-red)', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><RotateCcw size={14} /> Restore Defaults</button>
                         </div>
 
-                        <div className="control-group">
-                            <label>Brightness</label>
-                            <input
-                                type="range" min="0" max="200" value={filters.brightness}
-                                onChange={(e) => handleFilterChange('brightness', e.target.value)}
-                            />
-                        </div>
-                        <div className="control-group">
-                            <label>Contrast</label>
-                            <input
-                                type="range" min="0" max="200" value={filters.contrast}
-                                onChange={(e) => handleFilterChange('contrast', e.target.value)}
-                            />
-                        </div>
-                        <div className="control-group">
-                            <label>Saturation</label>
-                            <input
-                                type="range" min="0" max="200" value={filters.saturation}
-                                onChange={(e) => handleFilterChange('saturation', e.target.value)}
-                            />
-                        </div>
-                        <div className="control-group">
-                            <label>Grayscale</label>
-                            <input
-                                type="range" min="0" max="100" value={filters.grayscale}
-                                onChange={(e) => handleFilterChange('grayscale', e.target.value)}
-                            />
-                        </div>
-                        <div className="control-group" style={{ display: 'flex', gap: '10px' }}>
-                            <div style={{ flex: 1 }}>
-                                <label>Sepia</label>
-                                <input
-                                    type="range" min="0" max="100" value={filters.sepia}
-                                    style={{ width: '100%' }}
-                                    onChange={(e) => handleFilterChange('sepia', e.target.value)}
-                                />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <label>Blur</label>
-                                <input
-                                    type="range" min="0" max="10" step="0.1" value={filters.blur}
-                                    style={{ width: '100%' }}
-                                    onChange={(e) => handleFilterChange('blur', e.target.value)}
-                                />
-                            </div>
-                        </div>
-                        <div className="control-group">
-                            <label>Hue</label>
-                            <input
-                                type="range" min="0" max="360" value={filters.hueRotate}
-                                onChange={(e) => handleFilterChange('hueRotate', e.target.value)}
-                            />
+                        <div className="controls-scroll" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                            {[
+                                { id: 'brightness', label: 'Brightness', min: 0, max: 200 },
+                                { id: 'contrast', label: 'Contrast', min: 0, max: 200 },
+                                { id: 'saturation', label: 'Saturation', min: 0, max: 200 },
+                                { id: 'grayscale', label: 'Grayscale', min: 0, max: 100 },
+                                { id: 'sepia', label: 'Sepia', min: 0, max: 100 },
+                                { id: 'blur', label: 'Soft Blur', min: 0, max: 10, step: 0.1 },
+                                { id: 'hueRotate', label: 'Color Shift', min: 0, max: 360 }
+                            ].map(filter => (
+                                <div className="field-block" key={filter.id}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-secondary)' }}>{filter.label}</label>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: '900', color: 'var(--accent-red)' }}>{filters[filter.id]}{filter.id === 'hueRotate' ? '°' : filter.id === 'blur' ? 'px' : '%'}</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min={filter.min}
+                                        max={filter.max}
+                                        step={filter.step || 1}
+                                        value={filters[filter.id]}
+                                        className="range-vertical"
+                                        style={{ width: '100%', height: '4px', writingMode: 'horizontal-tb' }}
+                                        onChange={(e) => handleFilterChange(filter.id, e.target.value)}
+                                    />
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

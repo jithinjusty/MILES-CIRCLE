@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet'
-import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink } from 'lucide-react'
+import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, ShieldCheck, ChevronRight, Mail } from 'lucide-react'
 import './App.css'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -52,8 +52,8 @@ function App() {
     const [runtimeError, setRuntimeError] = useState(null);
     const [locationAvailable, setLocationAvailable] = useState(false);
     const [showCreatePost, setShowCreatePost] = useState(false);
-    const [showFeed, setShowFeed] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
+    const [activeSettingsTab, setActiveSettingsTab] = useState('main'); // main, profile, appearance, security
     const [isMapInteracting, setIsMapInteracting] = useState(false);
     const [onboardingStep, setOnboardingStep] = useState(0);
     const [tourStep, setTourStep] = useState(1);
@@ -70,6 +70,9 @@ function App() {
     const [isSavingChanges, setIsSavingChanges] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showInstallBanner, setShowInstallBanner] = useState(false);
+    const [isRecovering, setIsRecovering] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmNewPassword, setConfirmNewPassword] = useState('');
     const sliderTimer = useRef(null);
     const watchId = useRef(null);
 
@@ -119,6 +122,13 @@ function App() {
 
     useEffect(() => {
         console.log("App mounted, checking session...");
+
+        // Handle recovery mode
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('type') === 'recovery') {
+            setIsRecovering(true);
+        }
+
         try {
             delete L.Icon.Default.prototype._getIconUrl;
             L.Icon.Default.mergeOptions({
@@ -180,6 +190,9 @@ function App() {
 
         if (data) {
             setProfile(data)
+            if (data.theme_mode === 'light') document.body.classList.add('light-mode');
+            else document.body.classList.remove('light-mode');
+
             if (!data.onboarding_completed) setOnboardingStep(1)
         }
     }
@@ -195,6 +208,12 @@ function App() {
             if (error) throw error;
 
             setProfile({ ...profile, ...updates })
+
+            if (updates.theme_mode) {
+                if (updates.theme_mode === 'light') document.body.classList.add('light-mode');
+                else document.body.classList.remove('light-mode');
+            }
+
             if (updates.onboarding_completed) setOnboardingStep(0)
             else if (onboardingStep === 1) setOnboardingStep(2)
 
@@ -208,6 +227,27 @@ function App() {
             alert("Failed to save changes: " + err.message);
         } finally {
             setIsSavingChanges(false);
+        }
+    }
+
+    const handleResetPassword = async (e) => {
+        if (e) e.preventDefault();
+        if (newPassword !== confirmNewPassword) return alert("Passwords do not match");
+
+        const hasUpper = /[A-Z]/.test(newPassword);
+        const hasLower = /[a-z]/.test(newPassword);
+        const hasNumber = /[0-9]/.test(newPassword);
+        if (newPassword.length < 8 || !hasUpper || !hasLower || !hasNumber) {
+            return alert("Password must be 8+ chars and include upper, lower, and number.");
+        }
+
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) alert(error.message);
+        else {
+            alert("Password updated successfully!");
+            setIsRecovering(false);
+            setNewPassword('');
+            setConfirmNewPassword('');
         }
     }
 
@@ -299,540 +339,419 @@ function App() {
         return name?.[0]?.toUpperCase() || '?';
     }
 
-    if (locationError === 'PERMISSION_DENIED') {
-        return (
-            <div style={{ background: 'black', color: 'white', padding: '40px', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                <div className="onboarding-card">
-                    <MapIcon size={64} color="var(--accent-red)" style={{ marginBottom: '20px' }} />
-                    <h2 style={{ color: 'var(--accent-red)', marginBottom: '10px' }}>Service Unavailable</h2>
-                    <p style={{ color: '#888', marginBottom: '30px' }}>Miles Circle is a location-based platform. Please enable location permissions in your browser settings to continue.</p>
-                    <button onClick={() => window.location.reload()} className="auth-btn-primary">Retry Access</button>
-                </div>
-            </div>
-        )
+    const resetSettings = () => {
+        setShowSettings(false);
+        setActiveSettingsTab('main');
     }
 
-    if (runtimeError) {
-        return (
-            <div style={{ background: 'black', color: 'red', padding: '20px', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                <div>
-                    <h2>Application Error</h2>
-                    <p>{runtimeError}</p>
-                    <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', background: 'white', border: 'none', borderRadius: '5px', marginTop: '20px' }}>Reload</button>
-                </div>
-            </div>
-        )
+    const handleRate = async (value) => {
+        if (!session || !viewingProfile) return;
+        try {
+            const { error } = await supabase.from('ratings').insert({
+                rater_id: session.user.id,
+                rated_id: viewingProfile.id,
+                value
+            });
+            if (error) {
+                if (error.code === '23505') alert("You have already rated this user.");
+                else throw error;
+            } else {
+                alert(`You gave ${viewingProfile.full_name} a ${value > 0 ? '+1' : '-1'}!`);
+                setViewingProfile(prev => ({ ...prev, points: (prev.points || 0) + value }));
+            }
+        } catch (err) {
+            alert(err.message);
+        }
     }
 
-    if (authLoading && !showSplash) {
-        return (
-            <div style={{ background: 'black', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div className="spinner"></div>
-            </div>
-        )
+    const handleReport = async () => {
+        if (!session || !viewingProfile) return;
+        if (!confirm("Are you sure you want to report this profile for inappropriate content?")) return;
+        try {
+            const { error } = await supabase.from('reports').insert({
+                reporter_id: session.user.id,
+                reported_id: viewingProfile.id
+            });
+            if (error) {
+                if (error.code === '23505') alert("You have already reported this user.");
+                else throw error;
+            } else {
+                alert("Report submitted. Thank you for keeping Miles Circle safe.");
+                setViewingProfile(null);
+            }
+        } catch (err) {
+            alert(err.message);
+        }
     }
 
     return (
-        <div className={`app-container ${isMapInteracting ? 'map-mode' : 'chat-mode'}`}>
+        <div className={`app-container ${isMapInteracting ? 'map-mode' : 'chat-mode'} ${profile?.theme_mode === 'light' ? 'light-mode' : ''}`}>
             {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
 
-            {!showSplash && !authLoading && !session && (
-                <AuthOverlay onInstall={deferredPrompt ? handleInstallClick : null} />
-            )}
-
-            {!showSplash && !authLoading && session && (
+            {!showSplash && !authLoading && (
                 <>
-                    {/* LOCATING BUFFER */}
-                    {!locationAvailable && !locationError && (
-                        <div className="locating-overlay">
-                            <div className="locating-content">
-                                <div className="pulse-circle">
-                                    <MapPin size={40} color="var(--accent-red)" />
-                                </div>
-                                <h2>Identifying your Circle...</h2>
-                                <p>We're pinpointing your coordinates to connect you with those nearby.</p>
-                                <div className="loading-bar-wrap">
-                                    <div className="loading-bar-fill"></div>
-                                </div>
-                                <button
-                                    onClick={() => window.location.reload()}
-                                    style={{ marginTop: '20px', background: 'transparent', border: '1px solid #444', color: '#888', padding: '8px 16px', borderRadius: '10px', fontSize: '0.8rem', cursor: 'pointer' }}
-                                >
-                                    Stuck? Tap to Refresh
-                                </button>
-                            </div>
-                        </div>
+                    {/* AUTHENTICATION STATE */}
+                    {!session && !isRecovering && (
+                        <AuthOverlay onInstall={deferredPrompt ? handleInstallClick : null} />
                     )}
 
-                    {/* LOCATION ERROR */}
-                    {locationError && (
-                        <div className="locating-overlay">
-                            <div className="locating-content error">
-                                <Globe size={48} color="var(--accent-red)" />
-                                <h2>Location Access Required</h2>
-                                <p>
-                                    Miles relies on your proximity to function.
-                                    Please ensure location permissions are granted and GPS is active.
-                                </p>
-                                <button className="auth-btn-primary" onClick={() => window.location.reload()}>
-                                    Retry Connection
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* MAP BACKGROUND */}
-                    <div className="map-wrapper" style={{ position: 'absolute', inset: 0, opacity: locationAvailable ? 1 : 0.3, filter: locationAvailable ? 'none' : 'blur(5px)' }}>
-                        {locationAvailable && (
-                            <MapContainer center={position} zoom={13} zoomControl={false} className="map-view">
-                                <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-                                <Marker position={position} />
-                                <Circle
-                                    center={position}
-                                    pathOptions={{ color: '#D2554E', fillColor: '#D2554E', fillOpacity: 0.1, weight: 2, dashArray: '4, 8' }}
-                                    radius={radius * 1609.34}
-                                />
-                                <MapController center={position} radius={radius} isInteracting={isMapInteracting} />
-                            </MapContainer>
-                        )}
-                    </div>
-
-                    {/* FOREGROUND UI - ONLY SHOW IF LOCATION READY */}
-                    {locationAvailable && (
-                        <div className="chat-interface">
-                            <header className="app-header-new">
-                                <h1 style={{ color: 'var(--accent-red)', fontSize: '1.2rem', fontWeight: '900', letterSpacing: '1px' }}>MILES</h1>
-                                <div className="user-avatar-btn" onClick={() => setShowSettings(true)} style={{ width: '36px', height: '36px' }}>
-                                    {profile?.avatar_url ? (
-                                        <img src={profile.avatar_url} alt="Profile" />
-                                    ) : getInitial()}
-                                </div>
-                            </header>
-
-                            <div className="chat-center-container">
-                                <div className="chat-messages-scroll">
-                                    <Feed
-                                        position={position}
-                                        radius={radius}
-                                        refreshTrigger={feedTrigger}
-                                        session={session}
-                                        onUserClick={(userId) => {
-                                            supabase.from('profiles').select('*').eq('id', userId).single().then(({ data }) => {
-                                                if (data) setViewingProfile(data);
-                                            });
-                                        }}
-                                    />
-                                    <div className="message-card">
-                                        <p style={{ color: 'var(--accent-red)', fontWeight: 'bold', marginBottom: '4px' }}>Miles Circle</p>
-                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                            Welcome to your circle! You are currently looking at a <strong>{radius} mile</strong> radius around you.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <form className="chat-input-wrapper" onSubmit={handleSendMessage}>
-                                    {showAttachmentMenu && (
-                                        <div className="attachment-menu-popover">
-                                            <button type="button" className="menu-item" onClick={() => handleAttachmentAction('photo')}>
-                                                <div className="menu-icon-circle"><Image size={20} /></div>
-                                                <span>Photos</span>
-                                            </button>
-                                            <button type="button" className="menu-item" onClick={() => handleAttachmentAction('file')}>
-                                                <div className="menu-icon-circle"><Paperclip size={20} /></div>
-                                                <span>Files</span>
-                                            </button>
-                                            <button type="button" className="menu-item" onClick={() => handleAttachmentAction('location')}>
-                                                <div className="menu-icon-circle"><MapIcon size={20} /></div>
-                                                <span>Location</span>
-                                            </button>
+                    {/* PASSWORD RECOVERY STATE */}
+                    {!session && isRecovering && (
+                        <div className="auth-overlay-new">
+                            <div className="auth-container anim-fade-in">
+                                <div className="onboarding-card-premium" style={{ width: '100%', maxWidth: '440px' }}>
+                                    <div className="onboarding-header" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+                                        <div className="pulse-circle" style={{ width: '80px', height: '80px', margin: '0 auto 1.5rem' }}>
+                                            <ShieldCheck size={40} color="var(--accent-red)" />
                                         </div>
-                                    )}
-                                    <button
-                                        type="button"
-                                        className={`chat-action-btn ${showAttachmentMenu ? 'active' : ''}`}
-                                        onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
-                                    >
-                                        <Plus size={24} style={{ transform: showAttachmentMenu ? 'rotate(45deg)' : 'none', transition: 'transform 0.3s ease' }} />
-                                    </button>
-                                    <input
-                                        type="text"
-                                        className="chat-input-main"
-                                        placeholder="Message Circle..."
-                                        value={messageContent}
-                                        onChange={(e) => setMessageContent(e.target.value)}
-                                        disabled={isSending}
-                                    />
-                                    <button
-                                        type="submit"
-                                        className="chat-send-btn-new"
-                                        disabled={!messageContent.trim() || isSending}
-                                        style={{ opacity: messageContent.trim() ? 1 : 0.4 }}
-                                    >
-                                        {isSending ? <div className="spinner" style={{ width: '18px', height: '18px', borderWidth: '2px' }}></div> : <Send size={18} />}
-                                    </button>
-                                </form>
-                            </div>
-
-                            {/* RIGHT SIDE SLIDER */}
-                            <div className={`side-slider-container ${isSliderHidden ? 'collapsed' : ''}`}>
-                                <button
-                                    className="slider-toggle-btn"
-                                    onClick={() => setIsSliderHidden(!isSliderHidden)}
-                                    title={isSliderHidden ? 'Show Slider' : 'Hide Slider'}
-                                >
-                                    {isSliderHidden ? <Eye size={18} /> : <EyeOff size={18} />}
-                                </button>
-                                {!isSliderHidden && (
-                                    <div className="slider-controls-wrap">
-                                        <span className="radius-badge">{radius}m</span>
-                                        <input
-                                            type="range"
-                                            className="range-vertical"
-                                            min="0.5" max="50" step="0.5"
-                                            value={radius}
-                                            onChange={(e) => setRadius(parseFloat(e.target.value))}
-                                            onMouseDown={() => handleSliderInteract(true)}
-                                            onMouseUp={() => handleSliderInteract(false)}
-                                            onTouchStart={() => handleSliderInteract(true)}
-                                            onTouchEnd={() => handleSliderInteract(false)}
-                                        />
-                                        <MapIcon size={20} color="#666" />
+                                        <h2 className="onboarding-title" style={{ fontSize: '1.8rem' }}>Security Protocol</h2>
+                                        <p className="onboarding-text">Regain access to your unique circle identity.</p>
                                     </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* ONBOARDING FLOW */}
-                    {onboardingStep === 1 && (
-                        <div className="onboarding-overlay" style={{ zIndex: 3000 }}>
-                            <div className="onboarding-card-premium">
-                                <div className="onboarding-header">
-                                    <div className="icon-badge" style={{ background: 'var(--accent-red)', color: 'white', padding: '10px', borderRadius: '12px', marginBottom: '15px' }}><User size={24} /></div>
-                                    <h2 className="onboarding-title" style={{ color: 'white', fontSize: '1.5rem', marginBottom: '8px' }}>Welcome to the Circle</h2>
-                                    <p className="onboarding-text" style={{ color: '#aaa', fontSize: '0.9rem', marginBottom: '25px' }}>Let's craft your digital identity before you explore.</p>
-                                </div>
-                                <div className="onboarding-body" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                                    <div className="input-group-premium">
-                                        <label style={{ display: 'block', color: '#666', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>Full Name</label>
-                                        <input
-                                            type="text"
-                                            placeholder="John Doe"
-                                            style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '14px', color: 'white', outline: 'none' }}
-                                            value={profile?.full_name || ''}
-                                            onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                                        />
-                                    </div>
-                                    <div className="input-group-premium">
-                                        <label style={{ display: 'block', color: '#666', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '8px' }}>Mobile Number (Optional)</label>
-                                        <input
-                                            type="text"
-                                            placeholder="+1 234 567 890"
-                                            style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', padding: '14px', color: 'white', outline: 'none' }}
-                                            value={profile?.mobile || ''}
-                                            onChange={(e) => setProfile({ ...profile, mobile: e.target.value })}
-                                        />
-                                    </div>
-                                    <button
-                                        className="btn-onboarding-next"
-                                        style={{ background: 'var(--accent-red)', color: 'white', border: 'none', borderRadius: '12px', padding: '16px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', transition: 'all 0.3s' }}
-                                        onClick={() => {
-                                            if (profile?.full_name?.trim()) {
-                                                handleUpdateProfile({ full_name: profile.full_name, mobile: profile.mobile });
-                                            }
-                                        }}
-                                    >
-                                        Establish Persona
-                                    </button>
+                                    <form onSubmit={handleResetPassword} className="auth-form-classic" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                                        <div className="field-block">
+                                            <label style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>New Secret Password</label>
+                                            <input type="password" placeholder="Min 8 characters, Upper, Lower, Number" className="auth-input-classic" value={newPassword} onChange={e => setNewPassword(e.target.value)} required style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white' }} />
+                                        </div>
+                                        <div className="field-block">
+                                            <label style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>Confirm Password</label>
+                                            <input type="password" placeholder="Repeat Secret Password" className="auth-input-classic" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} required style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white' }} />
+                                        </div>
+                                        <button type="submit" className="btn-onboarding-next" style={{ marginTop: '1rem' }}>Establish New Credentials</button>
+                                        <button type="button" className="nav-item" onClick={() => { setIsRecovering(false); window.history.replaceState({}, '', '/'); }} style={{ justifyContent: 'center', background: 'transparent' }}>Return to Gateway</button>
+                                    </form>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {onboardingStep === 2 && (
-                        <div className="onboarding-overlay" style={{ zIndex: 3000 }}>
-                            <div className="onboarding-card-premium tour-card" style={{ background: '#111', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '24px', padding: '40px', width: '90%', maxWidth: '450px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
-                                <div className="tour-steps-indicator" style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '30px' }}>
-                                    {[1, 2, 3, 4].map(s => (
-                                        <div key={s} className={`step-dot ${tourStep === s ? 'active' : ''}`} style={{ width: tourStep === s ? '24px' : '8px', height: '8px', borderRadius: '4px', background: tourStep === s ? 'var(--accent-red)' : '#333', transition: 'all 0.3s' }}></div>
-                                    ))}
-                                </div>
-
-                                {tourStep === 1 && (
-                                    <div className="tour-content anim-fade-in">
-                                        <div className="tour-icon-wrap" style={{ color: 'var(--accent-red)', marginBottom: '20px' }}><Globe size={48} /></div>
-                                        <h3 style={{ color: 'white', marginBottom: '12px' }}>Your Radius, Your World</h3>
-                                        <p style={{ color: '#888', lineHeight: '1.6' }}>Miles connects you with people within a specific range. Use the slider on the right to adjust your circle from 0.5 to 50 miles.</p>
-                                    </div>
-                                )}
-
-                                {tourStep === 2 && (
-                                    <div className="tour-content anim-fade-in">
-                                        <div className="tour-icon-wrap" style={{ color: 'var(--accent-red)', marginBottom: '20px' }}><MessageCircle size={48} /></div>
-                                        <h3 style={{ color: 'white', marginBottom: '12px' }}>The Local Feed</h3>
-                                        <p style={{ color: '#888', lineHeight: '1.6' }}>Share updates, photos, and files with everyone in your current radius. Every message is a beacon in your local community.</p>
-                                    </div>
-                                )}
-
-                                {tourStep === 3 && (
-                                    <div className="tour-content anim-fade-in">
-                                        <div className="tour-icon-wrap" style={{ color: 'var(--accent-red)', marginBottom: '20px' }}><MapIcon size={48} /></div>
-                                        <h3 style={{ color: 'white', marginBottom: '12px' }}>Interactive Proximity</h3>
-                                        <p style={{ color: '#888', lineHeight: '1.6' }}>The map behind the chat highlights your active zone. You'll only receive and send messages within that defined area.</p>
-                                    </div>
-                                )}
-
-                                {tourStep === 4 && (
-                                    <div className="tour-content anim-fade-in">
-                                        <div className="tour-icon-wrap" style={{ color: 'var(--accent-red)', marginBottom: '20px' }}><Share2 size={48} /></div>
-                                        <h3 style={{ color: 'white', marginBottom: '12px' }}>Digital Identity</h3>
-                                        <p style={{ color: '#888', lineHeight: '1.6' }}>Enhance your profile with social links. Control exactly what others see with our granular privacy toggles.</p>
-                                    </div>
-                                )}
-
-                                <div className="tour-footer" style={{ marginTop: '40px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    {tourStep < 4 ? (
-                                        <button className="btn-tour-next" style={{ background: 'var(--accent-red)', color: 'white', border: 'none', borderRadius: '12px', padding: '14px', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => setTourStep(prev => prev + 1)}>
-                                            Next Step
-                                        </button>
-                                    ) : (
-                                        <button className="btn-onboarding-next" style={{ background: 'var(--accent-red)', color: 'white', border: 'none', borderRadius: '12px', padding: '14px', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => handleUpdateProfile({ onboarding_completed: true })}>
-                                            Enter the Circle
-                                        </button>
-                                    )}
-                                    <button className="tour-skip" style={{ background: 'transparent', border: 'none', color: '#666', fontSize: '0.9rem', cursor: 'pointer' }} onClick={() => handleUpdateProfile({ onboarding_completed: true })}>Skip Tour</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-
-
-                    {/* SETTINGS MODAL */}
-                    {showSettings && (
-                        <div className="modal-overlay">
-                            <div className="settings-card-premium">
-                                <header className="modal-header-premium">
-                                    <div className="header-info">
-                                        <User size={24} color="var(--accent-red)" />
-                                        <h2>Manage Identity</h2>
-                                    </div>
-                                    <button className="modal-close-btn" onClick={() => setShowSettings(false)}>
-                                        <X size={24} />
-                                    </button>
-                                </header>
-
-                                <div className="settings-content-scroll">
-                                    {/* PHOTO SECTION */}
-                                    <section className="settings-section">
-                                        <div className="avatar-edit-large">
-                                            <div className="avatar-preview-wrap" onClick={() => document.getElementById('avatar-upload').click()}>
-                                                {profile?.avatar_url ? (
-                                                    <img src={profile.avatar_url} alt="Profile" />
-                                                ) : getInitial()}
-                                                <div className="edit-overlay"><Camera size={20} /></div>
+                    {/* LOGGED IN STATES */}
+                    {session && (
+                        <>
+                            {/* ONBOARDING FLOW */}
+                            {onboardingStep > 0 && (
+                                <div className="onboarding-overlay" style={{ zIndex: 3000 }}>
+                                    {onboardingStep === 1 && (
+                                        <div className="onboarding-card-premium anim-fade-in">
+                                            <div className="onboarding-header" style={{ marginBottom: '2.5rem' }}>
+                                                <div className="pulse-circle" style={{ width: '60px', height: '60px', marginBottom: '1.5rem' }}>
+                                                    <User size={28} color="var(--accent-red)" />
+                                                </div>
+                                                <h2 className="onboarding-title">Establish Your Presence</h2>
+                                                <p className="onboarding-text">Craft your digital persona before entering the circle.</p>
                                             </div>
-                                            <div className="avatar-info">
-                                                <h3>{profile?.full_name || 'Your Persona'}</h3>
-                                                <p>{session.user.email}</p>
-                                            </div>
-                                            <input type="file" id="avatar-upload" accept="image/*" onChange={handleUploadAvatar} style={{ display: 'none' }} />
-                                        </div>
-                                    </section>
-
-                                    {/* BASIC INFO */}
-                                    <section className="settings-section">
-                                        <h4 className="section-title">Personal Details</h4>
-                                        <div className="input-with-privacy">
-                                            <div className="field-group">
-                                                <label>Full Name</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Enter your name"
-                                                    value={profile?.full_name || ''}
-                                                    onChange={e => setProfile({ ...profile, full_name: e.target.value })}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="input-with-privacy">
-                                            <div className="field-group">
-                                                <label>Address</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="Lighthouse Avenue, Circle Bay"
-                                                    value={profile?.address || ''}
-                                                    onChange={e => setProfile({ ...profile, address: e.target.value })}
-                                                />
-                                            </div>
-                                            <button
-                                                className={`privacy-toggle ${profile?.address_public ? 'public' : 'private'}`}
-                                                onClick={() => setProfile({ ...profile, address_public: !profile?.address_public })}
-                                                title={profile?.address_public ? "Public" : "Private"}
-                                            >
-                                                {profile?.address_public ? <Eye size={18} /> : <EyeOff size={18} />}
-                                            </button>
-                                        </div>
-                                        <div className="input-with-privacy">
-                                            <div className="field-group">
-                                                <label>Mobile Number</label>
-                                                <input
-                                                    type="text"
-                                                    placeholder="+1 234 567 890"
-                                                    value={profile?.mobile || ''}
-                                                    onChange={e => setProfile({ ...profile, mobile: e.target.value })}
-                                                />
-                                            </div>
-                                            <button
-                                                className={`privacy-toggle ${profile?.mobile_public ? 'public' : 'private'}`}
-                                                onClick={() => setProfile({ ...profile, mobile_public: !profile?.mobile_public })}
-                                                title={profile?.mobile_public ? "Public" : "Private"}
-                                            >
-                                                {profile?.mobile_public ? <Eye size={18} /> : <EyeOff size={18} />}
-                                            </button>
-                                        </div>
-                                    </section>
-
-                                    {/* SOCIAL SECTION */}
-                                    <section className="settings-section">
-                                        <h4 className="section-title">Digital Presence</h4>
-                                        {[
-                                            { id: 'facebook', icon: <Facebook size={18} />, label: 'Facebook URL' },
-                                            { id: 'linkedin', icon: <Linkedin size={18} />, label: 'LinkedIn URL' },
-                                            { id: 'instagram', icon: <Instagram size={18} />, label: 'Instagram URL' },
-                                            { id: 'youtube', icon: <Youtube size={18} />, label: 'YouTube URL' },
-                                            { id: 'whatsapp', icon: <MessageCircle size={18} />, label: 'WhatsApp Number' }
-                                        ].map(social => (
-                                            <div className="input-with-privacy" key={social.id}>
-                                                <div className="field-group">
-                                                    <div className="label-with-icon">{social.icon} <span>{social.label}</span></div>
+                                            <div className="onboarding-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                                <div className="field-block">
+                                                    <label style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>Full Name</label>
                                                     <input
                                                         type="text"
-                                                        placeholder="Enter account link"
-                                                        value={profile?.[`${social.id}_url`] || profile?.[`${social.id}_number`] || ''}
-                                                        onChange={e => setProfile({ ...profile, [`${social.id}_${social.id === 'whatsapp' ? 'number' : 'url'}`]: e.target.value })}
+                                                        placeholder="e.g. Alex Rivera"
+                                                        value={profile?.full_name || ''}
+                                                        onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                                                        style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', outline: 'none' }}
+                                                    />
+                                                </div>
+                                                <div className="field-block">
+                                                    <label style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>Mobile Number (Encrypted)</label>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="+1 (555) 000-0000"
+                                                        value={profile?.mobile || ''}
+                                                        onChange={(e) => setProfile({ ...profile, mobile: e.target.value })}
+                                                        style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', outline: 'none' }}
                                                     />
                                                 </div>
                                                 <button
-                                                    className={`privacy-toggle ${profile?.[`${social.id}_public`] ? 'public' : 'private'}`}
-                                                    onClick={() => setProfile({ ...profile, [`${social.id}_public`]: !profile?.[`${social.id}_public`] })}
-                                                    title={profile?.[`${social.id}_public`] ? "Public" : "Private"}
+                                                    className="btn-onboarding-next"
+                                                    style={{ marginTop: '1rem' }}
+                                                    onClick={() => profile?.full_name?.trim() && handleUpdateProfile({ full_name: profile.full_name, mobile: profile.mobile })}
                                                 >
-                                                    {profile?.[`${social.id}_public`] ? <Eye size={18} /> : <EyeOff size={18} />}
+                                                    Complete Initialization
                                                 </button>
                                             </div>
-                                        ))}
-                                    </section>
-
-                                    {/* ACTIONS */}
-                                    <div className="settings-footer">
-                                        <button className="btn-logout-stylish" onClick={() => setShowLogoutConfirm(true)}>
-                                            <div className="btn-glow"></div>
-                                            <span>Sign Out</span>
-                                        </button>
-                                        <button
-                                            className="btn-save-premium"
-                                            onClick={() => handleUpdateProfile(profile)}
-                                            disabled={isSavingChanges}
-                                        >
-                                            {isSavingChanges ? <div className="spinner-small"></div> : 'Commit Changes'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* LOGOUT CONFIRM SUB-MODAL */}
-                            {showLogoutConfirm && (
-                                <div className="confirm-overlay">
-                                    <div className="confirm-card">
-                                        <h3>End Session?</h3>
-                                        <p>You will be disconnected from the circle.</p>
-                                        <div className="confirm-actions">
-                                            <button className="btn-confirm-yes" onClick={handleLogout}>Disconnect</button>
-                                            <button className="btn-confirm-no" onClick={() => setShowLogoutConfirm(false)}>Stay Connected</button>
                                         </div>
-                                    </div>
+                                    )}
+                                    {onboardingStep === 2 && (
+                                        <div className="onboarding-card-premium tour-card">
+                                            <div className="tour-steps-indicator">
+                                                {[1, 2, 3, 4].map(s => <div key={s} className={`step-dot ${tourStep === s ? 'active' : ''}`}></div>)}
+                                            </div>
+                                            <div className="tour-content">
+                                                {tourStep === 1 && <><Globe size={48} color="var(--accent-red)" /><h3>Your Radius, Your World</h3><p>Miles connects you with people within a specific range. Use the slider on the right to adjust your circle.</p></>}
+                                                {tourStep === 2 && <><MessageCircle size={48} color="var(--accent-red)" /><h3>The Local Feed</h3><p>Share updates, photos, and files with everyone in your current radius.</p></>}
+                                                {tourStep === 3 && <><MapIcon size={48} color="var(--accent-red)" /><h3>Interactive Proximity</h3><p>The map behind highlights your active zone. You only see messages within that area.</p></>}
+                                                {tourStep === 4 && <><Share2 size={48} color="var(--accent-red)" /><h3>Digital Identity</h3><p>Enhance your profile and control exactly what others see with privacy toggles.</p></>}
+                                            </div>
+                                            <div className="tour-footer">
+                                                <button className="btn-tour-next" onClick={() => tourStep < 4 ? setTourStep(s => s + 1) : handleUpdateProfile({ onboarding_completed: true })}>
+                                                    {tourStep < 4 ? 'Next Step' : 'Enter the Circle'}
+                                                </button>
+                                                <button className="tour-skip" onClick={() => handleUpdateProfile({ onboarding_completed: true })}>Skip Tour</button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
-                        </div>
-                    )}
 
-                    {/* PUBLIC PROFILE VIEWER MODAL */}
-                    {viewingProfile && (
-                        <div className="modal-overlay" onClick={() => setViewingProfile(null)}>
-                            <div className="profile-viewer-card" onClick={e => e.stopPropagation()}>
-                                <button className="modal-close-simple" onClick={() => setViewingProfile(null)}><X size={20} /></button>
+                            {/* MAIN APP CONTENT */}
+                            {onboardingStep === 0 && (
+                                <>
+                                    {/* STATUS OVERLAYS */}
+                                    {(!locationAvailable || locationError) && (
+                                        <div className="locating-overlay anim-fade-in">
+                                            <div className="locating-card-premium">
+                                                <div className="status-icon-wrap" style={{ marginBottom: '2rem' }}>
+                                                    {locationError ? (
+                                                        <div className="icon-badge error" style={{ background: 'rgba(210, 85, 78, 0.1)', color: 'var(--accent-red)' }}>
+                                                            <Globe size={48} />
+                                                        </div>
+                                                    ) : (
+                                                        <div className="pulse-circle">
+                                                            <MapPin size={40} color="white" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <h2 style={{ fontSize: '2rem', marginBottom: '1rem', fontWeight: '950' }}>
+                                                    {locationError ? 'Signal Lost' : 'Synchronizing Circle'}
+                                                </h2>
+                                                <p style={{ color: 'var(--text-secondary)', maxWidth: '320px', margin: '0 auto 2.5rem', lineHeight: '1.6' }}>
+                                                    {locationError
+                                                        ? 'We can\'t find your coordinates. Proximity authentication requires location access.'
+                                                        : "Pinpointing your digital footprint to connect you with the immediate surroundings."}
+                                                </p>
 
-                                <div className="viewer-header">
-                                    <div className="viewer-avatar-large">
-                                        {viewingProfile.avatar_url ? (
-                                            <img src={viewingProfile.avatar_url} alt="" />
-                                        ) : (viewingProfile.full_name || '?')[0].toUpperCase()}
-                                    </div>
-                                    <h2>{viewingProfile.full_name || 'Circle Member'}</h2>
-                                </div>
+                                                {!locationError && (
+                                                    <div className="loading-track" style={{ width: '100%', height: '6px', background: 'var(--glass-bg)', borderRadius: '10px', overflow: 'hidden', marginBottom: '2rem' }}>
+                                                        <div className="loading-fill-animated" style={{ height: '100%', background: 'var(--accent-red)', width: '60%' }}></div>
+                                                    </div>
+                                                )}
 
-                                <div className="viewer-content">
-                                    {viewingProfile.address_public && viewingProfile.address && (
-                                        <div className="info-item">
-                                            <MapPin size={18} />
-                                            <span>{viewingProfile.address}</span>
+                                                <button className="btn-onboarding-next" style={{ width: '100%' }} onClick={() => window.location.reload()}>
+                                                    {locationError ? 'Connect and Retry' : 'Optimize Signal'}
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
-                                    {viewingProfile.mobile_public && viewingProfile.mobile && (
-                                        <div className="info-item">
-                                            <Phone size={18} />
-                                            <span>{viewingProfile.mobile}</span>
+
+                                    {/* MAP LAYER */}
+                                    <div className="map-wrapper" style={{ opacity: locationAvailable ? 1 : 0.3, filter: locationAvailable ? 'none' : 'blur(5px)' }}>
+                                        {locationAvailable && (
+                                            <MapContainer center={position} zoom={13} zoomControl={false} className="map-view">
+                                                <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                                                <Marker position={position} />
+                                                <Circle center={position} pathOptions={{ color: 'var(--accent-red)', fillColor: 'var(--accent-red)', fillOpacity: 0.1, weight: 2, dashArray: '4, 8' }} radius={radius * 1609.34} />
+                                                <MapController center={position} radius={radius} isInteracting={isMapInteracting} />
+                                            </MapContainer>
+                                        )}
+                                    </div>
+
+                                    {/* CHAT LAYER */}
+                                    {locationAvailable && (
+                                        <div className="chat-interface">
+                                            <header className="app-header-new">
+                                                <div className="brand-wrap">
+                                                    <h1 className="logo-text">MILES</h1>
+                                                    <span className="logo-badge">CIRCLE</span>
+                                                </div>
+                                                <div className="header-actions">
+                                                    <div className="user-avatar-btn" onClick={() => setShowSettings(true)}>
+                                                        {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : getInitial()}
+                                                    </div>
+                                                </div>
+                                            </header>
+
+                                            <div className="chat-center-container">
+                                                <div className="chat-messages-scroll">
+                                                    <Feed
+                                                        position={position}
+                                                        radius={radius}
+                                                        refreshTrigger={feedTrigger}
+                                                        session={session}
+                                                        onUserClick={async (userId) => {
+                                                            const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+                                                            if (data) setViewingProfile(data);
+                                                        }}
+                                                    />
+                                                    <div className="system-welcome-card">
+                                                        <p className="welcome-tag">Proximity Active</p>
+                                                        <p className="welcome-text">Connected to the <strong>{radius} mile</strong> sphere around your current location.</p>
+                                                    </div>
+                                                </div>
+
+                                                <form className="chat-input-wrapper" onSubmit={handleSendMessage}>
+                                                    {showAttachmentMenu && (
+                                                        <div className="attachment-menu-popover">
+                                                            <button type="button" className="menu-item" onClick={() => handleAttachmentAction('photo')}><div className="menu-icon-circle"><Image size={20} /></div><span>Photos</span></button>
+                                                            <button type="button" className="menu-item" onClick={() => handleAttachmentAction('file')}><div className="menu-icon-circle"><Paperclip size={20} /></div><span>Files</span></button>
+                                                            <button type="button" className="menu-item" onClick={() => handleAttachmentAction('location')}><div className="menu-icon-circle"><MapIcon size={20} /></div><span>Location</span></button>
+                                                        </div>
+                                                    )}
+                                                    <button type="button" className={`chat-plus-btn ${showAttachmentMenu ? 'active' : ''}`} onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}>
+                                                        <Plus size={24} style={{ transform: showAttachmentMenu ? 'rotate(45deg)' : 'none' }} />
+                                                    </button>
+                                                    <input type="text" className="chat-input-main" placeholder="Message Circle..." value={messageContent} onChange={e => setMessageContent(e.target.value)} disabled={isSending} />
+                                                    <button type="submit" className="chat-send-btn-new" disabled={!messageContent.trim() || isSending}>
+                                                        {isSending ? <div className="spinner-tiny"></div> : <Send size={18} />}
+                                                    </button>
+                                                </form>
+                                            </div>
+
+                                            <div className={`side-slider-container ${isSliderHidden ? 'collapsed' : ''}`}>
+                                                <button className="slider-toggle-btn" onClick={() => setIsSliderHidden(!isSliderHidden)}>
+                                                    {isSliderHidden ? <Eye size={18} /> : <EyeOff size={18} />}
+                                                </button>
+                                                {!isSliderHidden && (
+                                                    <div className="slider-controls-wrap">
+                                                        <span className="radius-badge">{radius}m</span>
+                                                        <input type="range" className="range-vertical" min="0.5" max="50" step="0.5" value={radius} onChange={e => setRadius(parseFloat(e.target.value))} onMouseDown={() => handleSliderInteract(true)} onMouseUp={() => handleSliderInteract(false)} onTouchStart={() => handleSliderInteract(true)} onTouchEnd={() => handleSliderInteract(false)} />
+                                                        <MapIcon size={20} color="#666" />
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
 
-                                    <div className="social-grid-viewer">
-                                        {[
-                                            { id: 'facebook', icon: <Facebook />, url: viewingProfile.facebook_url },
-                                            { id: 'linkedin', icon: <Linkedin />, url: viewingProfile.linkedin_url },
-                                            { id: 'instagram', icon: <Instagram />, url: viewingProfile.instagram_url },
-                                            { id: 'youtube', icon: <Youtube />, url: viewingProfile.youtube_url },
-                                            { id: 'whatsapp', icon: <MessageCircle />, url: viewingProfile.whatsapp_number ? `https://wa.me/${viewingProfile.whatsapp_number.replace(/\D/g, '')}` : null }
-                                        ].map(social => (
-                                            viewingProfile[`${social.id}_public`] && social.url && (
-                                                <a
-                                                    key={social.id}
-                                                    href={social.url.startsWith('http') ? social.url : `https://${social.url}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className={`social-link-btn ${social.id}`}
-                                                >
-                                                    {social.icon}
-                                                </a>
-                                            )
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                                    {/* SETTINGS MODAL */}
+                                    {showSettings && (
+                                        <div className="modal-overlay">
+                                            <div className="settings-card-premium">
+                                                <aside className="settings-sidebar">
+                                                    <div className="sidebar-header"><h3 className="logo-text mini">MILES</h3></div>
+                                                    <nav className="settings-nav">
+                                                        <button className={`nav-item ${activeSettingsTab === 'main' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('main')}><User size={20} /> <span>Profile</span></button>
+                                                        <button className={`nav-item ${activeSettingsTab === 'appearance' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('appearance')}><Globe size={20} /> <span>Appearance</span></button>
+                                                        <button className={`nav-item ${activeSettingsTab === 'security' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('security')}><ShieldCheck size={20} /> <span>Security</span></button>
+                                                        <button className="nav-item signout" onClick={() => setShowLogoutConfirm(true)}><ExternalLink size={20} /> <span>Sign Out</span></button>
+                                                    </nav>
+                                                    <button className="settings-close-sidebar" onClick={resetSettings}>Close Settings</button>
+                                                </aside>
 
-                    {showCreatePost && (
-                        <CreatePostModal
-                            position={position}
-                            onClose={() => setShowCreatePost(false)}
-                            onPostCreated={() => {
-                                setShowCreatePost(false);
-                                setFeedTrigger(prev => prev + 1);
-                            }}
-                        />
-                    )}
+                                                <main className="settings-main-content">
+                                                    {activeSettingsTab === 'main' && (
+                                                        <div className="settings-panel anim-fade-in">
+                                                            <div className="panel-header"><h2>Profile Identity</h2><p>Manage how you appear in the circle.</p></div>
+                                                            <div className="avatar-section-hero">
+                                                                <div className="avatar-large-preview" onClick={() => document.getElementById('avatar-upload').click()}>
+                                                                    {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : getInitial()}
+                                                                    <div className="avatar-edit-icon"><Camera size={20} /></div>
+                                                                </div>
+                                                                <input type="file" id="avatar-upload" hidden accept="image/*" onChange={handleUploadAvatar} />
+                                                                <div className="avatar-hero-info"><h3>{profile?.full_name || 'Anonymous User'}</h3><p>{session.user.email}</p></div>
+                                                            </div>
+                                                            <div className="settings-form-grid">
+                                                                <div className="field-block"><label>Full Name</label><input type="text" value={profile?.full_name || ''} onChange={e => setProfile({ ...profile, full_name: e.target.value })} /></div>
+                                                                <div className="field-block privacy">
+                                                                    <label>Location Display</label>
+                                                                    <div className="input-wrap">
+                                                                        <input type="text" placeholder="Lighthouse Ave" value={profile?.address || ''} onChange={e => setProfile({ ...profile, address: e.target.value })} />
+                                                                        <button className={`privacy-toggle ${profile?.address_public ? 'on' : 'off'}`} onClick={() => setProfile({ ...profile, address_public: !profile?.address_public })}>{profile.address_public ? <Eye size={16} /> : <EyeOff size={16} />}</button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="social-links-manager">
+                                                                <h4>Digital Presence</h4>
+                                                                {['facebook', 'linkedin', 'instagram', 'youtube', 'whatsapp'].map(key => (
+                                                                    <div key={key} className="social-row">
+                                                                        <div className="social-input-wrap">
+                                                                            <span className="social-icon-tag">{key[0].toUpperCase()}</span>
+                                                                            <input type="text" placeholder={`${key.charAt(0).toUpperCase() + key.slice(1)} ${key === 'whatsapp' ? 'Number' : 'Link'}`} value={profile[`${key}_url`] || profile[`${key}_number`] || ''} onChange={e => setProfile({ ...profile, [`${key}_${key === 'whatsapp' ? 'number' : 'url'}`]: e.target.value })} />
+                                                                        </div>
+                                                                        <button className={`privacy-toggle ${profile[`${key}_public`] ? 'on' : 'off'}`} onClick={() => setProfile({ ...profile, [`${key}_public`]: !profile[`${key}_public`] })}>{profile[`${key}_public`] ? <Eye size={16} /> : <EyeOff size={16} />}</button>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            <div className="panel-actions"><button className="btn-save-settings" onClick={() => handleUpdateProfile(profile)} disabled={isSavingChanges}>{isSavingChanges ? 'Syncing...' : 'Save Changes'}</button></div>
+                                                        </div>
+                                                    )}
 
-                    {selectedFile && (
-                        <PhotoEditor
-                            file={selectedFile}
-                            onSave={handleSaveEditedPhoto}
-                            onCancel={() => setSelectedFile(null)}
-                        />
+                                                    {activeSettingsTab === 'appearance' && (
+                                                        <div className="settings-panel anim-fade-in">
+                                                            <div className="panel-header"><h2>Visual Experience</h2><p>Tailor the miles interface to your preference.</p></div>
+                                                            <div className="appearance-grid">
+                                                                <div className="appearance-card">
+                                                                    <div className="card-info"><h4>Theme Mode</h4><p>Switch between light and dark aesthetics.</p></div>
+                                                                    <div className="theme-toggle-strip">
+                                                                        <button className={`theme-tab ${profile?.theme_mode !== 'light' ? 'active' : ''}`} onClick={() => handleUpdateProfile({ theme_mode: 'dark' })}><Lock size={16} /> Dark</button>
+                                                                        <button className={`theme-tab ${profile?.theme_mode === 'light' ? 'active' : ''}`} onClick={() => handleUpdateProfile({ theme_mode: 'light' })}><Globe size={16} /> Light</button>
+                                                                    </div>
+                                                                </div>
+                                                                {/* Potential point/color choices can go here */}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {activeSettingsTab === 'security' && (
+                                                        <div className="settings-panel anim-fade-in">
+                                                            <div className="panel-header"><h2>Security & Privacy</h2><p>Manage your credentials and account safety.</p></div>
+                                                            <form onSubmit={handleResetPassword} className="security-form">
+                                                                <div className="field-block"><label>New Secret Password</label><input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required /></div>
+                                                                <div className="field-block"><label>Confirm Secret Password</label><input type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} required /></div>
+                                                                <button type="submit" className="btn-security-update">Update Password</button>
+                                                            </form>
+                                                        </div>
+                                                    )}
+                                                </main>
+                                            </div>
+
+                                            {showLogoutConfirm && (
+                                                <div className="confirm-overlay"><div className="confirm-card"><h3>End Session?</h3><p>You will be disconnected from the circle.</p><div className="confirm-actions"><button className="btn-confirm-yes" onClick={handleLogout}>Disconnect</button><button className="btn-confirm-no" onClick={() => setShowLogoutConfirm(false)}>Stay Connected</button></div></div></div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* PROFILE VIEWER MODAL */}
+                                    {viewingProfile && (
+                                        <div className="modal-overlay" onClick={() => setViewingProfile(null)}>
+                                            <div className="profile-viewer-card premium" onClick={e => e.stopPropagation()}>
+                                                <header className="viewer-header-new">
+                                                    <div className="viewer-avatar-wrap">
+                                                        {viewingProfile.avatar_url ? <img src={viewingProfile.avatar_url} alt="" /> : (viewingProfile.full_name || '?')[0].toUpperCase()}
+                                                    </div>
+                                                    <h2 className="viewer-name">{viewingProfile.full_name || 'Circle Member'}</h2>
+                                                    <p className="viewer-joined">Radius Citizen</p>
+                                                </header>
+                                                <div className="viewer-stats">
+                                                    <div className="stat-item"><span className="stat-val">{viewingProfile.points || 0}</span><span className="stat-lbl">Points</span></div>
+                                                    <div className="stat-sep" />
+                                                    <div className="stat-item"><span className="stat-val">Active</span><span className="stat-lbl">Status</span></div>
+                                                </div>
+                                                <div className="viewer-bio-section">
+                                                    {viewingProfile.address_public && viewingProfile.address && <div className="viewer-info-row"><MapPin size={16} /> <span>{viewingProfile.address}</span></div>}
+                                                    {viewingProfile.mobile_public && viewingProfile.mobile && <div className="viewer-info-row"><Phone size={16} /> <span>{viewingProfile.mobile}</span></div>}
+                                                </div>
+                                                <div className="viewer-social-links">
+                                                    {['facebook', 'linkedin', 'instagram', 'youtube', 'whatsapp'].map(key => {
+                                                        const url = key === 'whatsapp' ? (viewingProfile.whatsapp_number ? `https://wa.me/${viewingProfile.whatsapp_number.replace(/\D/g, '')}` : null) : viewingProfile[`${key}_url`];
+                                                        return viewingProfile[`${key}_public`] && url && (
+                                                            <a key={key} href={url.startsWith('http') ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" className={`viewer-social-icon ${key}`}>
+                                                                {key === 'facebook' && <Facebook size={18} />}
+                                                                {key === 'linkedin' && <Linkedin size={18} />}
+                                                                {key === 'instagram' && <Instagram size={18} />}
+                                                                {key === 'youtube' && <Youtube size={18} />}
+                                                                {key === 'whatsapp' && <MessageCircle size={18} />}
+                                                            </a>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <div className="viewer-actions-row">
+                                                    <button className="btn-rate up" onClick={() => handleRate(1)}><ShieldCheck size={20} /> Like</button>
+                                                    <button className="btn-rate down" onClick={() => handleRate(-1)}><X size={20} /> Dislike</button>
+                                                    <button className="btn-report" onClick={handleReport}><Lock size={20} /> Report</button>
+                                                </div>
+                                                <button className="btn-viewer-close" onClick={() => setViewingProfile(null)}>Dismiss</button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* PHOTO EDITOR */}
+                                    {selectedFile && <PhotoEditor file={selectedFile} onSave={handleSaveEditedPhoto} onCancel={() => setSelectedFile(null)} />}
+                                </>
+                            )}
+                        </>
                     )}
                 </>
             )}
         </div>
-    )
+    );
 }
 
-export default App
+export default App;
