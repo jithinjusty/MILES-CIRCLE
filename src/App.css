@@ -602,6 +602,57 @@ body {
     border-color: var(--accent-red);
 }
 
+.privacy-toggle-text {
+    padding: 0 16px;
+    height: 48px;
+    border-radius: 14px;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    color: var(--text-secondary);
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    min-width: 90px;
+}
+
+.privacy-toggle-text.on {
+    background: var(--accent-red);
+    color: white;
+    border-color: var(--accent-red);
+}
+
+.field-block.full-width {
+    grid-column: 1 / -1;
+}
+
+.viewer-info-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 2rem;
+}
+
+.viewer-info-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    background: #000;
+    padding: 12px 18px;
+    border-radius: 16px;
+    border: 1px solid var(--glass-border);
+}
+
+.viewer-info-row span {
+    color: white;
+}
+
 .social-links-manager {
     margin-top: 3rem;
 }

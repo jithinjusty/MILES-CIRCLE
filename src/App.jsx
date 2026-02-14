@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet'
-import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, ShieldCheck, ChevronRight, Mail } from 'lucide-react'
+import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, ShieldCheck, ChevronRight, Mail, Bug, Info, Database, CreditCard } from 'lucide-react'
 import './App.css'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -524,7 +524,7 @@ function App() {
                                                 {tourStep === 1 && <><Globe size={48} color="var(--accent-red)" /><h3>Your Radius, Your World</h3><p>Miles connects you with people within a specific range. Use the slider on the right to adjust your circle.</p></>}
                                                 {tourStep === 2 && <><MessageCircle size={48} color="var(--accent-red)" /><h3>The Local Feed</h3><p>Share updates, photos, and files with everyone in your current radius.</p></>}
                                                 {tourStep === 3 && <><MapIcon size={48} color="var(--accent-red)" /><h3>Interactive Proximity</h3><p>The map behind highlights your active zone. You only see messages within that area.</p></>}
-                                                {tourStep === 4 && <><Share2 size={48} color="var(--accent-red)" /><h3>Digital Identity</h3><p>Enhance your profile and control exactly what others see with privacy toggles.</p></>}
+                                                {tourStep === 4 && <><Share2 size={48} color="var(--accent-red)" /><h3>Digital Identity</h3><p>Manage your social presence. You can add your digital handles and choose exactly who sees them with the <strong>Public/Private</strong> toggles.</p></>}
                                             </div>
                                             <div className="tour-footer">
                                                 <button className="btn-tour-next" onClick={() => tourStep < 4 ? setTourStep(s => s + 1) : handleUpdateProfile({ onboarding_completed: true })}>
@@ -714,9 +714,13 @@ function App() {
                                                         <span className="logo-badge" style={{ fontSize: '0.5rem' }}>CIRCLE</span>
                                                     </div>
                                                     <nav className="settings-nav">
-                                                        <button className={`nav-item ${activeSettingsTab === 'main' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('main')}><User size={20} /> <span>Profile</span></button>
+                                                        <button className={`nav-item ${activeSettingsTab === 'main' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('main')}><User size={20} /> <span>Profile Identity</span></button>
                                                         <button className={`nav-item ${activeSettingsTab === 'appearance' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('appearance')}><Globe size={20} /> <span>Appearance</span></button>
                                                         <button className={`nav-item ${activeSettingsTab === 'security' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('security')}><ShieldCheck size={20} /> <span>Security</span></button>
+                                                        <button className={`nav-item ${activeSettingsTab === 'data' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('data')}><Database size={20} /> <span>Data Control</span></button>
+                                                        <button className={`nav-item ${activeSettingsTab === 'subscription' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('subscription')}><CreditCard size={20} /> <span>Subscription</span></button>
+                                                        <button className={`nav-item ${activeSettingsTab === 'about' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('about')}><Info size={20} /> <span>About Us</span></button>
+                                                        <button className={`nav-item ${activeSettingsTab === 'bug' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('bug')}><Bug size={20} /> <span>Report Bug</span></button>
                                                         <button className="nav-item signout" onClick={() => setShowLogoutConfirm(true)}><ExternalLink size={20} /> <span>Sign Out</span></button>
                                                     </nav>
                                                     <button className="settings-close-sidebar" onClick={resetSettings}>Close Settings</button>
@@ -736,11 +740,20 @@ function App() {
                                                             </div>
                                                             <div className="settings-form-grid">
                                                                 <div className="field-block"><label>Full Name</label><input type="text" value={profile?.full_name || ''} onChange={e => setProfile({ ...profile, full_name: e.target.value })} /></div>
+                                                                <div className="field-block full-width">
+                                                                    <label>Bio / Status</label>
+                                                                    <textarea
+                                                                        placeholder="Tell the circle about yourself..."
+                                                                        value={profile?.bio || ''}
+                                                                        onChange={e => setProfile({ ...profile, bio: e.target.value })}
+                                                                        style={{ width: '100%', height: '100px', background: '#000', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', padding: '14px', outline: 'none', resize: 'none' }}
+                                                                    />
+                                                                </div>
                                                                 <div className="field-block privacy">
                                                                     <label>Location Display</label>
                                                                     <div className="input-wrap">
                                                                         <input type="text" placeholder="Lighthouse Ave" value={profile?.address || ''} onChange={e => setProfile({ ...profile, address: e.target.value })} />
-                                                                        <button className={`privacy-toggle ${profile?.address_public ? 'on' : 'off'}`} onClick={() => setProfile({ ...profile, address_public: !profile?.address_public })}>{profile.address_public ? <Eye size={16} /> : <EyeOff size={16} />}</button>
+                                                                        <button className={`privacy-toggle-text ${profile?.address_public ? 'on' : 'off'}`} onClick={() => setProfile({ ...profile, address_public: !profile?.address_public })}>{profile.address_public ? 'PUBLIC' : 'PRIVATE'}</button>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -752,7 +765,7 @@ function App() {
                                                                             <span className="social-icon-tag">{key[0].toUpperCase()}</span>
                                                                             <input type="text" placeholder={`${key.charAt(0).toUpperCase() + key.slice(1)} ${key === 'whatsapp' ? 'Number' : 'Link'}`} value={profile[`${key}_url`] || profile[`${key}_number`] || ''} onChange={e => setProfile({ ...profile, [`${key}_${key === 'whatsapp' ? 'number' : 'url'}`]: e.target.value })} />
                                                                         </div>
-                                                                        <button className={`privacy-toggle ${profile[`${key}_public`] ? 'on' : 'off'}`} onClick={() => setProfile({ ...profile, [`${key}_public`]: !profile[`${key}_public`] })}>{profile[`${key}_public`] ? <Eye size={16} /> : <EyeOff size={16} />}</button>
+                                                                        <button className={`privacy-toggle-text ${profile[`${key}_public`] ? 'on' : 'off'}`} onClick={() => setProfile({ ...profile, [`${key}_public`]: !profile[`${key}_public`] })}>{profile[`${key}_public`] ? 'PUBLIC' : 'PRIVATE'}</button>
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -786,6 +799,59 @@ function App() {
                                                             </form>
                                                         </div>
                                                     )}
+
+                                                    {activeSettingsTab === 'data' && (
+                                                        <div className="settings-panel anim-fade-in">
+                                                            <div className="panel-header"><h2>Data Control</h2><p>Manage your account data and privacy rights.</p></div>
+                                                            <div className="settings-form-grid" style={{ gridTemplateColumns: '1fr' }}>
+                                                                <div className="appearance-card">
+                                                                    <div className="card-info"><h4>Export Personal Data</h4><p>Download a full archive of your posts and profile information.</p></div>
+                                                                    <button className="btn-auth-premium" style={{ width: 'auto', padding: '12px 24px' }}>Request Export</button>
+                                                                </div>
+                                                                <div className="appearance-card" style={{ border: '1px solid rgba(255, 0, 0, 0.2)' }}>
+                                                                    <div className="card-info"><h4>Circle Exclusion (Delete Account)</h4><p>Permanently remove your digital footprint from Miles Circle. This cannot be undone.</p></div>
+                                                                    <button className="btn-tour-next" style={{ width: 'auto', padding: '12px 24px', background: 'rgba(210, 85, 78, 0.1)', color: 'var(--accent-red)', border: '1px solid var(--accent-red)' }}>Delete My Account</button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {activeSettingsTab === 'subscription' && (
+                                                        <div className="settings-panel anim-fade-in">
+                                                            <div className="panel-header"><h2>Subscription</h2><p>Premium features and billing information.</p></div>
+                                                            <div className="onboarding-card-premium" style={{ maxWidth: 'none', background: '#000', borderStyle: 'dashed' }}>
+                                                                <Lock size={32} color="var(--accent-red)" style={{ marginBottom: '1rem' }} />
+                                                                <h3>Status: Not for Public</h3>
+                                                                <p>Subscription tiered access is currently restricted to early alpha testers.</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {activeSettingsTab === 'about' && (
+                                                        <div className="settings-panel anim-fade-in">
+                                                            <div className="panel-header"><h2>About Miles Circle</h2><p>Version 1.0.4 Alpha - Building real-world proximity.</p></div>
+                                                            <div className="policy-content" style={{ color: 'var(--text-secondary)', lineHeight: '1.8' }}>
+                                                                <p>Miles Circle is a proximity-based social network designed to bridge the gap between digital interaction and real-world presence. We believe the people physically closest to you should be the easiest to connect with.</p>
+                                                                <p>Headquartered in the digital sphere, 2026.</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {activeSettingsTab === 'bug' && (
+                                                        <div className="settings-panel anim-fade-in">
+                                                            <div className="panel-header"><h2>Report a Bug</h2><p>Help us calibrate the circle for everyone.</p></div>
+                                                            <div className="settings-form-grid" style={{ gridTemplateColumns: '1fr' }}>
+                                                                <div className="field-block">
+                                                                    <label>Issue Description</label>
+                                                                    <textarea
+                                                                        placeholder="What happened? Please describe the steps to reproduce..."
+                                                                        style={{ width: '100%', height: '150px', background: '#000', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', padding: '14px' }}
+                                                                    />
+                                                                </div>
+                                                                <button className="btn-save-settings" onClick={() => alert("Bug report submitted. Our engineers are investigating.")}>Submit Report</button>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </main>
                                             </div>
 
@@ -811,9 +877,15 @@ function App() {
                                                     <div className="stat-sep" />
                                                     <div className="stat-item"><span className="stat-val">Active</span><span className="stat-lbl">Status</span></div>
                                                 </div>
-                                                <div className="viewer-bio-section">
-                                                    {viewingProfile.address_public && viewingProfile.address && <div className="viewer-info-row"><MapPin size={16} /> <span>{viewingProfile.address}</span></div>}
-                                                    {viewingProfile.mobile_public && viewingProfile.mobile && <div className="viewer-info-row"><Phone size={16} /> <span>{viewingProfile.mobile}</span></div>}
+                                                {viewingProfile.bio && (
+                                                    <div className="viewer-bio-section" style={{ background: '#000', padding: '1.5rem', borderRadius: '24px', border: '1px solid var(--glass-border)', marginBottom: '1.5rem', textAlign: 'left' }}>
+                                                        <h4 style={{ fontSize: '0.7rem', color: 'var(--accent-red)', marginBottom: '8px', textTransform: 'uppercase' }}>Biography</h4>
+                                                        <p style={{ color: 'white', fontSize: '0.9rem', lineHeight: '1.6', margin: 0 }}>{viewingProfile.bio}</p>
+                                                    </div>
+                                                )}
+                                                <div className="viewer-info-rows">
+                                                    {viewingProfile.address_public && viewingProfile.address && <div className="viewer-info-row"><MapPin size={16} color="var(--accent-red)" /> <span>{viewingProfile.address}</span></div>}
+                                                    {viewingProfile.mobile_public && viewingProfile.mobile && <div className="viewer-info-row"><Phone size={16} color="var(--accent-red)" /> <span>{viewingProfile.mobile}</span></div>}
                                                 </div>
                                                 <div className="viewer-social-links">
                                                     {['facebook', 'linkedin', 'instagram', 'youtube', 'whatsapp'].map(key => {

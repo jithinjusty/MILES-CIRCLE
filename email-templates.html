@@ -1,0 +1,177 @@
+<!-- MILES CIRCLE - PREMIUM EMAIL TEMPLATES -->
+<!-- Paste these into your Supabase Dashboard: Auth > Email Templates -->
+
+<!-- ========================================== -->
+<!-- 1. CONFIRM SIGNUP (Subject: Welcome to Miles Circle) -->
+<!-- ========================================== -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            background-color: #050505;
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+            color: #ffffff;
+        }
+
+        .card {
+            background: #0D0D0D;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 32px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            margin: 40px auto;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+        }
+
+        .accent {
+            color: #D2554E;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 900;
+            margin-bottom: 20px;
+        }
+
+        p {
+            color: #A0A0A0;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            display: inline-block;
+            background: #D2554E;
+            color: #ffffff !important;
+            padding: 16px 32px;
+            border-radius: 16px;
+            text-decoration: none;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .footer {
+            text-align: center;
+            color: #666666;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="logo">MILES <span class="accent">CIRCLE</span></div>
+        <h1>Welcome to the Circle.</h1>
+        <p>Verify your email to start connecting with your immediate surroundings. We've pinpointed your digital
+            footprint - now it's time to join the community.</p>
+        <a href="{{ .ConfirmationURL }}" class="btn">Confirm Identity</a>
+        <div style="margin-top: 30px; font-size: 11px; opacity: 0.4; word-break: break-all;">{{ .ConfirmationURL }}
+        </div>
+    </div>
+    <div class="footer">Connect with your local circle.<br>© 2026 Miles Circle</div>
+</body>
+
+</html>
+
+
+<!-- ========================================== -->
+<!-- 2. RESET PASSWORD (Subject: Secure your account) -->
+<!-- ========================================== -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            background-color: #050505;
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+            color: #ffffff;
+        }
+
+        .card {
+            background: #0D0D0D;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 32px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            margin: 40px auto;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 30px;
+        }
+
+        .accent {
+            color: #D2554E;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 900;
+            margin-bottom: 20px;
+        }
+
+        p {
+            color: #A0A0A0;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            display: inline-block;
+            background: #D2554E;
+            color: #ffffff !important;
+            padding: 16px 32px;
+            border-radius: 16px;
+            text-decoration: none;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .footer {
+            text-align: center;
+            color: #666666;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="logo">MILES <span class="accent">CIRCLE</span></div>
+        <h1>Secure your account.</h1>
+        <p>We received a request to reset your password. Click the button below to choose a new one and stay connected
+            to your local circle.</p>
+        <a href="{{ .ConfirmationURL }}" class="btn">Reset Password</a>
+        <p style="margin-top: 20px; font-size: 13px; opacity: 0.6;">If you didn't request this change, you can safely
+            ignore this email.</p>
+    </div>
+    <div class="footer">Connect with your local circle.<br>© 2026 Miles Circle</div>
+</body>
+
+</html>
