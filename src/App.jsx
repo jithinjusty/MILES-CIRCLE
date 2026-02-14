@@ -47,7 +47,10 @@ function App() {
     const [authLoading, setAuthLoading] = useState(true);
     const [session, setSession] = useState(null)
     const [profile, setProfile] = useState({});
-    const [radius, setRadius] = useState(1);
+    const [radius, setRadius] = useState(() => {
+        const saved = localStorage.getItem('miles_preferred_radius');
+        return saved ? parseFloat(saved) : 1;
+    });
     const [position, setPosition] = useState(INITIAL_POSITION);
     const [runtimeError, setRuntimeError] = useState(null);
     const [locationAvailable, setLocationAvailable] = useState(false);
@@ -83,7 +86,12 @@ function App() {
         if (!isStarting) {
             sliderTimer.current = setTimeout(() => {
                 setIsMapInteracting(false);
-            }, 500); // Shorter delay for snappier feedback
+            }, 500);
+
+            // Persist to profile if logged in
+            if (session?.user) {
+                supabase.from('profiles').update({ preferred_radius: radius }).eq('id', session.user.id).then();
+            }
         }
     }
 
@@ -181,6 +189,10 @@ function App() {
         }
     }, [])
 
+    useEffect(() => {
+        localStorage.setItem('miles_preferred_radius', radius.toString());
+    }, [radius]);
+
     const fetchProfile = async (userId) => {
         try {
             const { data, error } = await supabase
@@ -194,6 +206,7 @@ function App() {
                 if (data.theme_mode === 'light') document.body.classList.add('light-mode');
                 else document.body.classList.remove('light-mode');
 
+                if (data.preferred_radius) setRadius(parseFloat(data.preferred_radius));
                 if (!data.onboarding_completed) setOnboardingStep(1)
             } else if (error && (error.code === 'PGRST116' || error.message.includes('0 rows'))) {
                 // Profile doesn't exist yet, trigger onboarding to collect basic info
