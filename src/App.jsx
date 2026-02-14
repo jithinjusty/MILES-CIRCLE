@@ -792,12 +792,16 @@ function App() {
                                                                     </div>
                                                                 ))}
                                                             </div>
-                                                            <div className="social-links-manager" style={{ marginTop: '2rem', borderTop: '1px solid var(--glass-border)', paddingTop: '2rem' }}>
+                                                            <div className="panel-actions" style={{ marginTop: '2rem' }}>
+                                                                <button className="btn-save-settings" onClick={() => handleUpdateProfile(profile)} disabled={isSavingChanges}>
+                                                                    {isSavingChanges ? 'Syncing...' : 'Save Changes'}
+                                                                </button>
+                                                            </div>
+                                                            <div className="social-links-manager" style={{ marginTop: '3rem', borderTop: '1px solid var(--glass-border)', paddingTop: '2rem' }}>
                                                                 <h4 style={{ color: 'var(--accent-red)' }}>Session Control</h4>
                                                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Securely disconnect your current session from Miles Circle.</p>
                                                                 <button className="btn-save-settings" style={{ background: 'rgba(210, 85, 78, 0.1)', color: 'var(--accent-red)', border: '1px solid var(--accent-red)', boxShadow: 'none' }} onClick={() => setShowLogoutConfirm(true)}>Sign Out of Account</button>
                                                             </div>
-                                                            <div className="panel-actions"><button className="btn-save-settings" onClick={() => handleUpdateProfile(profile)} disabled={isSavingChanges}>{isSavingChanges ? 'Syncing...' : 'Save Changes'}</button></div>
                                                         </div>
                                                     )}
 
