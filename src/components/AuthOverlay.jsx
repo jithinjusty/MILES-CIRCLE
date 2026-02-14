@@ -119,6 +119,22 @@ export default function AuthOverlay({ onInstall }) {
                 </div>
 
                 <div className="onboarding-card-premium" style={{ width: '100%', maxWidth: '440px' }}>
+                    {message && (
+                        <div className={`auth-message-classic ${message.type}`} style={{
+                            marginBottom: '1.5rem',
+                            padding: '16px',
+                            borderRadius: '16px',
+                            fontSize: '0.9rem',
+                            textAlign: 'center',
+                            fontWeight: '700',
+                            background: message.type === 'error' ? 'rgba(210, 85, 78, 0.15)' : 'rgba(52, 168, 83, 0.15)',
+                            color: message.type === 'error' ? '#FF6B6B' : '#4ADE80',
+                            border: `1px solid ${message.type === 'error' ? 'rgba(210, 85, 78, 0.3)' : 'rgba(52, 168, 83, 0.3)'}`
+                        }}>
+                            {message.type === 'error' ? '⚠️ ' : '✅ '}{message.text}
+                        </div>
+                    )}
+
                     {!isForgotPassword && (
                         <div className="auth-tabs" style={{ display: 'flex', gap: '2rem', marginBottom: '2.5rem', borderBottom: '1px solid var(--glass-border)' }}>
                             <button
@@ -253,12 +269,6 @@ export default function AuthOverlay({ onInstall }) {
                             </div>
                         )}
                     </div>
-
-                    {message && (
-                        <div className={`auth-message-classic ${message.type}`} style={{ marginTop: '1.5rem', padding: '12px', borderRadius: '12px', fontSize: '0.85rem', textAlign: 'center', background: message.type === 'error' ? 'rgba(210, 85, 78, 0.1)' : 'rgba(52, 168, 83, 0.1)', color: message.type === 'error' ? 'var(--accent-red)' : '#34A853' }}>
-                            {message.text}
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
