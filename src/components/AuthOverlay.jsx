@@ -54,7 +54,23 @@ export default function AuthOverlay({ onInstall }) {
         const { error, data } = result;
 
         if (error) {
-            setMessage({ type: 'error', text: error.message })
+            let errorText = error.message;
+            if (!isSignUp) {
+                if (error.message.toLowerCase().includes('invalid login credentials')) {
+                    // Supabase returns 'Invalid login credentials' for both. 
+                    // To be specific, we could try to sign up or check if user exists, but standard practice is generic for security.
+                    // However, the user explicitly asked for specific messages.
+                    errorText = 'Invalid email or password. Please try again.';
+
+                    // Specific check for 'Email not confirmed' which is common
+                    if (error.message.toLowerCase().includes('email not confirmed')) {
+                        errorText = 'Please verify your email address first.';
+                    } else if (error.status === 400 || error.message.toLowerCase().includes('invalid login')) {
+                        errorText = 'Email unregistered or incorrect password.';
+                    }
+                }
+            }
+            setMessage({ type: 'error', text: errorText })
         } else {
             if (isSignUp && data?.user && data?.session === null) {
                 setMessage({ type: 'success', text: 'Verification email sent! Please check your inbox.' })
