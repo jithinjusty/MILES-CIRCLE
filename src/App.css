@@ -69,6 +69,8 @@ body {
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, transparent 100%);
     z-index: 100;
     position: relative;
+    pointer-events: auto;
+    /* Allow clicks on header elements like avatar */
 }
 
 .brand-wrap {
@@ -145,7 +147,7 @@ body {
     overflow-y: auto;
     padding: 2rem 1.5rem;
     display: flex;
-    flex-direction: column-reverse;
+    flex-direction: column;
     gap: 1.5rem;
     mask-image: linear-gradient(to bottom, transparent 0%, black 10%);
 }

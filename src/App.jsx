@@ -621,8 +621,14 @@ function App() {
                                                         refreshTrigger={feedTrigger}
                                                         session={session}
                                                         onUserClick={async (userId) => {
-                                                            const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-                                                            if (data) setViewingProfile(data);
+                                                            if (!userId) return;
+                                                            try {
+                                                                const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+                                                                if (error) throw error;
+                                                                if (data) setViewingProfile(data);
+                                                            } catch (err) {
+                                                                console.error("Error viewing profile:", err);
+                                                            }
                                                         }}
                                                     />
                                                     <div className="system-welcome-card">

@@ -32,7 +32,7 @@ export default function PostCard({ post, isMine, onUserClick }) {
                     <div
                         className="user-avatar-btn mini"
                         style={{ width: '32px', height: '32px', borderRadius: '10px', fontSize: '0.8rem' }}
-                        onClick={() => onUserClick?.(post.user_id)}
+                        onClick={(e) => { e.stopPropagation(); onUserClick?.(post.user_id); }}
                     >
                         {post?.avatar_url ? <img src={post.avatar_url} alt="" /> : initial}
                     </div>
@@ -40,7 +40,7 @@ export default function PostCard({ post, isMine, onUserClick }) {
                         <span
                             className="author-name"
                             style={{ fontSize: '0.9rem', fontWeight: '800', cursor: 'pointer' }}
-                            onClick={() => onUserClick?.(post.user_id)}
+                            onClick={(e) => { e.stopPropagation(); onUserClick?.(post.user_id); }}
                         >
                             {name}
                         </span>
