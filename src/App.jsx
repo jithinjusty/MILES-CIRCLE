@@ -92,6 +92,7 @@ function App() {
     const [isRecovering, setIsRecovering] = useState(false);
     const [newPassword, setNewPassword] = useState('');
     const [confirmNewPassword, setConfirmNewPassword] = useState('');
+    const [currentPassword, setCurrentPassword] = useState('');
     const sliderTimer = useRef(null);
     const watchId = useRef(null);
 
@@ -270,22 +271,45 @@ function App() {
 
     const handleResetPassword = async (e) => {
         if (e) e.preventDefault();
-        if (newPassword !== confirmNewPassword) return alert("Passwords do not match");
+
+        if (!currentPassword) return alert("Please enter your current password");
+        if (newPassword !== confirmNewPassword) return alert("New passwords do not match");
 
         const hasUpper = /[A-Z]/.test(newPassword);
         const hasLower = /[a-z]/.test(newPassword);
         const hasNumber = /[0-9]/.test(newPassword);
         if (newPassword.length < 8 || !hasUpper || !hasLower || !hasNumber) {
-            return alert("Password must be 8+ chars and include upper, lower, and number.");
+            return alert("New password must be 8+ chars and include upper, lower, and number.");
         }
 
-        const { error } = await supabase.auth.updateUser({ password: newPassword });
-        if (error) alert(error.message);
-        else {
+        setIsSavingChanges(true);
+        try {
+            // Verify current password by attempting to re-authenticate
+            const { error: authError } = await supabase.auth.signInWithPassword({
+                email: session.user.email,
+                password: currentPassword
+            });
+
+            if (authError) {
+                throw new Error("Current password incorrect. Verification failed.");
+            }
+
+            // Update to new password
+            const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+            if (updateError) throw updateError;
+
             alert("Password updated successfully!");
-            setIsRecovering(false);
+            setCurrentPassword('');
             setNewPassword('');
             setConfirmNewPassword('');
+
+            // Redirect to feeds (chat mode)
+            setShowSettings(false);
+            setIsMapInteracting(false);
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            setIsSavingChanges(false);
         }
     }
 
@@ -825,9 +849,12 @@ function App() {
                                                         <div className="settings-panel anim-fade-in">
                                                             <div className="panel-header"><h2>Security & Privacy</h2><p>Manage your credentials and account safety.</p></div>
                                                             <form onSubmit={handleResetPassword} className="security-form">
-                                                                <div className="field-block"><label>New Secret Password</label><input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required /></div>
-                                                                <div className="field-block"><label>Confirm Secret Password</label><input type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} required /></div>
-                                                                <button type="submit" className="btn-security-update">Update Password</button>
+                                                                <div className="field-block"><label>Current Secret Password</label><input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder="Type old password..." required /></div>
+                                                                <div className="field-block"><label>New Secret Password</label><input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="8+ chars, upper, lower, number..." required /></div>
+                                                                <div className="field-block"><label>Confirm Secret Password</label><input type="password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} placeholder="Repeat new password..." required /></div>
+                                                                <button type="submit" className="btn-security-update" disabled={isSavingChanges}>
+                                                                    {isSavingChanges ? 'Syncing...' : 'Update Password'}
+                                                                </button>
                                                             </form>
                                                         </div>
                                                     )}
