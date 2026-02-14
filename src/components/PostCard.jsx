@@ -27,29 +27,39 @@ export default function PostCard({ post, isMine, onUserClick }) {
             alignSelf: isMine ? 'flex-end' : 'flex-start',
             boxShadow: '0 10px 30px rgba(0,0,0,0.15)'
         }}>
-            {!isMine && (
-                <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem' }}>
-                    <div
-                        className="user-avatar-btn mini"
-                        style={{ width: '32px', height: '32px', borderRadius: '10px', fontSize: '0.8rem' }}
+            <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '1rem', flexDirection: isMine ? 'row-reverse' : 'row' }}>
+                <div
+                    className="user-avatar-btn mini"
+                    style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '10px',
+                        fontSize: '0.8rem',
+                        border: isMine ? '1px solid rgba(255,255,255,0.3)' : '1px solid var(--glass-border)',
+                        background: isMine ? 'rgba(255,255,255,0.1)' : 'var(--panel-bg)'
+                    }}
+                    onClick={(e) => { e.stopPropagation(); onUserClick?.(post.user_id); }}
+                >
+                    {post?.avatar_url ? <img src={post.avatar_url} alt="" /> : initial}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
+                    <span
+                        className="author-name"
+                        style={{
+                            fontSize: '0.9rem',
+                            fontWeight: '800',
+                            cursor: 'pointer',
+                            color: isMine ? 'white' : 'var(--accent-red)'
+                        }}
                         onClick={(e) => { e.stopPropagation(); onUserClick?.(post.user_id); }}
                     >
-                        {post?.avatar_url ? <img src={post.avatar_url} alt="" /> : initial}
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span
-                            className="author-name"
-                            style={{ fontSize: '0.9rem', fontWeight: '800', cursor: 'pointer' }}
-                            onClick={(e) => { e.stopPropagation(); onUserClick?.(post.user_id); }}
-                        >
-                            {name}
-                        </span>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', opacity: 0.8 }}>
-                            {formatTimeAgo(post?.created_at)}
-                        </span>
-                    </div>
+                        {isMine ? 'You' : name}
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: isMine ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)', opacity: 0.8 }}>
+                        {formatTimeAgo(post?.created_at)}
+                    </span>
                 </div>
-            )}
+            </div>
 
             <div className="message-content" style={{
                 fontSize: '1rem',
@@ -80,11 +90,6 @@ export default function PostCard({ post, isMine, onUserClick }) {
                 }) : ''}
             </div>
 
-            {isMine && (
-                <div className="mine-timestamp" style={{ textAlign: 'right', marginTop: '8px', opacity: 0.7, fontSize: '0.7rem' }}>
-                    {formatTimeAgo(post?.created_at)}
-                </div>
-            )}
         </div>
     )
 }
