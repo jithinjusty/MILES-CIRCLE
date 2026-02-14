@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { X, ShieldCheck, FileText, Lock } from 'lucide-react'
 
 export default function AuthOverlay({ onInstall }) {
     const [email, setEmail] = useState('')
@@ -9,6 +10,8 @@ export default function AuthOverlay({ onInstall }) {
     const [message, setMessage] = useState(null)
     const [isSignUp, setIsSignUp] = useState(false)
     const [isForgotPassword, setIsForgotPassword] = useState(false)
+    const [showTerms, setShowTerms] = useState(false)
+    const [policyType, setPolicyType] = useState(null) // 'terms' | 'privacy'
 
     const validatePassword = (pass) => {
         const hasUpper = /[A-Z]/.test(pass);
@@ -249,6 +252,17 @@ export default function AuthOverlay({ onInstall }) {
                             <button type="submit" className="btn-onboarding-next" disabled={loading} style={{ marginTop: '1.2rem' }}>
                                 {loading ? 'Authenticating...' : (isSignUp ? 'Create your Circle' : 'Enter the Circle')}
                             </button>
+
+                            <p style={{
+                                fontSize: '0.75rem',
+                                color: 'var(--text-secondary)',
+                                textAlign: 'center',
+                                marginTop: '1rem',
+                                lineHeight: '1.4'
+                            }}>
+                                By continuing, you comply with Miles Circle's <br />
+                                <button type="button" onClick={() => { setPolicyType('terms'); setShowTerms(true); }} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', padding: 0, textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit' }}>Terms & Conditions</button> and <button type="button" onClick={() => { setPolicyType('privacy'); setShowTerms(true); }} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', padding: 0, textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit' }}>Privacy Policy</button>.
+                            </p>
                         </form>
                     )}
 
@@ -283,6 +297,73 @@ export default function AuthOverlay({ onInstall }) {
                         )}
                     </div>
                 </div>
+
+                {showTerms && (
+                    <div className="modal-overlay" style={{ zIndex: 10000 }} onClick={() => setShowTerms(false)}>
+                        <div className="onboarding-card-premium" style={{
+                            maxWidth: '700px',
+                            maxHeight: '80vh',
+                            overflowY: 'auto',
+                            position: 'relative',
+                            padding: '3rem 2rem'
+                        }} onClick={e => e.stopPropagation()}>
+                            <button
+                                onClick={() => setShowTerms(false)}
+                                style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                            >
+                                <X size={24} />
+                            </button>
+
+                            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                                {policyType === 'terms' ? <FileText size={48} color="var(--accent-red)" /> : <ShieldCheck size={48} color="var(--accent-red)" />}
+                                <h2 style={{ fontSize: '2rem', fontWeight: '950', marginTop: '1rem' }}>
+                                    {policyType === 'terms' ? 'Terms of Service' : 'Privacy Policy'}
+                                </h2>
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Last updated: February 2026</p>
+                            </div>
+
+                            <div className="policy-content" style={{ color: 'rgba(255,255,255,0.8)', lineHeight: '1.8', fontSize: '0.95rem' }}>
+                                {policyType === 'terms' ? (
+                                    <>
+                                        <h3>1. Acceptance of Terms</h3>
+                                        <p>By entering Miles Circle, you agree to be bound by these local community standards. We are a proximity-based social network focused on real-world interactions.</p>
+
+                                        <h3>2. User Conduct</h3>
+                                        <p>Users must remain respectful to their immediate neighbors. Harassment, illegal content, or coordinated disruption of the local sphere will result in immediate "Circle Exclusion" (Banning).</p>
+
+                                        <h3>3. Location Accuracy</h3>
+                                        <p>You acknowledge that Miles Circle relies on real-time GPS data. Providing false location data or using "spoofers" is a violation of our core proximity mission.</p>
+
+                                        <h3>4. Content Ownership</h3>
+                                        <p>You retain ownership of your posts, but grant Miles Circle a license to distribute this content to other users within your designated radius.</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <h3>1. Data Synchronization</h3>
+                                        <p>Your location is synchronized only while the app is active to determine your current "Circle". We do not store historical location traces after you exit the app.</p>
+
+                                        <h3>2. Profile Visibility</h3>
+                                        <p>Your full name and avatar are visible to anyone within your broadcast radius. Private information like mobile numbers and social links are ONLY shared if you explicitly toggle them to "Public".</p>
+
+                                        <h3>3. Real-time Security</h3>
+                                        <p>We use end-to-end security for post distribution. Your proximity data is used strictly for filtering the local feed and is never sold to third-party advertisers.</p>
+
+                                        <h3>4. Account Rights</h3>
+                                        <p>You can request full account deletion at any time via the settings menu. Deletion includes all posts, profiles, and associated metadata within 30 days.</p>
+                                    </>
+                                )}
+                            </div>
+
+                            <button
+                                className="btn-onboarding-next"
+                                style={{ marginTop: '2rem' }}
+                                onClick={() => setShowTerms(false)}
+                            >
+                                I Understand
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     )
