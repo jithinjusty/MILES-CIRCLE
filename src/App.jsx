@@ -580,7 +580,9 @@ function App() {
                                         <div className="chat-interface">
                                             <header className="app-header-new">
                                                 <div className="brand-wrap">
-                                                    <h1 className="logo-text">MILES</h1>
+                                                    <div className="pulse-circle-mini" style={{ width: '32px', height: '32px', marginRight: '8px' }}>
+                                                        <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                    </div>
                                                     <span className="logo-badge">CIRCLE</span>
                                                 </div>
                                                 <div className="header-actions">
@@ -646,7 +648,12 @@ function App() {
                                         <div className="modal-overlay">
                                             <div className="settings-card-premium">
                                                 <aside className="settings-sidebar">
-                                                    <div className="sidebar-header"><h3 className="logo-text mini">MILES</h3></div>
+                                                    <div className="sidebar-header">
+                                                        <div className="pulse-circle-mini" style={{ width: '24px', height: '24px', marginBottom: '8px' }}>
+                                                            <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                        </div>
+                                                        <span className="logo-badge" style={{ fontSize: '0.5rem' }}>CIRCLE</span>
+                                                    </div>
                                                     <nav className="settings-nav">
                                                         <button className={`nav-item ${activeSettingsTab === 'main' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('main')}><User size={20} /> <span>Profile</span></button>
                                                         <button className={`nav-item ${activeSettingsTab === 'appearance' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('appearance')}><Globe size={20} /> <span>Appearance</span></button>

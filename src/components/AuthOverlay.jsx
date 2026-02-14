@@ -59,7 +59,6 @@ export default function AuthOverlay({ onInstall }) {
                         <div className="pulse-circle" style={{ width: '60px', height: '60px' }}>
                             <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         </div>
-                        <h1 className="logo-text" style={{ fontSize: '2.5rem' }}>MILES</h1>
                     </div>
                     <p className="auth-tagline" style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>Connect with your local circle.</p>
                 </div>
@@ -157,6 +156,6 @@ export default function AuthOverlay({ onInstall }) {
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     )
 }
