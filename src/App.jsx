@@ -182,18 +182,27 @@ function App() {
     }, [])
 
     const fetchProfile = async (userId) => {
-        const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single()
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single()
 
-        if (data) {
-            setProfile(data)
-            if (data.theme_mode === 'light') document.body.classList.add('light-mode');
-            else document.body.classList.remove('light-mode');
+            if (data) {
+                setProfile(data)
+                if (data.theme_mode === 'light') document.body.classList.add('light-mode');
+                else document.body.classList.remove('light-mode');
 
-            if (!data.onboarding_completed) setOnboardingStep(1)
+                if (!data.onboarding_completed) setOnboardingStep(1)
+            } else if (error && (error.code === 'PGRST116' || error.message.includes('0 rows'))) {
+                // Profile doesn't exist yet, trigger onboarding to collect basic info
+                setOnboardingStep(1);
+            }
+        } catch (err) {
+            console.error("Profile fetch error:", err);
+            // Fallback to onboarding if we can't get profile but have a session
+            setOnboardingStep(1);
         }
     }
 
@@ -388,6 +397,15 @@ function App() {
         <div className={`app-container ${isMapInteracting ? 'map-mode' : 'chat-mode'} ${profile?.theme_mode === 'light' ? 'light-mode' : ''}`}>
             {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
 
+            {/* Fallback Loader if Splash is gone but Auth is still checking */}
+            {!showSplash && authLoading && (
+                <div className="locating-overlay" style={{ background: 'var(--panel-bg)' }}>
+                    <div className="pulse-circle">
+                        <div className="spinner"></div>
+                    </div>
+                </div>
+            )}
+
             {!showSplash && !authLoading && (
                 <>
                     {/* AUTHENTICATION STATE */}
@@ -497,7 +515,7 @@ function App() {
                                 <>
                                     {/* STATUS OVERLAYS */}
                                     {(!locationAvailable || locationError) && (
-                                        <div className="locating-overlay anim-fade-in">
+                                        <div className="locating-overlay anim-fade-in" style={{ zIndex: 9000 }}>
                                             <div className="locating-card-premium">
                                                 <div className="status-icon-wrap" style={{ marginBottom: '2rem' }}>
                                                     {locationError ? (
@@ -525,9 +543,22 @@ function App() {
                                                     </div>
                                                 )}
 
-                                                <button className="btn-onboarding-next" style={{ width: '100%' }} onClick={() => window.location.reload()}>
-                                                    {locationError ? 'Connect and Retry' : 'Optimize Signal'}
-                                                </button>
+                                                <div className="status-actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
+                                                    <button className="btn-onboarding-next" onClick={() => window.location.reload()}>
+                                                        {locationError ? 'Connect and Retry' : 'Check Permission'}
+                                                    </button>
+                                                    <button
+                                                        className="nav-item"
+                                                        style={{ justifyContent: 'center', background: 'transparent' }}
+                                                        onClick={() => {
+                                                            // Failsafe: Set a default location if user is stuck
+                                                            setPosition([0, 0]);
+                                                            setLocationAvailable(true);
+                                                        }}
+                                                    >
+                                                        Continue with Offline Map
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
