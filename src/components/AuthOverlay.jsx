@@ -55,7 +55,11 @@ export default function AuthOverlay({ onInstall }) {
 
         if (error) {
             let errorText = error.message;
-            if (!isSignUp) {
+            if (isSignUp) {
+                if (error.message.toLowerCase().includes('already registered')) {
+                    errorText = 'This email ID is already registered with Miles Circle.';
+                }
+            } else {
                 if (error.message.toLowerCase().includes('invalid login credentials')) {
                     // Supabase returns 'Invalid login credentials' for both. 
                     // To be specific, we could try to sign up or check if user exists, but standard practice is generic for security.
