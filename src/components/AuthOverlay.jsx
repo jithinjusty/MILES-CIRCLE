@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { X, ShieldCheck, FileText, Lock } from 'lucide-react'
+import { X, ShieldCheck, FileText, Lock, Eye, EyeOff } from 'lucide-react'
 
 export default function AuthOverlay({ onInstall }) {
     const [email, setEmail] = useState('')
@@ -12,6 +12,7 @@ export default function AuthOverlay({ onInstall }) {
     const [isForgotPassword, setIsForgotPassword] = useState(false)
     const [showTerms, setShowTerms] = useState(false)
     const [policyType, setPolicyType] = useState(null) // 'terms' | 'privacy'
+    const [showPassword, setShowPassword] = useState(false)
 
     const validatePassword = (pass) => {
         const hasUpper = /[A-Z]/.test(pass);
@@ -222,30 +223,48 @@ export default function AuthOverlay({ onInstall }) {
                                         <button type="button" onClick={() => setIsForgotPassword(true)} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', fontSize: '0.7rem', fontWeight: '800', cursor: 'pointer', padding: 0 }}>FORGOT?</button>
                                     )}
                                 </div>
-                                <input
-                                    type="password"
-                                    placeholder={isSignUp ? "Min 8 chars, A-z, 0-9" : "Enter Password"}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="auth-input-classic"
-                                    style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', fontSize: '1rem', outline: 'none' }}
-                                    required
-                                    minLength={isSignUp ? 8 : 6}
-                                />
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        placeholder={isSignUp ? "Min 8 chars, A-z, 0-9" : "Enter Password"}
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="auth-input-classic"
+                                        style={{ width: '100%', padding: '16px', paddingRight: '50px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', fontSize: '1rem', outline: 'none' }}
+                                        required
+                                        minLength={isSignUp ? 8 : 6}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '5px' }}
+                                    >
+                                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                    </button>
+                                </div>
                             </div>
 
                             {isSignUp && (
                                 <div className="field-block">
                                     <label style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>Confirm Password</label>
-                                    <input
-                                        type="password"
-                                        placeholder="Repeat Password"
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="auth-input-classic"
-                                        style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', fontSize: '1rem', outline: 'none' }}
-                                        required
-                                    />
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            type={showPassword ? "text" : "password"}
+                                            placeholder="Repeat Password"
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            className="auth-input-classic"
+                                            style={{ width: '100%', padding: '16px', paddingRight: '50px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', fontSize: '1rem', outline: 'none' }}
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '5px' }}
+                                        >
+                                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        </button>
+                                    </div>
                                 </div>
                             )}
 
