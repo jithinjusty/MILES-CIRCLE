@@ -160,8 +160,8 @@ body {
     overflow-y: auto;
     padding: 1.5rem;
     display: flex;
-    flex-direction: column-reverse;
-    /* Keep newest messages at bottom */
+    flex-direction: column;
+    /* Start from top, flow downwards */
     gap: 1.5rem;
     mask-image: linear-gradient(to bottom, transparent 0%, black 10%);
     min-height: 0;
