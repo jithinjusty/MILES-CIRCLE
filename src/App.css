@@ -137,6 +137,9 @@ body {
     display: flex;
     flex-direction: column;
     pointer-events: none;
+    height: 100%;
+    /* Ensure it matches parent */
+    overflow: hidden;
 }
 
 .chat-center-container {
@@ -147,16 +150,21 @@ body {
     display: flex;
     flex-direction: column;
     pointer-events: auto;
+    min-height: 0;
+    /* Critical for nested flex scrolling */
+    position: relative;
 }
 
 .chat-messages-scroll {
     flex: 1;
     overflow-y: auto;
-    padding: 2rem 1.5rem;
+    padding: 1.5rem;
     display: flex;
-    flex-direction: column;
+    flex-direction: column-reverse;
+    /* Keep newest messages at bottom */
     gap: 1.5rem;
     mask-image: linear-gradient(to bottom, transparent 0%, black 10%);
+    min-height: 0;
 }
 
 .chat-messages-scroll::-webkit-scrollbar {
@@ -164,7 +172,8 @@ body {
 }
 
 .chat-input-wrapper {
-    margin: 1rem 1.5rem 2rem;
+    margin: 0.5rem 1rem 1.5rem;
+    /* Reduced margins for better mobile visibility */
     background: var(--chat-bg);
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);

@@ -101,7 +101,7 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     }
 
     return (
-        <div className="app-feed-container" style={{ width: '100%', display: 'flex', flexDirection: 'column-reverse', gap: '2rem', padding: '1rem 0 3rem' }}>
+        <div className="app-feed-container" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingBottom: '2rem' }}>
             {posts.map((post) => (
                 <PostCard
                     key={post.id}
