@@ -1292,7 +1292,7 @@ body {
     align-items: center;
     gap: 2.5rem;
     width: 100%;
-    max-width: 320px;
+    max-width: 400px;
     padding: 2rem;
 }
 
@@ -1326,6 +1326,7 @@ body {
     text-transform: uppercase;
     color: white;
     text-align: center;
+    white-space: nowrap;
     opacity: 0;
     transform: translateY(10px);
     animation: fadeUp 1s 0.3s forwards cubic-bezier(0.19, 1, 0.22, 1);
