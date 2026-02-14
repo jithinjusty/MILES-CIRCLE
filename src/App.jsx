@@ -601,10 +601,10 @@ function App() {
                                         <div className="chat-interface">
                                             <header className="app-header-new">
                                                 <div className="brand-wrap">
-                                                    <div className="pulse-circle-mini" style={{ width: '32px', height: '32px', marginRight: '8px' }}>
+                                                    <div className="pulse-circle-mini" style={{ width: '40px', height: '40px', marginRight: '12px' }}>
                                                         <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                                     </div>
-                                                    <span className="logo-badge">CIRCLE</span>
+                                                    <h1 className="logo-text">MILES <span className="logo-accent">CIRCLE</span></h1>
                                                 </div>
                                                 <div className="header-actions">
                                                     <div className="user-avatar-btn" onClick={() => setShowSettings(true)}>
