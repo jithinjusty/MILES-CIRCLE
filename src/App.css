@@ -497,6 +497,32 @@ body {
     flex: 1;
     padding: 3rem;
     overflow-y: auto;
+    position: relative;
+}
+
+.btn-close-settings-top {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+    z-index: 10;
+}
+
+.btn-close-settings-top:hover {
+    background: var(--accent-red);
+    color: white;
+    border-color: var(--accent-red);
+    transform: rotate(90deg) scale(1.1);
 }
 
 .panel-header h2 {
