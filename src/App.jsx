@@ -92,6 +92,8 @@ function App() {
     const [showInstallBanner, setShowInstallBanner] = useState(false);
     const [isRecovering, setIsRecovering] = useState(false);
     const [showEvents, setShowEvents] = useState(false);
+    const [newEventsCount, setNewEventsCount] = useState(0);
+    const lastEventCheckRef = useRef(null);
     const [newPassword, setNewPassword] = useState('');
     const [confirmNewPassword, setConfirmNewPassword] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
@@ -211,6 +213,54 @@ function App() {
     useEffect(() => {
         localStorage.setItem('miles_preferred_radius', radius.toString());
     }, [radius]);
+
+    // Track new events for notification badge
+    useEffect(() => {
+        if (!session?.user || !locationAvailable) return;
+
+        const lastSeen = localStorage.getItem('miles_last_event_seen');
+
+        // Initial check: count events created since we last opened the events page
+        const checkNewEvents = async () => {
+            try {
+                let query = supabase
+                    .from('events')
+                    .select('id, created_at', { count: 'exact', head: true });
+
+                if (lastSeen) {
+                    query = query.gt('created_at', lastSeen);
+                }
+
+                const { count, error } = await query;
+                if (!error && count > 0) {
+                    setNewEventsCount(count);
+                }
+            } catch (err) {
+                console.error('Event notification check error:', err);
+            }
+        };
+
+        checkNewEvents();
+
+        // Real-time subscription for new events
+        const channel = supabase
+            .channel('event-notifications')
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'events'
+            }, (payload) => {
+                // Don't notify for own events
+                if (payload.new.user_id !== session.user.id) {
+                    setNewEventsCount(prev => prev + 1);
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [session?.user?.id, locationAvailable]);
 
     const fetchProfile = async (userId) => {
         try {
@@ -662,8 +712,11 @@ function App() {
                                                     <h1 className="logo-text">MILES <span className="logo-accent">CIRCLE</span></h1>
                                                 </div>
                                                 <div className="header-actions">
-                                                    <button className="header-events-btn" onClick={() => setShowEvents(true)} title="Events">
+                                                    <button className="header-events-btn" onClick={() => { setShowEvents(true); setNewEventsCount(0); localStorage.setItem('miles_last_event_seen', new Date().toISOString()); }} title="Events">
                                                         <Calendar size={20} />
+                                                        {newEventsCount > 0 && (
+                                                            <span className="events-notif-badge">{newEventsCount > 9 ? '9+' : newEventsCount}</span>
+                                                        )}
                                                     </button>
                                                     <div className="user-avatar-btn" onClick={() => setShowSettings(true)}>
                                                         {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : getInitial()}
