@@ -35,7 +35,12 @@ function MapController({ center, radius, isInteracting }) {
     useEffect(() => {
         if (!map || !center || isNaN(center[0]) || isNaN(center[1])) return;
 
-        // Use a safe calculation for bounds to avoid 'layerPointToLatLng' crash
+        // Ensure north-up: disable touch rotation if any plugin enabled it
+        if (map.touchRotate) map.touchRotate.disable();
+        if (map.compassBearing) map.compassBearing.disable();
+        // Force the map pane to have no rotation transform
+        const mapPane = map.getPane('mapPane');
+        if (mapPane) mapPane.style.transform = mapPane.style.transform?.replace(/rotate\([^)]+\)/g, '') || '';
         const metersPerDegree = 111320;
         const latDelta = (radius * 1609.34) / metersPerDegree;
         // Lon delta depends on latitude
