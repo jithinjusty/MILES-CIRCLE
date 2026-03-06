@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { X, Send, MapPin, Calendar, Image, Loader, Crosshair, Check } from 'lucide-react'
+import { X, Send, MapPin, Calendar, Image, Loader, Crosshair, Check, Clock, AlertTriangle } from 'lucide-react'
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
 import { supabase } from '../lib/supabase'
 
@@ -17,6 +17,7 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
     const [eventDate, setEventDate] = useState('')
+    const [expiresAt, setExpiresAt] = useState('')
     const [imageFile, setImageFile] = useState(null)
     const [imagePreview, setImagePreview] = useState(null)
     const [loading, setLoading] = useState(false)
@@ -117,6 +118,7 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                     description: description.trim() || null,
                     image_url: imageUrl,
                     event_date: eventDate || null,
+                    expires_at: expiresAt || null,
                     location_lat: eventLocation.lat,
                     location_lng: eventLocation.lng,
                     location_name: `${eventLocation.lat.toFixed(6)}, ${eventLocation.lng.toFixed(6)}`
@@ -232,7 +234,6 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                             </button>
                         ) : (
                             <div className="gps-location-selected">
-                                {/* Mini Map */}
                                 <div className="gps-map-preview">
                                     <MapContainer
                                         center={[eventLocation.lat, eventLocation.lng]}
@@ -250,8 +251,6 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                                         <MapUpdater center={[eventLocation.lat, eventLocation.lng]} />
                                     </MapContainer>
                                 </div>
-
-                                {/* Coordinates Display */}
                                 <div className="gps-coords-panel">
                                     <div className="gps-status-badge">
                                         <Check size={14} />
@@ -297,6 +296,27 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                                 onChange={e => setEventDate(e.target.value)}
                             />
                         </div>
+                    </div>
+
+                    {/* Expiry Date */}
+                    <div className="event-field">
+                        <label>
+                            <span className="label-with-icon">
+                                <AlertTriangle size={14} />
+                                Expiry Date & Time
+                            </span>
+                        </label>
+                        <div className="field-with-icon expiry-field">
+                            <Clock size={18} className="field-icon" />
+                            <input
+                                type="datetime-local"
+                                value={expiresAt}
+                                onChange={e => setExpiresAt(e.target.value)}
+                            />
+                        </div>
+                        <span className="field-note">
+                            ⏰ Event will auto-hide after this time. Leave empty for no expiry.
+                        </span>
                     </div>
 
                     {error && (

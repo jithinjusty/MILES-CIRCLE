@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MapPin, Calendar, Navigation, Star, Crosshair } from 'lucide-react'
+import { MapPin, Calendar, Navigation, Star, Crosshair, Trash2, Clock, AlertTriangle } from 'lucide-react'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import { supabase } from '../lib/supabase'
 
@@ -11,11 +11,13 @@ const REACTION_TYPES = [
     { type: 'wow', emoji: '🤩', label: 'Wow' },
 ]
 
-export default function EventCard({ event, session, userReaction, onReactionChange, onUserClick }) {
+export default function EventCard({ event, session, userReaction, onReactionChange, onUserClick, onDelete }) {
     const [showReactions, setShowReactions] = useState(false)
     const [isReacting, setIsReacting] = useState(false)
     const [localReactionCount, setLocalReactionCount] = useState(event?.reaction_count || 0)
     const [localUserReaction, setLocalUserReaction] = useState(userReaction)
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
 
     const formatTimeAgo = (timestamp) => {
         if (!timestamp) return ''
@@ -45,6 +47,24 @@ export default function EventCard({ event, session, userReaction, onReactionChan
         if (isToday) return `Today at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
         if (isTomorrow) return `Tomorrow at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
         return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    }
+
+    const formatExpiry = (dateStr) => {
+        if (!dateStr) return null
+        const d = new Date(dateStr)
+        const now = new Date()
+        const diffMs = d - now
+
+        if (diffMs <= 0) return 'Expired'
+
+        const diffMins = Math.floor(diffMs / 60000)
+        const diffHours = Math.floor(diffMins / 60)
+        const diffDays = Math.floor(diffHours / 24)
+
+        if (diffMins < 60) return `Expires in ${diffMins}m`
+        if (diffHours < 24) return `Expires in ${diffHours}h`
+        if (diffDays < 7) return `Expires in ${diffDays}d`
+        return `Expires ${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}`
     }
 
     const handleReaction = async (reactionType) => {
@@ -102,6 +122,25 @@ export default function EventCard({ event, session, userReaction, onReactionChan
         }
     }
 
+    const handleDelete = async () => {
+        setIsDeleting(true)
+        try {
+            const { error } = await supabase
+                .from('events')
+                .delete()
+                .eq('id', event.id)
+                .eq('user_id', session.user.id)
+
+            if (error) throw error
+            onDelete?.(event.id)
+        } catch (err) {
+            console.error('Delete error:', err)
+        } finally {
+            setIsDeleting(false)
+            setShowDeleteConfirm(false)
+        }
+    }
+
     const isMine = event.user_id === session?.user?.id
     const name = event?.full_name || 'Anonymous'
     const initial = (event?.full_name || '?')[0].toUpperCase()
@@ -109,6 +148,7 @@ export default function EventCard({ event, session, userReaction, onReactionChan
         ? REACTION_TYPES.find(r => r.type === localUserReaction)?.emoji
         : null
     const hasCoords = event.location_lat && event.location_lng
+    const expiryText = formatExpiry(event.expires_at)
 
     return (
         <div className="event-card anim-fade-in">
@@ -120,6 +160,12 @@ export default function EventCard({ event, session, userReaction, onReactionChan
                         <div className="event-date-badge">
                             <Calendar size={14} />
                             <span>{formatEventDate(event.event_date)}</span>
+                        </div>
+                    )}
+                    {expiryText && (
+                        <div className={`event-expiry-badge ${expiryText === 'Expired' ? 'expired' : ''}`}>
+                            <Clock size={12} />
+                            <span>{expiryText}</span>
                         </div>
                     )}
                 </div>
@@ -148,7 +194,33 @@ export default function EventCard({ event, session, userReaction, onReactionChan
                         <Star size={14} />
                         <span>{event?.poster_points || 0}</span>
                     </div>
+                    {/* Delete button for own events */}
+                    {isMine && (
+                        <button
+                            className="event-delete-btn"
+                            onClick={() => setShowDeleteConfirm(true)}
+                            title="Delete event"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    )}
                 </div>
+
+                {/* Delete Confirmation */}
+                {showDeleteConfirm && (
+                    <div className="event-delete-confirm">
+                        <AlertTriangle size={18} />
+                        <span>Delete this event?</span>
+                        <div className="delete-confirm-actions">
+                            <button className="delete-cancel" onClick={() => setShowDeleteConfirm(false)}>
+                                Cancel
+                            </button>
+                            <button className="delete-yes" onClick={handleDelete} disabled={isDeleting}>
+                                {isDeleting ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Title */}
                 <h3 className="event-card-title">{event.title}</h3>
@@ -156,6 +228,14 @@ export default function EventCard({ event, session, userReaction, onReactionChan
                 {/* Description */}
                 {event.description && (
                     <p className="event-card-desc">{event.description}</p>
+                )}
+
+                {/* Expiry (if no image to show badge on) */}
+                {!event.image_url && expiryText && (
+                    <div className={`event-meta-row expiry-row ${expiryText === 'Expired' ? 'expired' : ''}`}>
+                        <Clock size={16} />
+                        <span>{expiryText}</span>
+                    </div>
                 )}
 
                 {/* Date (if no image to pin it on) */}
@@ -166,13 +246,13 @@ export default function EventCard({ event, session, userReaction, onReactionChan
                     </div>
                 )}
 
-                {/* GPS Location with Mini Map */}
+                {/* GPS Location with Zoomed-Out Mini Map */}
                 {hasCoords && (
                     <div className="event-location-block">
                         <div className="event-mini-map-wrap">
                             <MapContainer
                                 center={[event.location_lat, event.location_lng]}
-                                zoom={15}
+                                zoom={13}
                                 zoomControl={false}
                                 dragging={false}
                                 scrollWheelZoom={false}

@@ -2529,6 +2529,171 @@ body {
 }
 
 /* ============================
+   EVENT DELETE & EXPIRY
+   ============================ */
+
+/* Delete Button */
+.event-delete-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: transparent;
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    flex-shrink: 0;
+    opacity: 0.6;
+}
+
+.event-delete-btn:hover {
+    opacity: 1;
+    background: rgba(239, 68, 68, 0.12);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+    transform: scale(1.05);
+}
+
+/* Delete Confirmation */
+.event-delete-confirm {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 14px;
+    margin-bottom: 1rem;
+    animation: reactionPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.event-delete-confirm svg {
+    color: #ef4444;
+    flex-shrink: 0;
+}
+
+.event-delete-confirm span {
+    flex: 1;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.delete-confirm-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.delete-cancel {
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+}
+
+.delete-cancel:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.delete-yes {
+    padding: 6px 14px;
+    border-radius: 8px;
+    background: #ef4444;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-weight: 800;
+    font-size: 0.75rem;
+    transition: all 0.2s;
+}
+
+.delete-yes:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+}
+
+.delete-yes:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Expiry Badge (on image) */
+.event-expiry-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(245, 158, 11, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 6px 12px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.event-expiry-badge.expired {
+    background: rgba(239, 68, 68, 0.85);
+}
+
+/* Expiry Meta Row */
+.event-meta-row.expiry-row {
+    border-color: rgba(245, 158, 11, 0.2);
+    background: rgba(245, 158, 11, 0.05);
+}
+
+.event-meta-row.expiry-row svg {
+    color: #f59e0b;
+}
+
+.event-meta-row.expiry-row.expired {
+    border-color: rgba(239, 68, 68, 0.2);
+    background: rgba(239, 68, 68, 0.05);
+}
+
+.event-meta-row.expiry-row.expired svg {
+    color: #ef4444;
+}
+
+/* Expiry Field Label Icon */
+.label-with-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.label-with-icon svg {
+    color: #f59e0b;
+}
+
+/* Expiry field border accent */
+.expiry-field {
+    border-color: rgba(245, 158, 11, 0.2);
+}
+
+.expiry-field:focus-within {
+    border-color: #f59e0b !important;
+}
+
+.expiry-field .field-icon {
+    color: #f59e0b;
+}
+
+/* ============================
    GPS LOCATION PICKER
    ============================ */
 

@@ -160,6 +160,7 @@ export default function EventsPage({ position, radius, session, onBack, onUserCl
                                 userReaction={userReactions[event.id]}
                                 onReactionChange={handleReactionChange}
                                 onUserClick={onUserClick}
+                                onDelete={(eventId) => setEvents(prev => prev.filter(e => e.id !== eventId))}
                             />
                         ))}
                     </div>
