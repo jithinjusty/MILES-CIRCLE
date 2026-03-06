@@ -71,7 +71,11 @@ function App() {
     const [profile, setProfile] = useState({});
     const [radius, setRadius] = useState(() => {
         const saved = localStorage.getItem('miles_preferred_radius');
-        return saved ? parseFloat(saved) : 1;
+        const val = saved ? parseFloat(saved) : 1;
+        return Math.min(val, 20);
+    });
+    const [distanceUnit, setDistanceUnit] = useState(() => {
+        return localStorage.getItem('miles_distance_unit') || 'miles';
     });
     const [position, setPosition] = useState(INITIAL_POSITION);
     const [runtimeError, setRuntimeError] = useState(null);
@@ -754,7 +758,7 @@ function App() {
                                                     />
                                                     <div className="system-welcome-card">
                                                         <p className="welcome-tag">Proximity Active</p>
-                                                        <p className="welcome-text">Connected to the <strong>{radius} mile</strong> sphere around your current location.</p>
+                                                        <p className="welcome-text">Connected to the <strong>{distanceUnit === 'km' ? (radius * 1.60934).toFixed(1) + ' km' : radius + ' mile'}</strong> sphere around your current location.</p>
                                                     </div>
                                                 </div>
 
@@ -782,12 +786,12 @@ function App() {
                                                 </button>
                                                 {!isSliderHidden && (
                                                     <div className="slider-controls-wrap">
-                                                        <span className="radius-badge">{radius}m</span>
+                                                        <span className="radius-badge">{distanceUnit === 'km' ? (radius * 1.60934).toFixed(1) + 'km' : radius + 'm'}</span>
                                                         <input
                                                             type="range"
                                                             className="range-vertical"
                                                             min="0.5"
-                                                            max="50"
+                                                            max="20"
                                                             step="0.5"
                                                             value={radius}
                                                             onChange={e => setRadius(parseFloat(e.target.value))}
@@ -795,9 +799,9 @@ function App() {
                                                             onMouseUp={() => handleSliderInteract(false)}
                                                             onTouchStart={() => handleSliderInteract(true)}
                                                             onTouchEnd={() => handleSliderInteract(false)}
-                                                            style={{ '--range-percent': `${((radius - 0.5) / 49.5) * 100}%` }}
+                                                            style={{ '--range-percent': `${((radius - 0.5) / 19.5) * 100}%` }}
                                                         />
-                                                        <span className="slider-label-vertical">Distance</span>
+                                                        <span className="slider-label-vertical">{distanceUnit === 'km' ? 'Distance (km)' : 'Distance'}</span>
                                                         <MapIcon size={20} color="var(--text-secondary)" style={{ marginTop: '10px', opacity: 0.5 }} />
                                                     </div>
                                                 )}
@@ -903,7 +907,13 @@ function App() {
                                                                         <button className={`theme-tab ${profile?.theme_mode === 'light' ? 'active' : ''}`} onClick={() => handleUpdateProfile({ theme_mode: 'light' })}><Globe size={16} /> Light</button>
                                                                     </div>
                                                                 </div>
-                                                                {/* Potential point/color choices can go here */}
+                                                                <div className="appearance-card">
+                                                                    <div className="card-info"><h4>Distance Unit</h4><p>Show radius in miles or kilometers.</p></div>
+                                                                    <div className="theme-toggle-strip">
+                                                                        <button className={`theme-tab ${distanceUnit === 'miles' ? 'active' : ''}`} onClick={() => { setDistanceUnit('miles'); localStorage.setItem('miles_distance_unit', 'miles'); }}>🏁 Miles</button>
+                                                                        <button className={`theme-tab ${distanceUnit === 'km' ? 'active' : ''}`} onClick={() => { setDistanceUnit('km'); localStorage.setItem('miles_distance_unit', 'km'); }}>🌍 Kilometers</button>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     )}
@@ -1038,6 +1048,7 @@ function App() {
                                         <EventsPage
                                             position={position}
                                             radius={radius}
+                                            distanceUnit={distanceUnit}
                                             session={session}
                                             onBack={() => setShowEvents(false)}
                                             onUserClick={async (userId) => {

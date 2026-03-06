@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import EventCard from './EventCard'
 import CreateEventModal from './CreateEventModal'
 
-export default function EventsPage({ position, radius, session, onBack, onUserClick }) {
+export default function EventsPage({ position, radius, distanceUnit = 'miles', session, onBack, onUserClick }) {
     const [events, setEvents] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -102,7 +102,7 @@ export default function EventsPage({ position, radius, session, onBack, onUserCl
                         <Sparkles size={22} className="header-icon" />
                         Local Events
                     </h2>
-                    <p>{radius}-mile radius</p>
+                    <p>{distanceUnit === 'km' ? (radius * 1.60934).toFixed(1) + '-km' : radius + '-mile'} radius</p>
                 </div>
                 <button
                     className="events-create-fab"
@@ -139,7 +139,7 @@ export default function EventsPage({ position, radius, session, onBack, onUserCl
                             <Calendar size={48} />
                         </div>
                         <h3>No Events Nearby</h3>
-                        <p>Nothing happening in your {radius}-mile circle yet. Be the first to share an event!</p>
+                        <p>Nothing happening in your {distanceUnit === 'km' ? (radius * 1.60934).toFixed(1) + '-km' : radius + '-mile'} circle yet. Be the first to share an event!</p>
                         <button
                             className="events-empty-cta"
                             onClick={() => setShowCreate(true)}
