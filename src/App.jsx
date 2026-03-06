@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet'
-import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, ShieldCheck, ChevronRight, Mail, Bug, Info, Database, CreditCard } from 'lucide-react'
+import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, ShieldCheck, ChevronRight, Mail, Bug, Info, Database, CreditCard, Calendar } from 'lucide-react'
 import './App.css'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -26,6 +26,7 @@ const WhatsAppIcon = ({ size = 16, color = "currentColor", className = "" }) => 
 );
 import Feed from './components/Feed'
 import PhotoEditor from './components/PhotoEditor'
+import EventsPage from './components/EventsPage'
 
 const INITIAL_POSITION = null; // No default location, must be detected
 
@@ -90,6 +91,7 @@ function App() {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showInstallBanner, setShowInstallBanner] = useState(false);
     const [isRecovering, setIsRecovering] = useState(false);
+    const [showEvents, setShowEvents] = useState(false);
     const [newPassword, setNewPassword] = useState('');
     const [confirmNewPassword, setConfirmNewPassword] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
@@ -660,6 +662,9 @@ function App() {
                                                     <h1 className="logo-text">MILES <span className="logo-accent">CIRCLE</span></h1>
                                                 </div>
                                                 <div className="header-actions">
+                                                    <button className="header-events-btn" onClick={() => setShowEvents(true)} title="Events">
+                                                        <Calendar size={20} />
+                                                    </button>
                                                     <div className="user-avatar-btn" onClick={() => setShowSettings(true)}>
                                                         {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : getInitial()}
                                                     </div>
@@ -968,6 +973,26 @@ function App() {
                                                 <button className="btn-viewer-close" onClick={() => setViewingProfile(null)}>Dismiss</button>
                                             </div>
                                         </div>
+                                    )}
+
+                                    {/* EVENTS PAGE */}
+                                    {showEvents && (
+                                        <EventsPage
+                                            position={position}
+                                            radius={radius}
+                                            session={session}
+                                            onBack={() => setShowEvents(false)}
+                                            onUserClick={async (userId) => {
+                                                if (!userId) return;
+                                                try {
+                                                    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+                                                    if (error) throw error;
+                                                    if (data) setViewingProfile(data);
+                                                } catch (err) {
+                                                    console.error("Error viewing profile:", err);
+                                                }
+                                            }}
+                                        />
                                     )}
 
                                     {/* PHOTO EDITOR */}
