@@ -109,8 +109,6 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                 imageUrl = publicUrl
             }
 
-            const locationWKT = `POINT(${eventLocation.lng} ${eventLocation.lat})`
-
             const { error: insertError } = await supabase
                 .from('events')
                 .insert([{
@@ -119,7 +117,8 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                     description: description.trim() || null,
                     image_url: imageUrl,
                     event_date: eventDate || null,
-                    location: locationWKT,
+                    location_lat: eventLocation.lat,
+                    location_lng: eventLocation.lng,
                     location_name: `${eventLocation.lat.toFixed(6)}, ${eventLocation.lng.toFixed(6)}`
                 }])
 
