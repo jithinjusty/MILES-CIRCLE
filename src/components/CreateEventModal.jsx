@@ -1,16 +1,28 @@
-import { useState, useRef } from 'react'
-import { X, Send, MapPin, Calendar, Image, Loader } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { X, Send, MapPin, Calendar, Image, Loader, Crosshair, Check } from 'lucide-react'
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet'
 import { supabase } from '../lib/supabase'
+
+function MapUpdater({ center }) {
+    const map = useMap()
+    useEffect(() => {
+        if (center) {
+            map.setView(center, 16, { animate: true, duration: 0.8 })
+        }
+    }, [center, map])
+    return null
+}
 
 export default function CreateEventModal({ position, session, onClose, onEventCreated }) {
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
-    const [locationName, setLocationName] = useState('')
     const [eventDate, setEventDate] = useState('')
     const [imageFile, setImageFile] = useState(null)
     const [imagePreview, setImagePreview] = useState(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
+    const [eventLocation, setEventLocation] = useState(null)
+    const [isLocating, setIsLocating] = useState(false)
     const fileInputRef = useRef(null)
 
     const handleImageSelect = (e) => {
@@ -26,9 +38,50 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
         reader.readAsDataURL(file)
     }
 
+    const handleSelectLocation = () => {
+        setIsLocating(true)
+        setError(null)
+
+        if (!navigator.geolocation) {
+            setError('Geolocation is not supported by your browser')
+            setIsLocating(false)
+            return
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude
+                const lng = pos.coords.longitude
+                const accuracy = pos.coords.accuracy
+                setEventLocation({ lat, lng, accuracy })
+                setIsLocating(false)
+            },
+            (err) => {
+                console.error('GPS Error:', err)
+                if (err.code === 1) {
+                    setError('Location permission denied. Please allow location access.')
+                } else if (err.code === 2) {
+                    setError('Location unavailable. Please try again.')
+                } else {
+                    setError('Location request timed out. Please try again.')
+                }
+                setIsLocating(false)
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        )
+    }
+
+    const handleRemoveLocation = () => {
+        setEventLocation(null)
+    }
+
     const handleSubmit = async (e) => {
         if (e) e.preventDefault()
         if (!title.trim()) return
+        if (!eventLocation) {
+            setError('Please select your GPS location')
+            return
+        }
 
         setLoading(true)
         setError(null)
@@ -39,7 +92,6 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
 
             let imageUrl = null
 
-            // Upload image if selected
             if (imageFile) {
                 const fileExt = imageFile.name.split('.').pop()
                 const fileName = `${user.id}/${Date.now()}.${fileExt}`
@@ -57,7 +109,7 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                 imageUrl = publicUrl
             }
 
-            const locationWKT = `POINT(${position[1]} ${position[0]})`
+            const locationWKT = `POINT(${eventLocation.lng} ${eventLocation.lat})`
 
             const { error: insertError } = await supabase
                 .from('events')
@@ -68,7 +120,7 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                     image_url: imageUrl,
                     event_date: eventDate || null,
                     location: locationWKT,
-                    location_name: locationName.trim() || null
+                    location_name: `${eventLocation.lat.toFixed(6)}, ${eventLocation.lng.toFixed(6)}`
                 }])
 
             if (insertError) throw insertError
@@ -157,24 +209,87 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                         <span className="char-counter">{description.length}/1000</span>
                     </div>
 
-                    {/* Location Name */}
+                    {/* GPS Location Selector */}
                     <div className="event-field">
-                        <div className="field-with-icon">
-                            <MapPin size={18} className="field-icon" />
-                            <input
-                                type="text"
-                                placeholder="Location name (e.g., next to 5th Ave Park)"
-                                value={locationName}
-                                onChange={e => setLocationName(e.target.value)}
-                            />
-                        </div>
-                        <span className="field-note">
-                            📍 Your current GPS coordinates will be attached automatically
-                        </span>
+                        <label>Event Location *</label>
+                        {!eventLocation ? (
+                            <button
+                                type="button"
+                                className="gps-select-btn"
+                                onClick={handleSelectLocation}
+                                disabled={isLocating}
+                            >
+                                {isLocating ? (
+                                    <>
+                                        <Loader size={20} className="spin-icon" />
+                                        <span>Detecting your position...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Crosshair size={20} />
+                                        <span>Use My Current GPS Location</span>
+                                    </>
+                                )}
+                            </button>
+                        ) : (
+                            <div className="gps-location-selected">
+                                {/* Mini Map */}
+                                <div className="gps-map-preview">
+                                    <MapContainer
+                                        center={[eventLocation.lat, eventLocation.lng]}
+                                        zoom={16}
+                                        zoomControl={false}
+                                        dragging={false}
+                                        scrollWheelZoom={false}
+                                        doubleClickZoom={false}
+                                        touchZoom={false}
+                                        attributionControl={false}
+                                        className="gps-mini-map"
+                                    >
+                                        <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                                        <Marker position={[eventLocation.lat, eventLocation.lng]} />
+                                        <MapUpdater center={[eventLocation.lat, eventLocation.lng]} />
+                                    </MapContainer>
+                                </div>
+
+                                {/* Coordinates Display */}
+                                <div className="gps-coords-panel">
+                                    <div className="gps-status-badge">
+                                        <Check size={14} />
+                                        <span>Location Locked</span>
+                                    </div>
+                                    <div className="gps-coords-grid">
+                                        <div className="coord-item">
+                                            <span className="coord-label">LAT</span>
+                                            <span className="coord-value">{eventLocation.lat.toFixed(6)}</span>
+                                        </div>
+                                        <div className="coord-divider"></div>
+                                        <div className="coord-item">
+                                            <span className="coord-label">LNG</span>
+                                            <span className="coord-value">{eventLocation.lng.toFixed(6)}</span>
+                                        </div>
+                                    </div>
+                                    {eventLocation.accuracy && (
+                                        <div className="gps-accuracy">
+                                            <MapPin size={12} />
+                                            <span>Accuracy: ±{Math.round(eventLocation.accuracy)}m</span>
+                                        </div>
+                                    )}
+                                    <button
+                                        type="button"
+                                        className="gps-change-btn"
+                                        onClick={handleRemoveLocation}
+                                    >
+                                        Re-detect Location
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Event Date */}
                     <div className="event-field">
+                        <label>Event Date & Time</label>
                         <div className="field-with-icon">
                             <Calendar size={18} className="field-icon" />
                             <input
@@ -196,7 +311,7 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                         <button
                             type="submit"
                             className="event-submit-btn"
-                            disabled={loading || !title.trim()}
+                            disabled={loading || !title.trim() || !eventLocation}
                         >
                             {loading ? (
                                 <><Loader size={18} className="spin-icon" /> Posting...</>

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { MapPin, Calendar, Navigation, Star, Flame, Heart, Award, Sparkles, User } from 'lucide-react'
+import { MapPin, Calendar, Navigation, Star, Crosshair } from 'lucide-react'
+import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import { supabase } from '../lib/supabase'
 
 const REACTION_TYPES = [
@@ -53,7 +54,6 @@ export default function EventCard({ event, session, userReaction, onReactionChan
 
         try {
             if (localUserReaction === reactionType) {
-                // Remove reaction
                 const { error } = await supabase
                     .from('event_reactions')
                     .delete()
@@ -66,7 +66,6 @@ export default function EventCard({ event, session, userReaction, onReactionChan
                 onReactionChange?.(event.id, null)
             } else {
                 if (localUserReaction) {
-                    // Update existing reaction
                     const { error } = await supabase
                         .from('event_reactions')
                         .update({ reaction_type: reactionType })
@@ -75,7 +74,6 @@ export default function EventCard({ event, session, userReaction, onReactionChan
 
                     if (error) throw error
                 } else {
-                    // New reaction
                     const { error } = await supabase
                         .from('event_reactions')
                         .insert({
@@ -110,6 +108,7 @@ export default function EventCard({ event, session, userReaction, onReactionChan
     const activeReactionEmoji = localUserReaction
         ? REACTION_TYPES.find(r => r.type === localUserReaction)?.emoji
         : null
+    const hasCoords = event.location_lat && event.location_lng
 
     return (
         <div className="event-card anim-fade-in">
@@ -167,11 +166,33 @@ export default function EventCard({ event, session, userReaction, onReactionChan
                     </div>
                 )}
 
-                {/* Location */}
-                {event.location_name && (
-                    <div className="event-meta-row">
-                        <MapPin size={16} />
-                        <span>{event.location_name}</span>
+                {/* GPS Location with Mini Map */}
+                {hasCoords && (
+                    <div className="event-location-block">
+                        <div className="event-mini-map-wrap">
+                            <MapContainer
+                                center={[event.location_lat, event.location_lng]}
+                                zoom={15}
+                                zoomControl={false}
+                                dragging={false}
+                                scrollWheelZoom={false}
+                                doubleClickZoom={false}
+                                touchZoom={false}
+                                attributionControl={false}
+                                className="event-mini-map"
+                            >
+                                <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                                <Marker position={[event.location_lat, event.location_lng]} />
+                            </MapContainer>
+                        </div>
+                        <div className="event-coords-info">
+                            <div className="coords-row">
+                                <Crosshair size={14} />
+                                <span className="coords-text">
+                                    {parseFloat(event.location_lat).toFixed(6)}, {parseFloat(event.location_lng).toFixed(6)}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 )}
 
