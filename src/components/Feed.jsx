@@ -220,8 +220,8 @@ Alex|Hey! The weather is great today, and you should check out Joe's Cafe!`;
                     }
                 } else if (msgLower.includes("traffic")) {
                     aiReply = "Traffic isn't looking too bad from where I am, but definitely pull up your maps router just to be safe!";
-                } else if (msgLower.includes("hi") || msgLower.includes("hello") || msgLower.includes("hey")) {
-                    const greetings = ["Hey there!", "Hello!", "Hi! Welcome to the neighborhood feed.", "Hey! How's it going?"];
+                } else if (msgLower.includes("hi") || msgLower.includes("hello") || msgLower.includes("hey") || msgLower.includes("hola") || msgLower.includes("bonjour")) {
+                    const greetings = ["Hey there!", "Hello!", "Hi! Welcome to the neighborhood feed.", "Hey! How's it going?", "Hola! Bienvenidos.", "Bonjour!"];
                     aiReply = greetings[Math.floor(Math.random() * greetings.length)] + " Let me know if you need any local recommendations.";
                 } else if (msgLower.includes("how are you") || msgLower.includes("what's up")) {
                     aiReply = "I'm doing great, thanks for asking! Just hanging out nearby. How about you?";
