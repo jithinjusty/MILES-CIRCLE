@@ -140,37 +140,71 @@ Example:
 Alex|Hey! The weather is great today, and you should check out Joe's Cafe!`;
 
                 let resText = "";
+                const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
                 const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
-                if (geminiKey) {
-                    try {
-                        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                                contents: [{ parts: [{ text: prompt }] }],
-                                generationConfig: { temperature: 0.7, maxOutputTokens: 200 }
-                            })
-                        });
-                        const geminiData = await geminiRes.json();
-                        if (geminiData.candidates && geminiData.candidates.length > 0) {
-                            resText = geminiData.candidates[0].content.parts[0].text;
-                        } else {
-                            throw new Error("Gemini invalid response");
-                        }
-                    } catch (gErr) {
-                        console.error("Gemini failed, falling back to Pollinations:", gErr);
-                        const url = `https://text.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=openai`;
-                        const res = await fetch(url);
-                        if (!res.ok) throw new Error("Pollinations failed with status: " + res.status);
-                        resText = await res.text();
-                    }
-                } else {
-                    // Use Pollinations natively if no Gemini key
+                const fetchPollinations = async () => {
                     const url = `https://text.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=openai`;
                     const res = await fetch(url);
-                    if (!res.ok) throw new Error("AI failed with status: " + res.status);
-                    resText = await res.text();
+                    if (!res.ok) throw new Error("Pollinations failed with status: " + res.status);
+                    return await res.text();
+                };
+
+                const fetchGemini = async () => {
+                    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: { temperature: 0.7, maxOutputTokens: 200 }
+                        })
+                    });
+                    const geminiData = await geminiRes.json();
+                    if (geminiData.candidates && geminiData.candidates.length > 0) {
+                        return geminiData.candidates[0].content.parts[0].text;
+                    }
+                    throw new Error("Gemini invalid response");
+                };
+
+                if (openRouterKey) {
+                    try {
+                        const openRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                            method: "POST",
+                            headers: {
+                                "Authorization": `Bearer ${openRouterKey}`,
+                                "HTTP-Referer": "https://milescircle.app",
+                                "X-Title": "Miles Circle",
+                                "Content-Type": "application/json"
+                            },
+                            body: JSON.stringify({
+                                model: "google/gemini-2.0-flash-lite-preview-02-05:free",
+                                messages: [{ role: "user", content: prompt }]
+                            })
+                        });
+                        const openData = await openRes.json();
+                        if (openData.choices && openData.choices.length > 0) {
+                            resText = openData.choices[0].message.content;
+                        } else {
+                            throw new Error("OpenRouter invalid response");
+                        }
+                    } catch (oErr) {
+                        console.error("OpenRouter failed, falling back...", oErr);
+                        if (geminiKey) {
+                            try { resText = await fetchGemini(); }
+                            catch (gErr) { resText = await fetchPollinations(); }
+                        } else {
+                            resText = await fetchPollinations();
+                        }
+                    }
+                } else if (geminiKey) {
+                    try {
+                        resText = await fetchGemini();
+                    } catch (gErr) {
+                        console.error("Gemini failed, falling back to Pollinations:", gErr);
+                        resText = await fetchPollinations();
+                    }
+                } else {
+                    resText = await fetchPollinations();
                 }
                 
                 // Due to API quirks, sometimes the text has quotes
