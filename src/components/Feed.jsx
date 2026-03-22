@@ -10,15 +10,36 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const feedEndRef = useRef(null)
     const aiTimerRef = useRef(null)
 
-    const scrollToBottom = () => {
-        feedEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    const isInitialLoad = useRef(true);
+
+    const scrollToBottom = (behavior = 'smooth') => {
+        feedEndRef.current?.scrollIntoView({ behavior });
     }
 
     useEffect(() => {
         if (posts.length > 0) {
-            scrollToBottom()
+            const isNearBottom = () => {
+                // To check if the user is currently at the bottom (within ~500px)
+                const scrollY = window.scrollY || document.documentElement.scrollTop;
+                const windowHeight = window.innerHeight;
+                const docHeight = document.documentElement.scrollHeight;
+                return (docHeight - (scrollY + windowHeight)) < 500;
+            };
+
+            const lastPost = posts[posts.length - 1];
+            const isMyPost = session?.user?.id && (lastPost.user_id === session.user.id && !lastPost.is_ai);
+
+            if (isInitialLoad.current) {
+                // Instantly jump to bottom on first open like WhatsApp/Telegram
+                scrollToBottom('auto');
+                isInitialLoad.current = false;
+            } else if (isMyPost || isNearBottom()) {
+                // Only smoothly auto-scroll if they just posted, or they are hanging out at the bottom
+                scrollToBottom('smooth');
+            }
+            // If they scrolled UP to read history, we do NOTHING so it doesn't yank them down!
         }
-    }, [posts])
+    }, [posts, session])
 
     const fetchPosts = async () => {
         // Prevent fetching if coordinates are invalid
