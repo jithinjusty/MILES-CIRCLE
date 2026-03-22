@@ -177,7 +177,7 @@ Alex|Hey! The weather is great today, and you should check out Joe's Cafe!`;
                                 "Content-Type": "application/json"
                             },
                             body: JSON.stringify({
-                                model: "google/gemini-2.0-flash-lite-preview-02-05:free",
+                                model: "openrouter/free",
                                 messages: [{ role: "user", content: prompt }]
                             })
                         });
