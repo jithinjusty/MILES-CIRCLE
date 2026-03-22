@@ -148,14 +148,17 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
                 const revRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position[0]}&lon=${position[1]}&zoom=3&email=hello@milescircle.com`);
                 const revData = await revRes.json();
                 const cc = (revData?.address?.country_code || '').toUpperCase();
-                const pool = NAMES_BY_COUNTRY[cc] || NAMES_BY_COUNTRY.default;
+                const state = (revData?.address?.state || '').toLowerCase();
+                let pool = NAMES_BY_COUNTRY[cc] || NAMES_BY_COUNTRY.default;
                 
-                // Deterministic selection based on location (~10km grid)
+                // Specific names for Kerala
+                if (cc === 'IN' && (state.includes('kerala') || state.includes('kl'))) {
+                    pool = ['Rahul','Anjali','Jithin','Meera','Arun','Sruthi','Vishnu','Aswathy'];
+                }
+                
                 const latSeed = Math.floor(position[0] * 10);
                 const lngSeed = Math.floor(position[1] * 10);
-                // Simple but consistent hash to avoid collisions
                 const hashIndex = Math.abs((latSeed * 31) + lngSeed) % pool.length;
-                
                 aiName = pool[hashIndex];
             } catch(e) {
                 const pool = NAMES_BY_COUNTRY.default;
@@ -193,8 +196,10 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
 
                 // ── Step 2: Prompt AI for message text ONLY (no name parsing needed) ──
                 const systemPrompt = `You are ${aiName}, a local resident near Lat:${position[0]}, Lng:${position[1]}.
-Reply casually to your neighbor like a short text message. Be warm, local-flavored, and brief (1-2 sentences max).
-Never say you are an AI or assistant. Output ONLY the reply message text with no name prefix, no formatting.`;
+CRITICAL: Reply using the SAME LANGUAGE used by the neighbor. 
+(If they speak Malayalam, you MUST reply in Malayalam. If they speak Hindi, reply in Hindi. If English, reply in English).
+Reply casually to your neighbor like a short text message. Be warm and brief (1-2 sentences max).
+Never say you are an AI. Output ONLY the reply message text with no name prefix, no formatting.`;
                 const userPrompt = `${contextStr ? 'Local context: ' + contextStr + '\n' : ''}Neighbor said: "${latestPost.content}"`;
                 const prompt = `${systemPrompt}\n${userPrompt}`;
 
