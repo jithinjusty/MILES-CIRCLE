@@ -138,13 +138,19 @@ FIRST_NAME_OF_NEIGHBOR|THE_REPLY
 Example:
 Alex|Hey! The weather is great today, and you should check out Joe's Cafe!`;
 
-                // Use simple GET request to avoid POST JSON format/Cloudflare issues
-                const url = `https://text.pollinations.ai/prompt/${encodeURIComponent(prompt)}`;
+                // Use simple GET request to avoid POST JSON format/Cloudflare issues AND use ?model=openai 
+                // because the default model experiences disk space issues.
+                const url = `https://text.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=openai`;
                 const res = await fetch(url);
                 
                 if (!res.ok) throw new Error("AI failed with status: " + res.status);
-                const resText = await res.text();
+                let resText = await res.text();
                 
+                // Due to API quirks, sometimes the text has quotes
+                if (resText.startsWith('"') && resText.endsWith('"')) {
+                    resText = resText.substring(1, resText.length - 1);
+                }
+
                 // Parse the delimitated response
                 const parts = resText.split('|');
                 if (parts.length >= 2) {
@@ -157,9 +163,24 @@ Alex|Hey! The weather is great today, and you should check out Joe's Cafe!`;
                 }
 
             } catch (err) {
-                console.error("AI Assistant API error (falling back to generic response):", err);
+                console.error("AI Assistant API error (falling back to context-aware response):", err);
                 const localNames = ["Alex", "Sam", "Jordan", "Casey", "Taylor", "Morgan", "Avery"];
                 aiName = localNames[Math.floor(Math.random() * localNames.length)];
+                
+                const msgLower = latestPost.content.toLowerCase();
+                
+                // Intelligent fallback checking local context string
+                if (contextStr.includes("Current weather")) {
+                    aiReply = `Hey! I just checked and it looks like ${contextStr.split("Current weather: ")[1]?.split(".")[0] || "the weather is pretty standard right now"}. Hope that helps!`;
+                } else if (contextStr.includes("Nearby places")) {
+                    aiReply = `If you're asking about food, ${contextStr.split("Nearby places: ")[1]?.split(".")[0] || "there are a few good local cafes"} nearby. You should definitely give them a try!`;
+                } else if (msgLower.includes("traffic")) {
+                    aiReply = "Traffic isn't looking too bad from where I am, but definitely pull up your maps router just to be safe!";
+                } else if (msgLower.includes("hi") || msgLower.includes("hello") || msgLower.includes("hey")) {
+                    aiReply = "Hey there! Welcome to the neighborhood! Let me know if you need any local recommendations.";
+                } else {
+                    aiReply = "I'm not totally sure, but that sounds interesting! Hopefully someone else nearby knows.";
+                }
             }
 
             try {
