@@ -118,7 +118,50 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
         
         const triggerAI = async () => {
             aiProcessingRef.current[latestPost.id] = true;
-            let aiName = "Assistant";
+
+            // ── Step 1: Detect country via reverse geocoding → pick a region-appropriate name ──
+            const NAMES_BY_COUNTRY = {
+                IN: ['Rahul','Priya','Arjun','Meena','Vikram','Ananya','Ravi','Sneha','Kiran','Divya'],
+                PK: ['Ali','Fatima','Ahmed','Zara','Hassan','Ayesha','Usman','Sana','Bilal','Hina'],
+                BD: ['Rahim','Nusrat','Karim','Riya','Tariq','Mitu','Sabbir','Lima','Arif','Mim'],
+                LK: ['Ashan','Dilini','Roshan','Nirmala','Kasun','Harsha','Chamara','Thilini'],
+                AE: ['Omar','Fatima','Khalid','Mariam','Hamdan','Noura','Saif','Hessa'],
+                SA: ['Abdullah','Maryam','Tariq','Lina','Faisal','Sara','Khalid','Noor'],
+                GB: ['James','Emily','Oliver','Sophia','Harry','Amelia','Jack','Isla'],
+                US: ['Michael','Ashley','James','Jessica','David','Sarah','Chris','Amanda'],
+                AU: ['Liam','Charlotte','Noah','Olivia','Jack','Ava','William','Mia'],
+                FR: ['Pierre','Sophie','Louis','Emma','Lucas','Léa','Théo','Camille'],
+                DE: ['Lukas','Anna','Felix','Laura','Jonas','Lena','Maximilian','Julia'],
+                JP: ['Yuto','Hana','Sota','Yui','Haruto','Mio','Ren','Sakura'],
+                CN: ['Wei','Fang','Yang','Li','Jun','Xiu','Ming','Ying'],
+                BR: ['Lucas','Ana','Gabriel','Julia','Pedro','Maria','Rafael','Larissa'],
+                MX: ['Carlos','Maria','José','Sofía','Luis','Valentina','Jorge','Camila'],
+                NG: ['Emeka','Ngozi','Chidi','Adaeze','Tunde','Funke','Seun','Amaka'],
+                ZA: ['Sipho','Nomsa','Thabo','Zanele','Lebo','Ayanda','Bongani','Palesa'],
+                KE: ['David','Grace','Brian','Faith','Kevin','Joyce','John','Mary'],
+                EG: ['Mohamed','Nour','Ahmed','Dina','Omar','Rana','Youssef','Laila'],
+                default: ['Alex','Sam','Jordan','Casey','Taylor','Morgan','Avery','Jamie']
+            };
+
+            let aiName = 'Alex'; // will be overridden
+            try {
+                const revRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position[0]}&lon=${position[1]}&zoom=3&email=hello@milescircle.com`);
+                const revData = await revRes.json();
+                const cc = (revData?.address?.country_code || '').toUpperCase();
+                const pool = NAMES_BY_COUNTRY[cc] || NAMES_BY_COUNTRY.default;
+                
+                // Deterministic selection based on location (~10km grid)
+                // Using lat/lng rounded to 1 decimal place as a seed
+                const latSeed = Math.floor(position[0] * 10);
+                const lngSeed = Math.floor(position[1] * 10);
+                const hashIndex = Math.abs(latSeed + lngSeed) % pool.length;
+                
+                aiName = pool[hashIndex];
+            } catch(e) {
+                const pool = NAMES_BY_COUNTRY.default;
+                aiName = pool[0]; // Constant fallback
+            }
+
             let aiReply = "It's pretty quiet around here. Hopefully someone nearby chimes in soon!";
 
             const msgLower = latestPost.content.toLowerCase();
@@ -148,23 +191,11 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
                     } catch (e) { console.error("Places fetch failed", e); }
                 }
 
-                // Construct Prompt - format instruction repeated 3 times so free-tier models can't ignore it
-                const systemPrompt = `CRITICAL FORMAT RULE: Your ENTIRE response must be exactly: FIRSTNAME|message
-Do NOT write anything else. Do NOT add explanations. Do NOT use markdown. Start directly with a name.
-
-Examples (follow exactly):
-- India region: Rahul|Haan bhai, same thing happened near my place too!
-- Kerala/South India: Anjali|Athe, I was thinking the same!
-- Middle East: Omar|Wallah, that is interesting to hear!
-- Europe: Sophie|Yeah I noticed that too!
-- USA: Mike|Hey, same thing over here!
-- Generic: Alex|Oh interesting, tell me more!
-
-You are a local resident texting neighbors near Lat:${position[0]}, Lng:${position[1]}. Pick a FIRST NAME very common in that country/region.
-Never mention AI or assistant. Be casual and brief.
-
-REMINDER: Output format is STRICTLY: FIRSTNAME|message`;
-                const userPrompt = `FORMAT REMINDER - respond as: FIRSTNAME|message\nNeighbor's message: "${latestPost.content}"${contextStr ? '\nLocal context: ' + contextStr : ''}`;
+                // ── Step 2: Prompt AI for message text ONLY (no name parsing needed) ──
+                const systemPrompt = `You are ${aiName}, a local resident near Lat:${position[0]}, Lng:${position[1]}.
+Reply casually to your neighbor like a short text message. Be warm, local-flavored, and brief (1-2 sentences max).
+Never say you are an AI or assistant. Output ONLY the reply message text with no name prefix, no formatting.`;
+                const userPrompt = `${contextStr ? 'Local context: ' + contextStr + '\n' : ''}Neighbor said: "${latestPost.content}"`;
                 const prompt = `${systemPrompt}\n${userPrompt}`;
 
                 let resText = "";
@@ -242,24 +273,14 @@ REMINDER: Output format is STRICTLY: FIRSTNAME|message`;
                     resText = await fetchPollinations();
                 }
                 
-                // Due to API quirks, sometimes the text has quotes
+                // ── Step 3: Use AI response directly as the reply text ──
                 if (resText.startsWith('"') && resText.endsWith('"')) {
                     resText = resText.substring(1, resText.length - 1);
                 }
-                
-                // Anti-Bot sanitization filter
+                // Strip any accidental name prefix (NAME: or NAME|) the model might add
+                resText = resText.replace(/^[A-Za-z]{1,20}[:|]\s*/,'');
                 resText = resText.replace(/As an AI|I am an AI|artificial intelligence|language model|how can I assist/gi, '');
-
-                // Parse the pipe-delimited response — trim lines first in case model adds newlines
-                const firstLine = resText.split('\n').find(l => l.includes('|')) || resText;
-                const pipeIdx = firstLine.indexOf('|');
-                if (pipeIdx > 0 && pipeIdx < 35) {
-                    aiName = firstLine.substring(0, pipeIdx).replace(/[^a-zA-Z\u0900-\u097F\u0600-\u06FF\u4e00-\u9fff\u0D00-\u0D7F]/g, '').trim() || "Local";
-                    aiReply = firstLine.substring(pipeIdx + 1).trim();
-                } else {
-                    aiName = "AI";
-                    aiReply = (firstLine || resText).substring(0, 300).trim();
-                }
+                aiReply = resText.substring(0, 300).trim() || aiReply;
 
             } catch (err) {
                 console.error("AI Assistant API error (falling back to context-aware response):", err);
