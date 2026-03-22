@@ -23,7 +23,8 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
         return new Date(timestamp).toLocaleDateString()
     }
 
-    const rawAiName = post?.ai_name || 'Neighbor';
+    // Strip legacy " (AI)" suffix that was previously stored in the DB
+    const rawAiName = (post?.ai_name || 'Neighbor').replace(/\s*\(AI\)\s*$/i, '').trim();
     const name = post?.is_ai
         ? rawAiName
         : (post?.full_name || post?.user_email?.split('@')[0] || 'Anonymous');
