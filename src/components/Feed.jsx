@@ -99,10 +99,10 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
             let aiName = "Assistant";
             let aiReply = "It's pretty quiet around here. Hopefully someone nearby chimes in soon!";
 
-            try {
-                const msgLower = latestPost.content.toLowerCase();
-                let contextStr = "";
+            const msgLower = latestPost.content.toLowerCase();
+            let contextStr = "";
 
+            try {
                 // Get Weather Context
                 if (msgLower.includes("weather") || msgLower.includes("rain") || msgLower.includes("temperature") || msgLower.includes("hot") || msgLower.includes("cold")) {
                     try {
@@ -166,8 +166,6 @@ Alex|Hey! The weather is great today, and you should check out Joe's Cafe!`;
                 console.error("AI Assistant API error (falling back to context-aware response):", err);
                 const localNames = ["Alex", "Sam", "Jordan", "Casey", "Taylor", "Morgan", "Avery"];
                 aiName = localNames[Math.floor(Math.random() * localNames.length)];
-                
-                const msgLower = latestPost.content.toLowerCase();
                 
                 // Intelligent fallback checking local context string
                 if (contextStr.includes("Current weather")) {
