@@ -151,10 +151,10 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
                 const pool = NAMES_BY_COUNTRY[cc] || NAMES_BY_COUNTRY.default;
                 
                 // Deterministic selection based on location (~10km grid)
-                // Using lat/lng rounded to 1 decimal place as a seed
                 const latSeed = Math.floor(position[0] * 10);
                 const lngSeed = Math.floor(position[1] * 10);
-                const hashIndex = Math.abs(latSeed + lngSeed) % pool.length;
+                // Simple but consistent hash to avoid collisions
+                const hashIndex = Math.abs((latSeed * 31) + lngSeed) % pool.length;
                 
                 aiName = pool[hashIndex];
             } catch(e) {
