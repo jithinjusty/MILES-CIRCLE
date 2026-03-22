@@ -162,11 +162,11 @@ Respond ONLY with raw JSON without markdown syntax.`;
         };
 
         const ageMs = new Date() - new Date(latestPost.created_at);
-        if (ageMs > 120000) {
-            // Already older than 2 minutes, trigger instantly
+        if (ageMs > 60000) {
+            // Already older than 1 minute, trigger instantly
             triggerAI();
         } else {
-            const timeToWait = 120000 - ageMs;
+            const timeToWait = 60000 - ageMs;
             if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
             aiTimerRef.current = setTimeout(triggerAI, timeToWait);
         }
