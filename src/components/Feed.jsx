@@ -74,6 +74,8 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
         }
     }, [position?.[0], position?.[1], radius, refreshTrigger])
 
+    const aiProcessingRef = useRef({});
+
     // AI Assistant Timer
     useEffect(() => {
         if (!posts || posts.length === 0) return;
@@ -86,15 +88,17 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
             if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
             return;
         }
+
+        // Prevent triggering the AI process multiple times for the same post
+        if (aiProcessingRef.current[latestPost.id]) {
+            return;
+        }
         
-        const ageMs = new Date() - new Date(latestPost.created_at);
-        if (ageMs > 120000) return; // already older than 2 minutes
+        const triggerAI = async () => {
+            aiProcessingRef.current[latestPost.id] = true;
+            let aiName = "Assistant";
+            let aiReply = "It's pretty quiet around here. Hopefully someone nearby chimes in soon!";
 
-        const timeToWait = 120000 - ageMs;
-
-        if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
-
-        aiTimerRef.current = setTimeout(async () => {
             try {
                 // Determine rough region logic based on coordinates or generic fallback
                 const systemPrompt = `You are a friendly, natural AI assistant on a local feed app based on the user's location (Lat: ${position[0]}, Lng: ${position[1]}). 
@@ -117,11 +121,9 @@ Respond ONLY with raw JSON without markdown syntax.`;
                     })
                 });
 
-                if (!res.ok) throw new Error("AI failed");
+                if (!res.ok) throw new Error("AI failed with status: " + res.status);
                 const resText = await res.text();
                 
-                let aiName = "Assistant";
-                let aiReply = "Hello! I'm here to help.";
                 try {
                     const cleanText = resText.replace(/```json/gi, '').replace(/```/g, '').trim();
                     const parsed = JSON.parse(cleanText);
@@ -129,9 +131,21 @@ Respond ONLY with raw JSON without markdown syntax.`;
                     if (parsed.reply) aiReply = parsed.reply;
                 } catch (e) {
                     console.error("Failed to parse AI response JSON", e, resText);
-                    aiReply = resText.substring(0, 300); // fallback
+                    // if it's not JSON, assume raw string
+                    if (resText.length > 5 && resText.length < 500) {
+                        aiReply = resText.substring(0, 300);
+                    } else {
+                        throw new Error("Invalid output format");
+                    }
                 }
+            } catch (err) {
+                console.error("AI Assistant API error (falling back to generic response):", err);
+                // Fallback realistic-sounding names
+                const localNames = ["Alex", "Sam", "Jordan", "Casey", "Taylor", "Morgan", "Avery"];
+                aiName = localNames[Math.floor(Math.random() * localNames.length)];
+            }
 
+            try {
                 const locationWKT = `POINT(${position[1]} ${position[0]})`;
                 await supabase.from('posts').insert([{
                     user_id: session.user.id, // linked to user but flagged as AI
@@ -140,13 +154,22 @@ Respond ONLY with raw JSON without markdown syntax.`;
                     is_ai: true,
                     ai_name: aiName + " (AI)"
                 }]);
-
                 console.log("AI reply posted successfully.");
-
-            } catch (err) {
-                console.error("AI Assistant error:", err);
+            } catch (insertErr) {
+                console.error("Failed to insert AI reply:", insertErr);
+                aiProcessingRef.current[latestPost.id] = false; // Allow retry
             }
-        }, timeToWait);
+        };
+
+        const ageMs = new Date() - new Date(latestPost.created_at);
+        if (ageMs > 120000) {
+            // Already older than 2 minutes, trigger instantly
+            triggerAI();
+        } else {
+            const timeToWait = 120000 - ageMs;
+            if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+            aiTimerRef.current = setTimeout(triggerAI, timeToWait);
+        }
 
         return () => {
             if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
