@@ -100,47 +100,64 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
             let aiReply = "It's pretty quiet around here. Hopefully someone nearby chimes in soon!";
 
             try {
-                // Determine rough region logic based on coordinates or generic fallback
-                const systemPrompt = `You are a friendly, natural AI assistant on a local feed app based on the user's location (Lat: ${position[0]}, Lng: ${position[1]}). 
-Please provide a JSON response with two keys:
-1) "name": A common real first name for someone living in this general region. Give JUST the first name.
-2) "reply": A helpful, conversational, and human-like response to the user's message. Don't mention you are an AI in the reply, just answer the question natively. 
-Respond ONLY with raw JSON without markdown syntax.`;
+                const msgLower = latestPost.content.toLowerCase();
+                let contextStr = "";
+
+                // Get Weather Context
+                if (msgLower.includes("weather") || msgLower.includes("rain") || msgLower.includes("temperature") || msgLower.includes("hot") || msgLower.includes("cold")) {
+                    try {
+                        const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${position[0]}&longitude=${position[1]}&current_weather=true`);
+                        const wData = await wRes.json();
+                        if (wData && wData.current_weather) {
+                            contextStr += `Current weather: ${wData.current_weather.temperature}°C, wind: ${wData.current_weather.windspeed} km/h. `;
+                        }
+                    } catch (e) { console.error("Weather fetch failed", e); }
+                }
+
+                // Get Places Context (Restaurants/Food)
+                if (msgLower.includes("restaurant") || msgLower.includes("food") || msgLower.includes("eat") || msgLower.includes("cafe") || msgLower.includes("coffee")) {
+                    try {
+                        const viewbox = `${position[1]-0.1},${position[0]+0.1},${position[1]+0.1},${position[0]-0.1}`;
+                        const pRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=restaurant&lat=${position[0]}&lon=${position[1]}&bounded=1&viewbox=${viewbox}&limit=3`);
+                        const pData = await pRes.json();
+                        const placeNames = pData.map(p => p.name).filter(Boolean).join(", ");
+                        if (placeNames) contextStr += `Nearby places: ${placeNames}. `;
+                    } catch (e) { console.error("Places fetch failed", e); }
+                }
+
+                // Construct Prompt
+                const prompt = `You are a real persona acting as a helpful local neighbor near Lat: ${position[0]}, Lng: ${position[1]}. 
+${contextStr ? 'REAL-TIME CONTEXT DATA AVAILABLE TO YOU: ' + contextStr : ''}
+User's message: "${latestPost.content}"
+Instructions:
+1. Provide a natural, friendly, human-like reply answering the user directly.
+2. If real-time context data was provided above, use it to answer their question (e.g. recommend those exact restaurants or give that weather).
+3. Do NOT say you are an AI. Act like a real person living nearby.
+4. Format your output EXACTLY like this:
+FIRST_NAME_OF_NEIGHBOR|THE_REPLY
+Example:
+Alex|Hey! The weather is great today, and you should check out Joe's Cafe!`;
+
+                // Use simple GET request to avoid POST JSON format/Cloudflare issues
+                const url = `https://text.pollinations.ai/prompt/${encodeURIComponent(prompt)}`;
+                const res = await fetch(url);
                 
-                const userPrompt = `User's message: "${latestPost.content}"`;
-
-                const res = await fetch('https://text.pollinations.ai/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        messages: [
-                            { role: 'system', content: systemPrompt },
-                            { role: 'user', content: userPrompt }
-                        ],
-                        jsonMode: true
-                    })
-                });
-
                 if (!res.ok) throw new Error("AI failed with status: " + res.status);
                 const resText = await res.text();
                 
-                try {
-                    const cleanText = resText.replace(/```json/gi, '').replace(/```/g, '').trim();
-                    const parsed = JSON.parse(cleanText);
-                    if (parsed.name) aiName = parsed.name;
-                    if (parsed.reply) aiReply = parsed.reply;
-                } catch (e) {
-                    console.error("Failed to parse AI response JSON", e, resText);
-                    // if it's not JSON, assume raw string
-                    if (resText.length > 5 && resText.length < 500) {
-                        aiReply = resText.substring(0, 300);
-                    } else {
-                        throw new Error("Invalid output format");
-                    }
+                // Parse the delimitated response
+                const parts = resText.split('|');
+                if (parts.length >= 2) {
+                    aiName = parts[0].replace(/[^a-zA-Z]/g, '').substring(0, 15).trim() || "Local";
+                    aiReply = parts.slice(1).join('|').trim();
+                } else {
+                    const localNames = ["Alex", "Sam", "Jordan", "Casey", "Taylor"];
+                    aiName = localNames[Math.floor(Math.random() * localNames.length)];
+                    aiReply = resText.substring(0, 300).trim();
                 }
+
             } catch (err) {
                 console.error("AI Assistant API error (falling back to generic response):", err);
-                // Fallback realistic-sounding names
                 const localNames = ["Alex", "Sam", "Jordan", "Casey", "Taylor", "Morgan", "Avery"];
                 aiName = localNames[Math.floor(Math.random() * localNames.length)];
             }
