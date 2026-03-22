@@ -148,16 +148,14 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
                     } catch (e) { console.error("Places fetch failed", e); }
                 }
 
-                // Construct Prompt
-                const systemPrompt = `You are a real, highly opinionated local neighborhood resident near Lat: ${position[0]}, Lng: ${position[1]}.
-Your ONLY job is to text back your neighbors naturally. 
-Never say anything like "As an AI", "I don't have feelings", "I am a language model", or "How can I assist you?". 
-Speak casually, use slang or local flavor occasionally, and keep it brief like a text message.
-Format your exact output as: FIRST_NAME|MESSAGE
-Example:
-Alex|Hey! It's a nice day out, the weather is great.
-`;
-                const userPrompt = `${contextStr ? 'REAL-TIME CONTEXT DATA AVAILABLE: ' + contextStr + '\n' : ''}User's message: "${latestPost.content}"`;
+                // Construct Prompt - include region hint to get culturally-appropriate names
+                const systemPrompt = `You are a real local resident living near coordinates Lat: ${position[0]}, Lng: ${position[1]}.
+You are texting your neighbors in the local neighborhood chat. Be casual, warm, brief.
+IMPORTANT: Choose a FIRST NAME that is very common in the country/region at those coordinates (e.g. if in India use names like Rahul, Priya, Arjun; if Middle East use names like Omar, Fatima; if Europe use local names). 
+Never say you are an AI, a language model, or an assistant.
+Format your output EXACTLY as: NAME|MESSAGE (no markdown, no quotes, just NAME|MESSAGE)
+Example for India: Rahul|Haan yaar, I saw the same thing yesterday!`;
+                const userPrompt = `${contextStr ? 'CONTEXT: ' + contextStr + '\n' : ''}Neighbor said: "${latestPost.content}"`;
                 const prompt = `${systemPrompt}\n${userPrompt}`;
 
                 let resText = "";
@@ -243,14 +241,14 @@ Alex|Hey! It's a nice day out, the weather is great.
                 // Anti-Bot sanitization filter
                 resText = resText.replace(/As an AI|I am an AI|artificial intelligence|language model|how can I assist/gi, '');
 
-                // Parse the delimitated response
-                const parts = resText.split('|');
-                if (parts.length >= 2) {
-                    aiName = parts[0].replace(/[^a-zA-Z]/g, '').substring(0, 15).trim() || "Local";
-                    aiReply = parts.slice(1).join('|').trim();
+                // Parse the pipe-delimited response
+                const pipeIdx = resText.indexOf('|');
+                if (pipeIdx > 0 && pipeIdx < 30) {
+                    aiName = resText.substring(0, pipeIdx).replace(/[^a-zA-Z\u0900-\u097F\u0600-\u06FF\u4e00-\u9fff]/g, '').trim() || "Local";
+                    aiReply = resText.substring(pipeIdx + 1).trim();
                 } else {
-                    const localNames = ["Alex", "Sam", "Jordan", "Casey", "Taylor"];
-                    aiName = localNames[Math.floor(Math.random() * localNames.length)];
+                    // fallback: use the whole text as reply, name stays "Assistant"
+                    aiName = "Neighbor";
                     aiReply = resText.substring(0, 300).trim();
                 }
 
@@ -303,17 +301,22 @@ Alex|Hey! It's a nice day out, the weather is great.
 
             try {
                 const locationWKT = `POINT(${position[1]} ${position[0]})`;
-                await supabase.from('posts').insert([{
-                    user_id: session.user.id, // linked to user but flagged as AI
+                const aiInsert = {
+                    user_id: session.user.id,
                     content: aiReply,
                     location: locationWKT,
                     is_ai: true,
-                    ai_name: aiName + " (AI)"
-                }]);
+                    ai_name: aiName,
+                    // Link the AI reply to the original post so quoted preview shows
+                    reply_to_id: latestPost.id,
+                    reply_to_content: latestPost.content?.substring(0, 200),
+                    reply_to_author: latestPost.full_name || latestPost.user_email?.split('@')[0] || 'You'
+                };
+                await supabase.from('posts').insert([aiInsert]);
                 console.log("AI reply posted successfully.");
             } catch (insertErr) {
                 console.error("Failed to insert AI reply:", insertErr);
-                aiProcessingRef.current[latestPost.id] = false; // Allow retry
+                aiProcessingRef.current[latestPost.id] = false;
             }
         };
 

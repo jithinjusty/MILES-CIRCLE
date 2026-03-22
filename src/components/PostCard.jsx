@@ -23,7 +23,11 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
         return new Date(timestamp).toLocaleDateString()
     }
 
-    const name = post?.is_ai ? post.ai_name : (post?.full_name || post?.user_email?.split('@')[0] || 'Anonymous');
+    const rawAiName = post?.ai_name || 'Neighbor';
+    const name = post?.is_ai
+        ? rawAiName
+        : (post?.full_name || post?.user_email?.split('@')[0] || 'Anonymous');
+    const displayName = post?.is_ai ? `${name} (neighbor)` : (isMine ? 'You' : name);
     const initial = (name || '?')[0].toUpperCase();
 
     // Find the original post being replied to
@@ -213,7 +217,7 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                             style={{ fontSize: '0.85rem', fontWeight: '800', cursor: 'pointer', color: isMine ? 'white' : 'var(--accent-red)' }}
                             onClick={(e) => { e.stopPropagation(); onUserClick?.(post.user_id); }}
                         >
-                            {isMine ? 'You' : name}
+                            {displayName}
                         </span>
                         <span style={{ fontSize: '0.65rem', color: isMine ? 'rgba(255,255,255,0.65)' : 'var(--text-secondary)' }}>
                             {formatTimeAgo(post?.created_at)}
