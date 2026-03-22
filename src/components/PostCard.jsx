@@ -27,7 +27,7 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
     const name = post?.is_ai
         ? rawAiName
         : (post?.full_name || post?.user_email?.split('@')[0] || 'Anonymous');
-    const displayName = post?.is_ai ? `${name} (neighbor)` : (isMine ? 'You' : name);
+    const displayName = post?.is_ai ? `${name} (AI)` : (isMine ? 'You' : name);
     const initial = (name || '?')[0].toUpperCase();
 
     // Find the original post being replied to

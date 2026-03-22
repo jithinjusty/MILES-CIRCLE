@@ -148,14 +148,23 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
                     } catch (e) { console.error("Places fetch failed", e); }
                 }
 
-                // Construct Prompt - include region hint to get culturally-appropriate names
-                const systemPrompt = `You are a real local resident living near coordinates Lat: ${position[0]}, Lng: ${position[1]}.
-You are texting your neighbors in the local neighborhood chat. Be casual, warm, brief.
-IMPORTANT: Choose a FIRST NAME that is very common in the country/region at those coordinates (e.g. if in India use names like Rahul, Priya, Arjun; if Middle East use names like Omar, Fatima; if Europe use local names). 
-Never say you are an AI, a language model, or an assistant.
-Format your output EXACTLY as: NAME|MESSAGE (no markdown, no quotes, just NAME|MESSAGE)
-Example for India: Rahul|Haan yaar, I saw the same thing yesterday!`;
-                const userPrompt = `${contextStr ? 'CONTEXT: ' + contextStr + '\n' : ''}Neighbor said: "${latestPost.content}"`;
+                // Construct Prompt - format instruction repeated 3 times so free-tier models can't ignore it
+                const systemPrompt = `CRITICAL FORMAT RULE: Your ENTIRE response must be exactly: FIRSTNAME|message
+Do NOT write anything else. Do NOT add explanations. Do NOT use markdown. Start directly with a name.
+
+Examples (follow exactly):
+- India region: Rahul|Haan bhai, same thing happened near my place too!
+- Kerala/South India: Anjali|Athe, I was thinking the same!
+- Middle East: Omar|Wallah, that is interesting to hear!
+- Europe: Sophie|Yeah I noticed that too!
+- USA: Mike|Hey, same thing over here!
+- Generic: Alex|Oh interesting, tell me more!
+
+You are a local resident texting neighbors near Lat:${position[0]}, Lng:${position[1]}. Pick a FIRST NAME very common in that country/region.
+Never mention AI or assistant. Be casual and brief.
+
+REMINDER: Output format is STRICTLY: FIRSTNAME|message`;
+                const userPrompt = `FORMAT REMINDER - respond as: FIRSTNAME|message\nNeighbor's message: "${latestPost.content}"${contextStr ? '\nLocal context: ' + contextStr : ''}`;
                 const prompt = `${systemPrompt}\n${userPrompt}`;
 
                 let resText = "";
@@ -241,15 +250,15 @@ Example for India: Rahul|Haan yaar, I saw the same thing yesterday!`;
                 // Anti-Bot sanitization filter
                 resText = resText.replace(/As an AI|I am an AI|artificial intelligence|language model|how can I assist/gi, '');
 
-                // Parse the pipe-delimited response
-                const pipeIdx = resText.indexOf('|');
-                if (pipeIdx > 0 && pipeIdx < 30) {
-                    aiName = resText.substring(0, pipeIdx).replace(/[^a-zA-Z\u0900-\u097F\u0600-\u06FF\u4e00-\u9fff]/g, '').trim() || "Local";
-                    aiReply = resText.substring(pipeIdx + 1).trim();
+                // Parse the pipe-delimited response — trim lines first in case model adds newlines
+                const firstLine = resText.split('\n').find(l => l.includes('|')) || resText;
+                const pipeIdx = firstLine.indexOf('|');
+                if (pipeIdx > 0 && pipeIdx < 35) {
+                    aiName = firstLine.substring(0, pipeIdx).replace(/[^a-zA-Z\u0900-\u097F\u0600-\u06FF\u4e00-\u9fff\u0D00-\u0D7F]/g, '').trim() || "Local";
+                    aiReply = firstLine.substring(pipeIdx + 1).trim();
                 } else {
-                    // fallback: use the whole text as reply, name stays "Assistant"
-                    aiName = "Neighbor";
-                    aiReply = resText.substring(0, 300).trim();
+                    aiName = "AI";
+                    aiReply = (firstLine || resText).substring(0, 300).trim();
                 }
 
             } catch (err) {
