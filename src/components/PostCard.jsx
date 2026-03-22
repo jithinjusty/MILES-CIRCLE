@@ -75,12 +75,13 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
         setTranslating(true);
         setShowMenu(false);
         try {
-            const langPrompt = `Translate the following text to English. Only output the translated text, nothing else:\n"${post.content}"`;
-            const res = await fetch(`https://text.pollinations.ai/prompt/${encodeURIComponent(langPrompt)}?model=openai`);
-            const text = await res.text();
-            setTranslatedText(text.trim());
+            // MyMemory free translation API — no key required, auto-detects language
+            const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(post.content)}&langpair=auto|en`);
+            const data = await res.json();
+            const translated = data?.responseData?.translatedText;
+            setTranslatedText(translated || '[Translation unavailable]');
         } catch (e) {
-            setTranslatedText('[Translation failed]');
+            setTranslatedText('[Translation failed — please try again]');
         }
         setTranslating(false);
     };
@@ -91,7 +92,8 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
         setAiGenerating(true);
         try {
             const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-            const aiPrompt = `Generate a short, casual, friendly reply to this message as if you were a local neighbor. Only output the reply text with no extra explanation or formatting:\n"${post.content}"`;
+            const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+            const aiPrompt = `Generate a short, casual, friendly reply to this message as if you were a local neighbor. Only output the reply text, no explanation or formatting:\n"${post.content}"`;
 
             let suggestion = '';
             if (openRouterKey) {
@@ -110,14 +112,24 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                 });
                 const data = await res.json();
                 suggestion = data.choices?.[0]?.message?.content || '';
-            } else {
-                const res = await fetch(`https://text.pollinations.ai/prompt/${encodeURIComponent(aiPrompt)}?model=openai`);
-                suggestion = await res.text();
+            } else if (geminiKey) {
+                const gRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: aiPrompt }] }] })
+                });
+                const gData = await gRes.json();
+                suggestion = gData.candidates?.[0]?.content?.parts?.[0]?.text || '';
             }
 
-            onAIReply?.(post, suggestion.trim());
+            if (suggestion.trim()) {
+                onAIReply?.(post, suggestion.trim());
+            } else {
+                alert('Could not generate a reply right now. Please try again.');
+            }
         } catch (e) {
             console.error('AI reply generation failed', e);
+            alert('Could not generate reply. Check your API keys.');
         }
         setAiGenerating(false);
     };
