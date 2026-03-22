@@ -398,7 +398,7 @@ function App() {
                 location: locationWKT
             };
             if (replyingTo) {
-                insertPayload.reply_to_id = replyingTo.id;
+                insertPayload.reply_to_id = replyingTo.id;  // bigint FK
                 insertPayload.reply_to_content = replyingTo.content?.substring(0, 200);
                 insertPayload.reply_to_author = replyingTo.author;
             }
