@@ -127,17 +127,16 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
                 }
 
                 // Construct Prompt
-                const prompt = `You are a real persona acting as a helpful local neighbor near Lat: ${position[0]}, Lng: ${position[1]}. 
-${contextStr ? 'REAL-TIME CONTEXT DATA AVAILABLE TO YOU: ' + contextStr : ''}
-User's message: "${latestPost.content}"
-Instructions:
-1. Provide a natural, friendly, human-like reply answering the user directly.
-2. If real-time context data was provided above, use it to answer their question (e.g. recommend those exact restaurants or give that weather).
-3. Do NOT say you are an AI. Act like a real person living nearby.
-4. Format your output EXACTLY like this:
-FIRST_NAME_OF_NEIGHBOR|THE_REPLY
+                const systemPrompt = `You are a real, highly opinionated local neighborhood resident near Lat: ${position[0]}, Lng: ${position[1]}.
+Your ONLY job is to text back your neighbors naturally. 
+Never say anything like "As an AI", "I don't have feelings", "I am a language model", or "How can I assist you?". 
+Speak casually, use slang or local flavor occasionally, and keep it brief like a text message.
+Format your exact output as: FIRST_NAME|MESSAGE
 Example:
-Alex|Hey! The weather is great today, and you should check out Joe's Cafe!`;
+Alex|Hey! It's a nice day out, the weather is great.
+`;
+                const userPrompt = `${contextStr ? 'REAL-TIME CONTEXT DATA AVAILABLE: ' + contextStr + '\n' : ''}User's message: "${latestPost.content}"`;
+                const prompt = `${systemPrompt}\n${userPrompt}`;
 
                 let resText = "";
                 const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
@@ -155,8 +154,12 @@ Alex|Hey! The weather is great today, and you should check out Joe's Cafe!`;
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
-                            contents: [{ parts: [{ text: prompt }] }],
-                            generationConfig: { temperature: 0.7, maxOutputTokens: 200 }
+                            contents: [
+                                { role: "user", parts: [{ text: systemPrompt }] },
+                                { role: "model", parts: [{ text: "Understood. I am a local resident. I will format as Name|Message." }] },
+                                { role: "user", parts: [{ text: userPrompt }] }
+                            ],
+                            generationConfig: { temperature: 0.8, maxOutputTokens: 250 }
                         })
                     });
                     const geminiData = await geminiRes.json();
@@ -178,7 +181,10 @@ Alex|Hey! The weather is great today, and you should check out Joe's Cafe!`;
                             },
                             body: JSON.stringify({
                                 model: "openrouter/free",
-                                messages: [{ role: "user", content: prompt }]
+                                messages: [
+                                    { role: "system", content: systemPrompt },
+                                    { role: "user", content: userPrompt }
+                                ]
                             })
                         });
                         const openData = await openRes.json();
@@ -211,6 +217,9 @@ Alex|Hey! The weather is great today, and you should check out Joe's Cafe!`;
                 if (resText.startsWith('"') && resText.endsWith('"')) {
                     resText = resText.substring(1, resText.length - 1);
                 }
+                
+                // Anti-Bot sanitization filter
+                resText = resText.replace(/As an AI|I am an AI|artificial intelligence|language model|how can I assist/gi, '');
 
                 // Parse the delimitated response
                 const parts = resText.split('|');
