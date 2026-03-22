@@ -90,6 +90,7 @@ function App() {
     const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
     const [messageContent, setMessageContent] = useState('');
     const [isSending, setIsSending] = useState(false);
+    const [replyingTo, setReplyingTo] = useState(null); // { id, content, author }
     const [isSliderHidden, setIsSliderHidden] = useState(false);
     const [locationError, setLocationError] = useState(null);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -391,13 +392,20 @@ function App() {
             if (!user) throw new Error("Not logged in");
 
             const locationWKT = `POINT(${position[1]} ${position[0]})`;
+            const insertPayload = {
+                user_id: user.id,
+                content: originalContent.trim(),
+                location: locationWKT
+            };
+            if (replyingTo) {
+                insertPayload.reply_to_id = replyingTo.id;
+                insertPayload.reply_to_content = replyingTo.content?.substring(0, 200);
+                insertPayload.reply_to_author = replyingTo.author;
+            }
             const { error } = await supabase
                 .from('posts')
-                .insert([{
-                    user_id: user.id,
-                    content: originalContent.trim(),
-                    location: locationWKT
-                }]);
+                .insert([insertPayload]);
+            setReplyingTo(null);
 
             if (error) throw error;
             setFeedTrigger(prev => prev + 1);
@@ -755,6 +763,10 @@ function App() {
                                                                 console.error("Error viewing profile:", err);
                                                             }
                                                         }}
+                                                        onReplyChange={(ctx, suggestion) => {
+                                                            setReplyingTo(ctx);
+                                                            if (suggestion) setMessageContent(suggestion);
+                                                        }}
                                                     />
                                                     <div className="system-welcome-card">
                                                         <p className="welcome-tag">Proximity Active</p>
@@ -762,21 +774,41 @@ function App() {
                                                     </div>
                                                 </div>
 
-                                                <form className="chat-input-wrapper" onSubmit={handleSendMessage}>
-                                                    {showAttachmentMenu && (
-                                                        <div className="attachment-menu-popover">
-                                                            <button type="button" className="menu-item" onClick={() => handleAttachmentAction('photo')}><div className="menu-icon-circle"><Image size={20} /></div><span>Photos</span></button>
-                                                            <button type="button" className="menu-item" onClick={() => handleAttachmentAction('file')}><div className="menu-icon-circle"><Paperclip size={20} /></div><span>Files</span></button>
-                                                            <button type="button" className="menu-item" onClick={() => handleAttachmentAction('location')}><div className="menu-icon-circle"><MapIcon size={20} /></div><span>Location</span></button>
+                                                <form className="chat-input-wrapper" onSubmit={handleSendMessage} style={{ flexDirection: 'column', gap: 0, alignItems: 'stretch' }}>
+                                                    {/* Reply Preview Bar */}
+                                                    {replyingTo && (
+                                                        <div style={{
+                                                            display: 'flex', alignItems: 'center', gap: '8px',
+                                                            padding: '8px 14px',
+                                                            background: 'var(--panel-bg)',
+                                                            borderTop: '1px solid var(--glass-border)',
+                                                            borderLeft: '3px solid var(--accent-red)',
+                                                            borderRadius: '12px 12px 0 0',
+                                                            fontSize: '0.78rem'
+                                                        }}>
+                                                            <div style={{ flex: 1, overflow: 'hidden' }}>
+                                                                <div style={{ fontWeight: '700', color: 'var(--accent-red)', marginBottom: '2px' }}>↩ {replyingTo.author}</div>
+                                                                <div style={{ color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{replyingTo.content}</div>
+                                                            </div>
+                                                            <button type="button" onClick={() => setReplyingTo(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '4px' }}>✕</button>
                                                         </div>
                                                     )}
-                                                    <button type="button" className={`chat-plus-btn ${showAttachmentMenu ? 'active' : ''}`} onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}>
-                                                        <Plus size={24} style={{ transform: showAttachmentMenu ? 'rotate(45deg)' : 'none' }} />
-                                                    </button>
-                                                    <input type="text" className="chat-input-main" placeholder="Message Circle..." value={messageContent} onChange={e => setMessageContent(e.target.value)} disabled={isSending} />
-                                                    <button type="submit" className="chat-send-btn-new" disabled={!messageContent.trim() || isSending}>
-                                                        {isSending ? <div className="spinner-tiny"></div> : <Send size={18} />}
-                                                    </button>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px' }}>
+                                                        {showAttachmentMenu && (
+                                                            <div className="attachment-menu-popover">
+                                                                <button type="button" className="menu-item" onClick={() => handleAttachmentAction('photo')}><div className="menu-icon-circle"><Image size={20} /></div><span>Photos</span></button>
+                                                                <button type="button" className="menu-item" onClick={() => handleAttachmentAction('file')}><div className="menu-icon-circle"><Paperclip size={20} /></div><span>Files</span></button>
+                                                                <button type="button" className="menu-item" onClick={() => handleAttachmentAction('location')}><div className="menu-icon-circle"><MapIcon size={20} /></div><span>Location</span></button>
+                                                            </div>
+                                                        )}
+                                                        <button type="button" className={`chat-plus-btn ${showAttachmentMenu ? 'active' : ''}`} onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}>
+                                                            <Plus size={24} style={{ transform: showAttachmentMenu ? 'rotate(45deg)' : 'none' }} />
+                                                        </button>
+                                                        <input type="text" className="chat-input-main" placeholder="Message Circle..." value={messageContent} onChange={e => setMessageContent(e.target.value)} disabled={isSending} />
+                                                        <button type="submit" className="chat-send-btn-new" disabled={!messageContent.trim() || isSending}>
+                                                            {isSending ? <div className="spinner-tiny"></div> : <Send size={18} />}
+                                                        </button>
+                                                    </div>
                                                 </form>
                                             </div>
 

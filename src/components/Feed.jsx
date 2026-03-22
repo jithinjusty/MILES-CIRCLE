@@ -3,10 +3,11 @@ import { RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PostCard from './PostCard'
 
-export default function Feed({ position, radius, refreshTrigger, session, onUserClick }) {
+export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange }) {
     const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
+    const [replyingTo, setReplyingTo] = useState(null) // { id, content, author }
     const feedEndRef = useRef(null)
     const aiTimerRef = useRef(null)
 
@@ -369,17 +370,40 @@ Alex|Hey! It's a nice day out, the weather is great.
         )
     }
 
+    // Handle reply selection from PostCard
+    const handleReply = (post) => {
+        const replyName = post.is_ai ? post.ai_name : (post.full_name || post.user_email?.split('@')[0] || 'Someone');
+        const ctx = { id: post.id, content: post.content, author: replyName };
+        setReplyingTo(ctx);
+        onReplyChange?.(ctx);
+        scrollToBottom('smooth');
+    };
+
+    // Handle AI-generated reply text being inserted into composer
+    const handleAIReply = (post, suggestion) => {
+        const replyName = post.is_ai ? post.ai_name : (post.full_name || post.user_email?.split('@')[0] || 'Someone');
+        const ctx = { id: post.id, content: post.content, author: replyName };
+        setReplyingTo(ctx);
+        onReplyChange?.(ctx, suggestion);
+        scrollToBottom('smooth');
+    };
+
     return (
-        <div className="app-feed-container" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem', paddingBottom: '2rem' }}>
-            {posts.map((post) => (
-                <PostCard
-                    key={post.id}
-                    post={post}
-                    isMine={post.user_id === session?.user?.id && !post.is_ai}
-                    onUserClick={onUserClick}
-                />
-            ))}
-            <div ref={feedEndRef} />
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0' }}>
+            <div className="app-feed-container" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.2rem', paddingBottom: '0.5rem' }}>
+                {posts.map((post) => (
+                    <PostCard
+                        key={post.id}
+                        post={post}
+                        posts={posts}
+                        isMine={post.user_id === session?.user?.id && !post.is_ai}
+                        onUserClick={onUserClick}
+                        onReply={handleReply}
+                        onAIReply={handleAIReply}
+                    />
+                ))}
+                <div ref={feedEndRef} />
+            </div>
         </div>
     )
 }
