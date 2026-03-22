@@ -113,6 +113,7 @@ function App() {
     const [currentPassword, setCurrentPassword] = useState('');
     const sliderTimer = useRef(null);
     const watchId = useRef(null);
+    const offlineModeRef = useRef(false); // mirror of offlineMode for use inside callbacks
 
     const handleSliderInteract = (isStarting) => {
         setIsMapInteracting(isStarting);
@@ -130,18 +131,23 @@ function App() {
         }
     }
 
+    // Keep ref in sync with state so location callbacks can read the current value
+    useEffect(() => { offlineModeRef.current = offlineMode; }, [offlineMode]);
+
     const updateLocation = () => {
+        // Never auto-update while user has explicitly chosen offline mode
+        if (offlineModeRef.current) return;
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
-                    if (pos?.coords) {
+                    if (pos?.coords && !offlineModeRef.current) {
                         setPosition([pos.coords.latitude, pos.coords.longitude]);
                         setLocationAvailable(true);
                         setLocationError(null);
-                        setOfflineMode(false);
                     }
                 },
                 (err) => {
+                    if (offlineModeRef.current) return;
                     console.error("Location error:", err);
                     if (err.code === 1) setLocationError("PERMISSION_DENIED");
                     else setLocationError("LOCATION_UNAVAILABLE");
@@ -151,6 +157,32 @@ function App() {
             );
         } else {
             setLocationError("NOT_SUPPORTED");
+        }
+    };
+
+    // Called only when user explicitly taps Go Online
+    const goOnline = () => {
+        offlineModeRef.current = false;
+        setOfflineMode(false);
+        setLocationAvailable(false);
+        setLocationError(null);
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    if (pos?.coords) {
+                        setPosition([pos.coords.latitude, pos.coords.longitude]);
+                        setLocationAvailable(true);
+                        setLocationError(null);
+                    }
+                },
+                (err) => {
+                    console.error("Go Online error:", err);
+                    if (err.code === 1) setLocationError("PERMISSION_DENIED");
+                    else setLocationError("LOCATION_UNAVAILABLE");
+                    setLocationAvailable(false);
+                },
+                { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+            );
         }
     };
 
@@ -229,11 +261,13 @@ function App() {
             setAuthLoading(false);
         });
 
-        // Location setup
+        // Location setup — only if not already in offline mode
         updateLocation();
         if (navigator.geolocation) {
             watchId.current = navigator.geolocation.watchPosition(
                 (pos) => {
+                    // CRITICAL: Ignore all background position updates when user chose offline mode
+                    if (offlineModeRef.current) return;
                     if (pos?.coords) {
                         setPosition([pos.coords.latitude, pos.coords.longitude]);
                         setLocationAvailable(true);
@@ -741,7 +775,7 @@ function App() {
                                             <div className="locating-card-premium" style={{ maxWidth: '480px' }}>
                                                 {/* Go Online button — top right */}
                                                 <button
-                                                    onClick={() => { setOfflineMode(false); updateLocation(); }}
+                                                    onClick={goOnline}
                                                     style={{
                                                         position: 'absolute', top: '16px', right: '16px',
                                                         background: 'var(--accent-red)', border: 'none', color: 'white',
@@ -854,7 +888,7 @@ function App() {
                                                 <div className="header-actions">
                                                     {offlineMode && (
                                                         <button
-                                                            onClick={() => { setOfflineMode(false); setLocationAvailable(false); updateLocation(); }}
+                                                            onClick={goOnline}
                                                             title="Go Online"
                                                             style={{
                                                                 background: 'var(--accent-red)', border: 'none', color: 'white',
