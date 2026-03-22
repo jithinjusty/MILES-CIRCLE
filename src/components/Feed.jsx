@@ -8,6 +8,7 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const feedEndRef = useRef(null)
+    const aiTimerRef = useRef(null)
 
     const scrollToBottom = () => {
         feedEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -73,6 +74,85 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
         }
     }, [position?.[0], position?.[1], radius, refreshTrigger])
 
+    // AI Assistant Timer
+    useEffect(() => {
+        if (!posts || posts.length === 0) return;
+
+        // Oldest is first, so latest is last
+        const latestPost = posts[posts.length - 1];
+
+        // Is it mine? Avoid AI triggering on others' posts or AI's own posts
+        if (latestPost.user_id !== session?.user?.id || latestPost.is_ai) {
+            if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+            return;
+        }
+        
+        const ageMs = new Date() - new Date(latestPost.created_at);
+        if (ageMs > 120000) return; // already older than 2 minutes
+
+        const timeToWait = 120000 - ageMs;
+
+        if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+
+        aiTimerRef.current = setTimeout(async () => {
+            try {
+                // Determine rough region logic based on coordinates or generic fallback
+                const systemPrompt = `You are a friendly, natural AI assistant on a local feed app based on the user's location (Lat: ${position[0]}, Lng: ${position[1]}). 
+Please provide a JSON response with two keys:
+1) "name": A common real first name for someone living in this general region. Give JUST the first name.
+2) "reply": A helpful, conversational, and human-like response to the user's message. Don't mention you are an AI in the reply, just answer the question natively. 
+Respond ONLY with raw JSON without markdown syntax.`;
+                
+                const userPrompt = `User's message: "${latestPost.content}"`;
+
+                const res = await fetch('https://text.pollinations.ai/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        jsonMode: true
+                    })
+                });
+
+                if (!res.ok) throw new Error("AI failed");
+                const resText = await res.text();
+                
+                let aiName = "Assistant";
+                let aiReply = "Hello! I'm here to help.";
+                try {
+                    const cleanText = resText.replace(/```json/gi, '').replace(/```/g, '').trim();
+                    const parsed = JSON.parse(cleanText);
+                    if (parsed.name) aiName = parsed.name;
+                    if (parsed.reply) aiReply = parsed.reply;
+                } catch (e) {
+                    console.error("Failed to parse AI response JSON", e, resText);
+                    aiReply = resText.substring(0, 300); // fallback
+                }
+
+                const locationWKT = `POINT(${position[1]} ${position[0]})`;
+                await supabase.from('posts').insert([{
+                    user_id: session.user.id, // linked to user but flagged as AI
+                    content: aiReply,
+                    location: locationWKT,
+                    is_ai: true,
+                    ai_name: aiName + " (AI)"
+                }]);
+
+                console.log("AI reply posted successfully.");
+
+            } catch (err) {
+                console.error("AI Assistant error:", err);
+            }
+        }, timeToWait);
+
+        return () => {
+            if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+        }
+    }, [posts, position, session?.user?.id]);
+
     if (loading && posts.length === 0) {
         return (
             <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: '300px' }}>
@@ -117,7 +197,7 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
                 <PostCard
                     key={post.id}
                     post={post}
-                    isMine={post.user_id === session?.user?.id}
+                    isMine={post.user_id === session?.user?.id && !post.is_ai}
                     onUserClick={onUserClick}
                 />
             ))}
