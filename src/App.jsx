@@ -93,6 +93,10 @@ function App() {
     const [replyingTo, setReplyingTo] = useState(null); // { id, content, author }
     const [isSliderHidden, setIsSliderHidden] = useState(false);
     const [locationError, setLocationError] = useState(null);
+    const [offlineMode, setOfflineMode] = useState(false);   // user explicitly chose offline
+    const [citySearch, setCitySearch] = useState('');         // city search input
+    const [cityResults, setCityResults] = useState([]);       // search results
+    const [citySearching, setCitySearching] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
@@ -134,6 +138,7 @@ function App() {
                         setPosition([pos.coords.latitude, pos.coords.longitude]);
                         setLocationAvailable(true);
                         setLocationError(null);
+                        setOfflineMode(false);
                     }
                 },
                 (err) => {
@@ -147,6 +152,34 @@ function App() {
         } else {
             setLocationError("NOT_SUPPORTED");
         }
+    };
+
+    // Search for a city using Nominatim (cities/towns only)
+    const searchCity = async () => {
+        if (!citySearch.trim()) return;
+        setCitySearching(true);
+        setCityResults([]);
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(citySearch)}&featuretype=city&limit=6&addressdetails=1&email=hello@milescircle.com`);
+            const data = await res.json();
+            // Only keep city/town/municipality level results
+            const filtered = data.filter(r => ['city','town','municipality','village','suburb','county'].includes(r.addresstype) || r.type === 'city' || r.class === 'place');
+            setCityResults(filtered.length > 0 ? filtered : data.slice(0, 5));
+        } catch(e) {
+            console.error('City search failed', e);
+        }
+        setCitySearching(false);
+    };
+
+    const selectCity = (city) => {
+        const lat = parseFloat(city.lat);
+        const lon = parseFloat(city.lon);
+        setPosition([lat, lon]);
+        setLocationAvailable(true);
+        setOfflineMode(true);
+        setLocationError(null);
+        setCityResults([]);
+        setCitySearch(city.display_name?.split(',')[0] || city.name || '');
     };
 
     const handleInstallClick = async () => {
@@ -650,7 +683,7 @@ function App() {
                             {onboardingStep === 0 && (
                                 <>
                                     {/* STATUS OVERLAYS */}
-                                    {(!locationAvailable || locationError) && (
+                                    {(!locationAvailable || locationError) && !offlineMode && (
                                         <div className="locating-overlay anim-fade-in" style={{ zIndex: 9000 }}>
                                             <div className="locating-card-premium">
                                                 <div className="brand-header-premium" style={{ textAlign: 'center', marginBottom: '2rem', width: '100%' }}>
@@ -687,21 +720,104 @@ function App() {
                                                 )}
 
                                                 <div className="status-actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%' }}>
-                                                    <button className="btn-onboarding-next" onClick={() => window.location.reload()}>
-                                                        {locationError ? 'Connect and Retry' : 'Check Permission'}
+                                                    <button className="btn-onboarding-next" onClick={() => updateLocation()}>
+                                                        {locationError ? 'Retry Location' : 'Check Permission'}
                                                     </button>
                                                     <button
                                                         className="nav-item"
-                                                        style={{ justifyContent: 'center', background: 'transparent' }}
-                                                        onClick={() => {
-                                                            // Failsafe: Set a default location if user is stuck
-                                                            setPosition([0, 0]);
-                                                            setLocationAvailable(true);
-                                                        }}
+                                                        style={{ justifyContent: 'center', background: 'rgba(210,85,78,0.1)', border: '1px solid var(--accent-red)', borderRadius: '12px', padding: '14px', color: 'var(--accent-red)', fontWeight: '700', cursor: 'pointer' }}
+                                                        onClick={() => setOfflineMode(true)}
                                                     >
-                                                        Continue with Offline Map
+                                                        📍 Continue in Offline Mode
                                                     </button>
                                                 </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* OFFLINE MODE — City Picker */}
+                                    {offlineMode && !locationAvailable && (
+                                        <div className="locating-overlay anim-fade-in" style={{ zIndex: 9000 }}>
+                                            <div className="locating-card-premium" style={{ maxWidth: '480px' }}>
+                                                {/* Go Online button — top right */}
+                                                <button
+                                                    onClick={() => { setOfflineMode(false); updateLocation(); }}
+                                                    style={{
+                                                        position: 'absolute', top: '16px', right: '16px',
+                                                        background: 'var(--accent-red)', border: 'none', color: 'white',
+                                                        borderRadius: '20px', padding: '8px 16px', fontWeight: '700',
+                                                        fontSize: '0.8rem', cursor: 'pointer', display: 'flex',
+                                                        alignItems: 'center', gap: '6px'
+                                                    }}
+                                                >
+                                                    <Globe size={14} /> Go Online
+                                                </button>
+
+                                                <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                                                    <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🗺️</div>
+                                                    <h2 style={{ fontSize: '1.6rem', fontWeight: '950', marginBottom: '0.5rem' }}>Offline Mode</h2>
+                                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.5' }}>
+                                                        Search for your city to browse the local feed. Your exact location won't be shared.
+                                                    </p>
+                                                </div>
+
+                                                {/* City Search */}
+                                                <div style={{ position: 'relative', marginBottom: '1rem' }}>
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Search city (e.g. Mumbai, London...)"
+                                                            value={citySearch}
+                                                            onChange={e => setCitySearch(e.target.value)}
+                                                            onKeyDown={e => e.key === 'Enter' && searchCity()}
+                                                            style={{
+                                                                flex: 1, padding: '12px 16px',
+                                                                background: 'var(--glass-bg)', border: '1px solid var(--glass-border)',
+                                                                borderRadius: '12px', color: 'var(--text-primary)', fontSize: '0.95rem'
+                                                            }}
+                                                        />
+                                                        <button
+                                                            onClick={searchCity}
+                                                            disabled={citySearching || !citySearch.trim()}
+                                                            style={{
+                                                                padding: '12px 18px', background: 'var(--accent-red)', border: 'none',
+                                                                borderRadius: '12px', color: 'white', fontWeight: '700',
+                                                                cursor: 'pointer', fontSize: '0.9rem', whiteSpace: 'nowrap'
+                                                            }}
+                                                        >
+                                                            {citySearching ? '...' : '🔍 Search'}
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Search Results Dropdown */}
+                                                    {cityResults.length > 0 && (
+                                                        <div style={{
+                                                            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
+                                                            background: 'var(--panel-bg)', border: '1px solid var(--glass-border)',
+                                                            borderRadius: '12px', marginTop: '4px', overflow: 'hidden',
+                                                            boxShadow: '0 20px 40px rgba(0,0,0,0.4)'
+                                                        }}>
+                                                            {cityResults.map((city, i) => (
+                                                                <button
+                                                                    key={i}
+                                                                    onClick={() => selectCity(city)}
+                                                                    style={{
+                                                                        display: 'block', width: '100%', padding: '12px 16px',
+                                                                        background: 'none', border: 'none', color: 'var(--text-primary)',
+                                                                        textAlign: 'left', cursor: 'pointer', fontSize: '0.88rem',
+                                                                        borderBottom: i < cityResults.length - 1 ? '1px solid var(--glass-border)' : 'none'
+                                                                    }}
+                                                                >
+                                                                    📍 {city.display_name?.split(',').slice(0, 3).join(', ')}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.78rem', textAlign: 'center', marginTop: '0.5rem' }}>
+                                                    Only large cities and regions available in offline mode
+                                                </p>
                                             </div>
                                         </div>
                                     )}
@@ -727,8 +843,29 @@ function App() {
                                                         <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                                     </div>
                                                     <h1 className="logo-text">MILES <span className="logo-accent">CIRCLE</span></h1>
+                                                    {offlineMode && (
+                                                        <span style={{
+                                                            marginLeft: '8px', background: 'rgba(210,85,78,0.15)', color: 'var(--accent-red)',
+                                                            fontSize: '0.65rem', fontWeight: '800', padding: '3px 8px',
+                                                            borderRadius: '20px', border: '1px solid var(--accent-red)', letterSpacing: '0.05em'
+                                                        }}>OFFLINE</span>
+                                                    )}
                                                 </div>
                                                 <div className="header-actions">
+                                                    {offlineMode && (
+                                                        <button
+                                                            onClick={() => { setOfflineMode(false); setLocationAvailable(false); updateLocation(); }}
+                                                            title="Go Online"
+                                                            style={{
+                                                                background: 'var(--accent-red)', border: 'none', color: 'white',
+                                                                borderRadius: '20px', padding: '6px 12px', fontWeight: '700',
+                                                                fontSize: '0.75rem', cursor: 'pointer', display: 'flex',
+                                                                alignItems: 'center', gap: '5px', marginRight: '8px'
+                                                            }}
+                                                        >
+                                                            <Globe size={13} /> Go Online
+                                                        </button>
+                                                    )}
                                                     <button className="header-events-btn" onClick={() => { setShowEvents(true); setNewEventsCount(0); localStorage.setItem('miles_last_event_seen', new Date().toISOString()); }} title="Events">
                                                         <Calendar size={20} />
                                                         {newEventsCount > 0 && (
