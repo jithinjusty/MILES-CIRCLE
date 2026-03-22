@@ -118,9 +118,10 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
                 if (msgLower.includes("restaurant") || msgLower.includes("food") || msgLower.includes("eat") || msgLower.includes("cafe") || msgLower.includes("coffee")) {
                     try {
                         const viewbox = `${position[1]-0.1},${position[0]+0.1},${position[1]+0.1},${position[0]-0.1}`;
-                        const pRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=restaurant&lat=${position[0]}&lon=${position[1]}&bounded=1&viewbox=${viewbox}&limit=3`);
+                        // Added email to prevent 403 Forbidden
+                        const pRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=restaurant&lat=${position[0]}&lon=${position[1]}&bounded=1&viewbox=${viewbox}&limit=3&email=hello@milescircle.com`);
                         const pData = await pRes.json();
-                        const placeNames = pData.map(p => p.name).filter(Boolean).join(", ");
+                        const placeNames = pData.map(p => p.name).filter(Boolean).join(" and ");
                         if (placeNames) contextStr += `Nearby places: ${placeNames}. `;
                     } catch (e) { console.error("Places fetch failed", e); }
                 }
@@ -164,20 +165,48 @@ Alex|Hey! The weather is great today, and you should check out Joe's Cafe!`;
 
             } catch (err) {
                 console.error("AI Assistant API error (falling back to context-aware response):", err);
-                const localNames = ["Alex", "Sam", "Jordan", "Casey", "Taylor", "Morgan", "Avery"];
+                const localNames = ["Alex", "Sam", "Jordan", "Casey", "Taylor", "Morgan", "Avery", "Jamie"];
                 aiName = localNames[Math.floor(Math.random() * localNames.length)];
                 
-                // Intelligent fallback checking local context string
-                if (contextStr.includes("Current weather")) {
-                    aiReply = `Hey! I just checked and it looks like ${contextStr.split("Current weather: ")[1]?.split(".")[0] || "the weather is pretty standard right now"}. Hope that helps!`;
-                } else if (contextStr.includes("Nearby places")) {
-                    aiReply = `If you're asking about food, ${contextStr.split("Nearby places: ")[1]?.split(".")[0] || "there are a few good local cafes"} nearby. You should definitely give them a try!`;
+                // Extremely intelligent fallback checking local context string
+                if (contextStr.includes("Nearby places")) {
+                    const placesList = contextStr.split("Nearby places: ")[1]?.split(".")[0];
+                    if (msgLower.includes("best") || msgLower.includes("rating") || msgLower.includes("google")) {
+                        aiReply = `I'm not exactly sure about Google ratings, but some really popular spots right near us are ${placesList}. You can't go wrong with those!`;
+                    } else if (msgLower.includes("coffee") || msgLower.includes("cafe")) {
+                        aiReply = `If you're looking for a good cafe or spot around here, you should definitely check out ${placesList.split(" and ")[0] || "center town"}.`;
+                    } else {
+                        aiReply = `If you are looking for food nearby, a few great options are ${placesList}. Let me know if you decide to try one out!`;
+                    }
+                } else if (contextStr.includes("Current weather")) {
+                    const weatherDetails = contextStr.split("Current weather: ")[1]?.split(".")[0];
+                    const tempMatch = weatherDetails?.match(/[-0-9.]+/);
+                    const tempInt = tempMatch ? parseFloat(tempMatch[0]) : 20;
+
+                    if (msgLower.includes("raining") || msgLower.includes("rain") || msgLower.includes("umbrella")) {
+                        aiReply = `I just checked and it's about ${tempInt}°C here. Always good to bring an umbrella just in case though!`;
+                    } else if (msgLower.includes("hot") || msgLower.includes("cold")) {
+                        if (tempInt > 24) aiReply = `Yeah, it's pretty warm today! Sitting at around ${tempInt}°C. Best to wear something light!`;
+                        else if (tempInt < 12) aiReply = `It's definitely quite chilly today, roughly ${tempInt}°C out. Make sure you bring a jacket!`;
+                        else aiReply = `It's actually pretty mild out right now, around ${tempInt}°C. Perfect weather.`;
+                    } else {
+                        aiReply = `Hey! I just checked the local radar and it's currently ${weatherDetails} right around here. Perfect for a quick walk outside!`;
+                    }
                 } else if (msgLower.includes("traffic")) {
                     aiReply = "Traffic isn't looking too bad from where I am, but definitely pull up your maps router just to be safe!";
                 } else if (msgLower.includes("hi") || msgLower.includes("hello") || msgLower.includes("hey")) {
-                    aiReply = "Hey there! Welcome to the neighborhood! Let me know if you need any local recommendations.";
+                    const greetings = ["Hey there!", "Hello!", "Hi! Welcome to the neighborhood feed.", "Hey! How's it going?"];
+                    aiReply = greetings[Math.floor(Math.random() * greetings.length)] + " Let me know if you need any local recommendations.";
+                } else if (msgLower.includes("how are you") || msgLower.includes("what's up")) {
+                    aiReply = "I'm doing great, thanks for asking! Just hanging out nearby. How about you?";
                 } else {
-                    aiReply = "I'm not totally sure, but that sounds interesting! Hopefully someone else nearby knows.";
+                    const genericResponses = [
+                        "I'm not totally sure about that, but it sounds interesting! Hopefully someone else nearby knows.",
+                        "That's a great point! I'd love to hear what other locals think.",
+                        "Hmm, I haven't really thought about that before. You might be right!",
+                        "I'm out and about, but I'll definitely check into that later!"
+                    ];
+                    aiReply = genericResponses[Math.floor(Math.random() * genericResponses.length)];
                 }
             }
 
