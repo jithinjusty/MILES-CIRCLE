@@ -139,13 +139,39 @@ FIRST_NAME_OF_NEIGHBOR|THE_REPLY
 Example:
 Alex|Hey! The weather is great today, and you should check out Joe's Cafe!`;
 
-                // Use simple GET request to avoid POST JSON format/Cloudflare issues AND use ?model=openai 
-                // because the default model experiences disk space issues.
-                const url = `https://text.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=openai`;
-                const res = await fetch(url);
-                
-                if (!res.ok) throw new Error("AI failed with status: " + res.status);
-                let resText = await res.text();
+                let resText = "";
+                const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+
+                if (geminiKey) {
+                    try {
+                        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: prompt }] }],
+                                generationConfig: { temperature: 0.7, maxOutputTokens: 200 }
+                            })
+                        });
+                        const geminiData = await geminiRes.json();
+                        if (geminiData.candidates && geminiData.candidates.length > 0) {
+                            resText = geminiData.candidates[0].content.parts[0].text;
+                        } else {
+                            throw new Error("Gemini invalid response");
+                        }
+                    } catch (gErr) {
+                        console.error("Gemini failed, falling back to Pollinations:", gErr);
+                        const url = `https://text.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=openai`;
+                        const res = await fetch(url);
+                        if (!res.ok) throw new Error("Pollinations failed with status: " + res.status);
+                        resText = await res.text();
+                    }
+                } else {
+                    // Use Pollinations natively if no Gemini key
+                    const url = `https://text.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=openai`;
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error("AI failed with status: " + res.status);
+                    resText = await res.text();
+                }
                 
                 // Due to API quirks, sometimes the text has quotes
                 if (resText.startsWith('"') && resText.endsWith('"')) {
