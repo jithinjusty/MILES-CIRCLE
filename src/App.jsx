@@ -105,6 +105,8 @@ function App() {
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showInstallBanner, setShowInstallBanner] = useState(false);
     const [isRecovering, setIsRecovering] = useState(false);
+    const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+    const lastChatScroll = useRef(0);
     const [showEvents, setShowEvents] = useState(false);
     const [newEventsCount, setNewEventsCount] = useState(0);
     const lastEventCheckRef = useRef(null);
@@ -473,6 +475,18 @@ function App() {
     const handleLogout = async () => {
         await supabase.auth.signOut();
     }
+
+    const handleChatScroll = (e) => {
+        const currentScroll = e.currentTarget.scrollTop;
+        if (currentScroll < lastChatScroll.current - 10) {
+            // Scrolling UP towards older messages -> hide header
+            if (!isHeaderHidden) setIsHeaderHidden(true);
+        } else if (currentScroll > lastChatScroll.current + 10) {
+            // Scrolling DOWN towards latest -> show header
+            if (isHeaderHidden) setIsHeaderHidden(false);
+        }
+        lastChatScroll.current = currentScroll;
+    };
 
     const handleSendMessage = async (e) => {
         if (e) e.preventDefault();
@@ -914,7 +928,7 @@ function App() {
                                     {/* CHAT LAYER */}
                                     {locationAvailable && (
                                         <div className="chat-interface">
-                                            <header className="app-header-new">
+                                            <header className={`app-header-new ${isHeaderHidden ? 'hidden' : ''}`}>
                                                 <div className="brand-wrap">
                                                     <div className="pulse-circle-mini" style={{ width: '40px', height: '40px', marginRight: '12px' }}>
                                                         <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -961,7 +975,7 @@ function App() {
                                                 transition: 'all 0.5s cubic-bezier(0.19, 1, 0.22, 1)',
                                                 pointerEvents: isMapInteracting ? 'none' : 'auto'
                                             }}>
-                                                <div className="chat-messages-scroll">
+                                                <div className="chat-messages-scroll" onScroll={handleChatScroll}>
                                                     <Feed
                                                         position={position}
                                                         radius={radius}

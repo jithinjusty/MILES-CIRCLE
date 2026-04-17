@@ -70,9 +70,21 @@ body {
     align-items: center;
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, transparent 100%);
     z-index: 100;
-    position: relative;
-    pointer-events: auto;
     /* Allow clicks on header elements like avatar */
+    height: 85px; /* Fixed height for consistent space calculation */
+    transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+    transform-origin: top;
+    flex-shrink: 0;
+}
+
+.app-header-new.hidden {
+    transform: translateY(-20px) scaleY(0);
+    opacity: 0;
+    height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    pointer-events: none;
+    margin-bottom: -15px;
 }
 
 .brand-wrap {
