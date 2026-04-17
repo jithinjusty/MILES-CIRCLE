@@ -398,6 +398,34 @@ function App() {
         }
     }
 
+    const handleRecoverySubmit = async (e) => {
+        if (e) e.preventDefault();
+        if (newPassword !== confirmNewPassword) return alert("Passwords do not match");
+        
+        const hasUpper = /[A-Z]/.test(newPassword);
+        const hasLower = /[a-z]/.test(newPassword);
+        const hasNumber = /[0-9]/.test(newPassword);
+        if (newPassword.length < 8 || !hasUpper || !hasLower || !hasNumber) {
+            return alert("Password must be 8+ chars and include upper, lower, and number.");
+        }
+
+        setIsSavingChanges(true);
+        try {
+            const { error } = await supabase.auth.updateUser({ password: newPassword });
+            if (error) throw error;
+            
+            alert("New password established! You can now sign in.");
+            setIsRecovering(false);
+            window.history.replaceState({}, '', '/');
+            setNewPassword('');
+            setConfirmNewPassword('');
+        } catch (err) {
+            alert("Recovery failed: " + err.message);
+        } finally {
+            setIsSavingChanges(false);
+        }
+    }
+
     const handleResetPassword = async (e) => {
         if (e) e.preventDefault();
 
@@ -618,10 +646,10 @@ function App() {
                                         <div className="pulse-circle" style={{ width: '80px', height: '80px', margin: '0 auto 1.5rem' }}>
                                             <ShieldCheck size={40} color="var(--accent-red)" />
                                         </div>
-                                        <h2 className="onboarding-title" style={{ fontSize: '1.8rem' }}>Security Protocol</h2>
-                                        <p className="onboarding-text">Regain access to your unique circle identity.</p>
+                                        <h2 className="onboarding-title" style={{ fontSize: '1.8rem' }}>Establish Access</h2>
+                                        <p className="onboarding-text">Enter your new secret password below to regain circle access.</p>
                                     </div>
-                                    <form onSubmit={handleResetPassword} className="auth-form-classic" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                                    <form onSubmit={handleRecoverySubmit} className="auth-form-classic" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                                         <div className="field-block">
                                             <label style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>New Secret Password</label>
                                             <input type="password" placeholder="Min 8 characters, Upper, Lower, Number" className="auth-input-classic" value={newPassword} onChange={e => setNewPassword(e.target.value)} required style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white' }} />
@@ -681,6 +709,21 @@ function App() {
                                                         style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', outline: 'none' }}
                                                     />
                                                 </div>
+
+                                                {/* Google Users: Option to create a password for email login */}
+                                                {session?.user?.app_metadata?.provider === 'google' && (
+                                                    <div className="field-block" style={{ marginTop: '0.5rem', background: 'rgba(210, 85, 78, 0.05)', padding: '1.5rem', borderRadius: '18px', border: '1px solid rgba(210, 85, 78, 0.1)' }}>
+                                                        <label style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--accent-red)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>Create Secret Password (Recommended)</label>
+                                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.4' }}>Set a password now if you'd like to sign in with your email address in the future.</p>
+                                                        <input
+                                                            type="password"
+                                                            placeholder="Min 8 chars, A-Z, 0-9"
+                                                            value={newPassword}
+                                                            onChange={(e) => setNewPassword(e.target.value)}
+                                                            style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', outline: 'none' }}
+                                                        />
+                                                    </div>
+                                                )}
                                                 <button
                                                     className="btn-onboarding-next"
                                                     style={{ marginTop: '1rem' }}
