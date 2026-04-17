@@ -64,14 +64,14 @@ body {
 
 /* --- HEADER SYSTEM --- */
 .app-header-new {
-    padding: calc(1.2rem + env(safe-area-inset-top)) 1.5rem 1.2rem;
+    padding: calc(2rem + env(safe-area-inset-top)) 1.5rem 1.2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, transparent 100%);
     z-index: 100;
     /* Allow clicks on header elements like avatar */
-    height: 85px; /* Fixed height for consistent space calculation */
+    height: 100px; /* Increased to fit extra padding */
     transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
     transform-origin: top;
     flex-shrink: 0;
