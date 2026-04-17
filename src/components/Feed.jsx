@@ -20,11 +20,13 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     useEffect(() => {
         if (posts.length > 0) {
             const isNearBottom = () => {
-                // To check if the user is currently at the bottom (within ~500px)
-                const scrollY = window.scrollY || document.documentElement.scrollTop;
-                const windowHeight = window.innerHeight;
-                const docHeight = document.documentElement.scrollHeight;
-                return (docHeight - (scrollY + windowHeight)) < 500;
+                // Find the actual scrollable container
+                const container = feedEndRef.current?.closest('.chat-messages-scroll');
+                if (!container) return false;
+
+                const threshold = 150; // pixels from the bottom
+                const position = container.scrollHeight - container.scrollTop - container.clientHeight;
+                return position < threshold;
             };
 
             const lastPost = posts[posts.length - 1];
@@ -35,10 +37,10 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
                 scrollToBottom('auto');
                 isInitialLoad.current = false;
             } else if (isMyPost || isNearBottom()) {
-                // Only smoothly auto-scroll if they just posted, or they are hanging out at the bottom
+                // Only smoothly auto-scroll if they just posted, or they are already hanging out at the bottom
                 scrollToBottom('smooth');
             }
-            // If they scrolled UP to read history, we do NOTHING so it doesn't yank them down!
+            // If they are reading history (isNearBottom is false), we stay put!
         }
     }, [posts, session])
 
