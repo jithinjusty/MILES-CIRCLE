@@ -41,6 +41,8 @@ body {
     height: 100dvh;
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 /* --- MAP SYSTEM --- */
@@ -172,9 +174,9 @@ body {
 }
 
 .chat-input-wrapper {
-    margin: 0.5rem 1rem 1.5rem;
-    /* Reduced margins for better mobile visibility */
+    margin: 0.5rem 1rem 1rem;
     background: var(--chat-bg);
+    perspective: 1000px;
     backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
     border: 1px solid var(--glass-border);
@@ -185,6 +187,7 @@ body {
     gap: 12px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
     position: relative;
+    flex-shrink: 0;
 }
 
 .attachment-menu-popover {
@@ -1406,7 +1409,7 @@ body {
     }
 
     .chat-input-wrapper {
-        margin: 1rem;
+        margin: 0.5rem 0.5rem 0.8rem;
     }
 }
 
