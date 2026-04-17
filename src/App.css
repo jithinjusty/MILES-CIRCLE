@@ -2954,8 +2954,8 @@ body {
 /* --- MOBILE OPTIMIZATIONS --- */
 @media (max-width: 480px) {
     .splash-logo-wrap {
-        width: 100px;
-        height: 100px;
+        width: 200px;
+        height: 200px;
     }
 
     .splash-tagline-animated {
