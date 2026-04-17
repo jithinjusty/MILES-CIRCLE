@@ -636,7 +636,7 @@ function App() {
                             <div className="auth-container anim-fade-in">
                                 <div className="brand-header-premium" style={{ textAlign: 'center', marginBottom: '1.5rem', width: '100%' }}>
                                     <div className="logo-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '0.5rem' }}>
-                                        <div className="pulse-circle" style={{ width: '64px', height: '64px' }}>
+                                        <div className="pulse-circle" style={{ width: '128px', height: '128px' }}>
                                             <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                         </div>
                                     </div>
@@ -674,7 +674,7 @@ function App() {
                                 <div className="onboarding-overlay" style={{ zIndex: 3000 }}>
                                     <div className="brand-header-premium" style={{ textAlign: 'center', marginBottom: '2rem', width: '100%' }}>
                                         <div className="logo-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '0.5rem' }}>
-                                            <div className="pulse-circle" style={{ width: '64px', height: '64px' }}>
+                                            <div className="pulse-circle" style={{ width: '128px', height: '128px' }}>
                                                 <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                             </div>
                                         </div>
