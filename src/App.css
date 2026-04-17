@@ -1514,16 +1514,20 @@ body {
 
 .splash-logo-wrap {
     position: relative;
-    width: 120px;
-    height: 120px;
+    width: min(280px, 80vw);
+    height: min(280px, 80vw);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .splash-logo-animated {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    filter: drop-shadow(0 0 20px rgba(var(--accent-red-rgb), 0.4));
-    animation: pulseLogo 2s infinite ease-in-out;
+    filter: drop-shadow(0 0 40px rgba(var(--accent-red-rgb), 0.6)) 
+            drop-shadow(0 0 80px rgba(var(--accent-red-rgb), 0.3));
+    animation: pulseLogoLarge 3s infinite ease-in-out;
 }
 
 .logo-pulse-ring {
@@ -1536,9 +1540,9 @@ body {
 }
 
 .splash-tagline-animated {
-    font-size: 1.25rem;
-    font-weight: 850;
-    letter-spacing: 4px;
+    font-size: 1.5rem;
+    font-weight: 950;
+    letter-spacing: 6px;
     text-transform: uppercase;
     color: white;
     text-align: center;
@@ -1569,17 +1573,19 @@ body {
     animation: loaderFill 2.5s forwards cubic-bezier(0.65, 0, 0.35, 1);
 }
 
-@keyframes pulseLogo {
+@keyframes pulseLogoLarge {
 
     0%,
     100% {
         transform: scale(1);
-        filter: drop-shadow(0 0 20px rgba(var(--accent-red-rgb), 0.4));
+        filter: drop-shadow(0 0 40px rgba(var(--accent-red-rgb), 0.6)) 
+                drop-shadow(0 0 80px rgba(var(--accent-red-rgb), 0.3));
     }
 
     50% {
-        transform: scale(1.05);
-        filter: drop-shadow(0 0 40px rgba(var(--accent-red-rgb), 0.6));
+        transform: scale(1.08);
+        filter: drop-shadow(0 0 70px rgba(var(--accent-red-rgb), 0.8)) 
+                drop-shadow(0 0 140px rgba(var(--accent-red-rgb), 0.4));
     }
 }
 
