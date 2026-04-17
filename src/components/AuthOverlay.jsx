@@ -126,8 +126,8 @@ export default function AuthOverlay({ onInstall }) {
     return (
         <div className="auth-overlay-new">
             <div className="auth-container anim-fade-in">
-                <div className="brand-header-premium" style={{ textAlign: 'center', marginBottom: '1.5rem', width: '100%' }}>
-                    <div className="logo-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '0.5rem' }}>
+                <div className="brand-header-premium" style={{ textAlign: 'center', marginBottom: '0.5rem', width: '100%' }}>
+                    <div className="logo-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '0.2rem' }}>
                         <div className="pulse-circle" style={{ width: '128px', height: '128px' }}>
                             <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         </div>
@@ -135,7 +135,7 @@ export default function AuthOverlay({ onInstall }) {
                     <p className="auth-tagline" style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>Connect with your local circle.</p>
                 </div>
 
-                <div className="onboarding-card-premium" style={{ width: '100%', maxWidth: '440px' }}>
+                <div className="onboarding-card-premium" style={{ width: '100%', maxWidth: '440px', padding: '2rem' }}>
                     {message && (
                         <div className={`auth-message-classic ${message.type}`} style={{
                             marginBottom: '1.5rem',
@@ -153,7 +153,7 @@ export default function AuthOverlay({ onInstall }) {
                     )}
 
                     {!isForgotPassword && (
-                        <div className="auth-tabs" style={{ display: 'flex', gap: '2rem', marginBottom: '2.5rem', borderBottom: '1px solid var(--glass-border)' }}>
+                        <div className="auth-tabs" style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--glass-border)' }}>
                             <button
                                 className={`auth-tab ${!isSignUp ? 'active' : ''}`}
                                 onClick={() => { setIsSignUp(false); setMessage(null); }}
