@@ -7,40 +7,66 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
-    const [replyingTo, setReplyingTo] = useState(null) // { id, content, author }
+    const [replyingTo, setReplyingTo] = useState(null)
+    const [unreadCount, setUnreadCount] = useState(0)
+    const [showScrollDown, setShowScrollDown] = useState(false)
     const feedEndRef = useRef(null)
     const aiTimerRef = useRef(null)
-
     const isInitialLoad = useRef(true);
+    const prevPostsLength = useRef(0);
+    const scrollContainerRef = useRef(null);
 
     const scrollToBottom = (behavior = 'smooth') => {
         feedEndRef.current?.scrollIntoView({ behavior });
     }
 
+    const isNearBottom = () => {
+        const container = scrollContainerRef.current || feedEndRef.current?.closest('.chat-messages-scroll');
+        if (!container) return false;
+        const threshold = 150; 
+        const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+        return distance < threshold;
+    };
+
+    useEffect(() => {
+        const container = feedEndRef.current?.closest('.chat-messages-scroll');
+        if (container) {
+            scrollContainerRef.current = container;
+            const handleScroll = () => {
+                if (isNearBottom()) {
+                    setUnreadCount(0);
+                    setShowScrollDown(false);
+                } else {
+                    setShowScrollDown(true);
+                }
+            };
+            container.addEventListener('scroll', handleScroll, { passive: true });
+            return () => container.removeEventListener('scroll', handleScroll);
+        }
+    }, [posts.length]); // Re-attach if needed when posts change
+
     useEffect(() => {
         if (posts.length > 0) {
-            const isNearBottom = () => {
-                // Find the actual scrollable container
-                const container = feedEndRef.current?.closest('.chat-messages-scroll');
-                if (!container) return false;
-
-                const threshold = 150; // pixels from the bottom
-                const position = container.scrollHeight - container.scrollTop - container.clientHeight;
-                return position < threshold;
-            };
-
             const lastPost = posts[posts.length - 1];
             const isMyPost = session?.user?.id && (lastPost.user_id === session.user.id && !lastPost.is_ai);
+            const nearBottom = isNearBottom();
 
             if (isInitialLoad.current) {
-                // Instantly jump to bottom on first open like WhatsApp/Telegram
-                scrollToBottom('auto');
+                // Instantly jump to bottom on first open
+                feedEndRef.current?.scrollIntoView({ behavior: 'auto' });
                 isInitialLoad.current = false;
-            } else if (isMyPost || isNearBottom()) {
-                // Only smoothly auto-scroll if they just posted, or they are already hanging out at the bottom
-                scrollToBottom('smooth');
+            } else if (isMyPost || nearBottom) {
+                // Smoothly auto-scroll if it's the user's post or they are at the bottom
+                feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+                setUnreadCount(0);
+            } else {
+                // User is reading history, update unread count for new messages
+                const diff = posts.length - prevPostsLength.current;
+                if (diff > 0 && prevPostsLength.current > 0) {
+                    setUnreadCount(prev => prev + diff);
+                }
             }
-            // If they are reading history (isNearBottom is false), we stay put!
+            prevPostsLength.current = posts.length;
         }
     }, [posts, session])
 
@@ -429,7 +455,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
     };
 
     return (
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0' }}>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0', position: 'relative' }}>
             <div className="app-feed-container" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.2rem', paddingBottom: '0.5rem' }}>
                 {posts.map((post) => (
                     <PostCard
@@ -444,6 +470,55 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                 ))}
                 <div ref={feedEndRef} />
             </div>
+
+            {/* Floating New Message Notification */}
+            {showScrollDown && (
+                <button 
+                    onClick={() => scrollToBottom('smooth')}
+                    className="scroll-down-btn anim-fade-in"
+                    style={{
+                        position: 'fixed',
+                        bottom: '90px', // Above the taskbar/input
+                        right: '25px',
+                        width: '45px',
+                        height: '45px',
+                        borderRadius: '50%',
+                        background: 'var(--accent-red)',
+                        color: 'white',
+                        border: 'none',
+                        boxShadow: '0 8px 24px rgba(var(--accent-red-rgb), 0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justify-content: 'center',
+                        cursor: 'pointer',
+                        zIndex: 100,
+                        transition: 'all 0.3s'
+                    }}
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M7 13l5 5 5-5M7 6l5 5 5-5"/>
+                    </svg>
+                    {unreadCount > 0 && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '-8px',
+                            right: '-8px',
+                            background: '#ffefef',
+                            color: 'var(--accent-red)',
+                            fontSize: '0.75rem',
+                            fontWeight: '900',
+                            padding: '4px 8px',
+                            borderRadius: '12px',
+                            border: '2px solid var(--accent-red)',
+                            minWidth: '24px',
+                            textAlign: 'center',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                        }}>
+                            {unreadCount}
+                        </div>
+                    )}
+                </button>
+            )}
         </div>
     )
 }
