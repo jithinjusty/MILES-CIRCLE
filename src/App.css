@@ -1030,22 +1030,22 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 2rem;
+    padding: 2rem 1rem;
     overflow-y: auto;
 }
 
 .onboarding-card-premium {
     background: #0D0D0D;
-    width: 90%;
+    width: 100%;
     max-width: 500px;
-    /* Slightly wider */
+    margin: auto;
     border-radius: 40px;
-    padding: 4rem;
+    padding: 3rem;
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 50px 100px rgba(0, 0, 0, 0.9);
     position: relative;
     overflow: hidden;
+    flex-shrink: 0;
 }
 
 .tour-card {

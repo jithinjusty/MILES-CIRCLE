@@ -738,21 +738,16 @@ function App() {
                             {/* ONBOARDING FLOW */}
                             {onboardingStep > 0 && (
                                 <div className="onboarding-overlay" style={{ zIndex: 3000 }}>
-                                    <div className="brand-header-premium" style={{ textAlign: 'center', marginBottom: '2rem', width: '100%' }}>
-                                        <div className="logo-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '0.5rem' }}>
-                                            <div className="pulse-circle" style={{ width: '128px', height: '128px' }}>
-                                                <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                            </div>
-                                        </div>
-                                    </div>
                                     {onboardingStep === 1 && (
                                         <div className="onboarding-card-premium anim-fade-in">
-                                            <div className="onboarding-header" style={{ marginBottom: '2.5rem' }}>
-                                                <div className="pulse-circle" style={{ width: '60px', height: '60px', marginBottom: '1.5rem' }}>
-                                                    <User size={28} color="var(--accent-red)" />
+                                            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                                                <div className="pulse-circle" style={{ width: '70px', height: '70px', margin: '0 auto' }}>
+                                                    <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                                 </div>
+                                            </div>
+                                            <div className="onboarding-header" style={{ marginBottom: '2rem', textAlign: 'center' }}>
                                                 <h2 className="onboarding-title">Establish Your Presence</h2>
-                                                <p className="onboarding-text">Craft your digital persona before entering the circle.</p>
+                                                <p className="onboarding-text" style={{ margin: '0 auto' }}>Craft your digital persona before entering the circle.</p>
                                             </div>
                                             <div className="onboarding-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                                 <div className="field-block">
