@@ -3036,17 +3036,44 @@ body {
         font-size: 0.9rem;
     }
 
+    .onboarding-overlay {
+        padding: 1.5rem 1rem;
+        justify-content: flex-start;
+    }
+
     .onboarding-card-premium {
-        padding: 2.5rem 1.5rem;
-        width: 95%;
-        border-radius: 32px;
+        padding: 2rem 1.5rem;
+        width: 100%;
+        margin: 0.5rem auto 2rem;
+        border-radius: 30px;
     }
 
     .onboarding-header {
-        margin-bottom: 2rem !important;
+        margin-bottom: 1.5rem !important;
     }
 
     .onboarding-title {
-        font-size: 1.5rem !important;
+        font-size: 1.4rem !important;
+        letter-spacing: -0.5px;
+    }
+
+    .onboarding-text {
+        font-size: 0.85rem !important;
+        line-height: 1.4 !important;
+        opacity: 0.8;
+    }
+
+    .field-block label {
+        font-size: 0.65rem !important;
+    }
+
+    .field-block input {
+        padding: 14px 12px !important;
+        font-size: 0.9rem !important;
+    }
+
+    .btn-onboarding-next {
+        padding: 16px !important;
+        font-size: 1rem !important;
     }
 }

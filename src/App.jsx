@@ -740,16 +740,14 @@ function App() {
                                 <div className="onboarding-overlay" style={{ zIndex: 3000 }}>
                                     {onboardingStep === 1 && (
                                         <div className="onboarding-card-premium anim-fade-in">
-                                            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                                                <div className="pulse-circle" style={{ width: '70px', height: '70px', margin: '0 auto' }}>
-                                                    <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                                </div>
+                                            <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                                                <img src="/logo.png" alt="" style={{ width: '60px', height: '60px', objectFit: 'contain' }} />
                                             </div>
                                             <div className="onboarding-header" style={{ marginBottom: '2rem', textAlign: 'center' }}>
                                                 <h2 className="onboarding-title">Establish Your Presence</h2>
                                                 <p className="onboarding-text" style={{ margin: '0 auto' }}>Craft your digital persona before entering the circle.</p>
                                             </div>
-                                            <div className="onboarding-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                            <div className="onboarding-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                                 <div className="field-block">
                                                     <label style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>Full Name</label>
                                                     <input
@@ -816,10 +814,10 @@ function App() {
                                                 {[1, 2, 3, 4].map(s => <div key={s} className={`step-dot ${tourStep === s ? 'active' : ''}`}></div>)}
                                             </div>
                                             <div className="tour-content">
-                                                {tourStep === 1 && <><Globe size={48} color="var(--accent-red)" /><h3>Your Radius, Your World</h3><p>Miles connects you with people within a specific range. Use the slider on the right to adjust your circle.</p></>}
-                                                {tourStep === 2 && <><MessageCircle size={48} color="var(--accent-red)" /><h3>The Local Feed</h3><p>Share updates, photos, and files with everyone in your current radius.</p></>}
-                                                {tourStep === 3 && <><MapIcon size={48} color="var(--accent-red)" /><h3>Interactive Proximity</h3><p>The map behind highlights your active zone. You only see messages within that area.</p></>}
-                                                {tourStep === 4 && <><Share2 size={48} color="var(--accent-red)" /><h3>Digital Identity</h3><p>Manage your social presence. You can add your digital handles and choose exactly who sees them with the <strong>Public/Private</strong> toggles.</p></>}
+                                                {tourStep === 1 && <><Globe size={36} color="var(--accent-red)" /><h3>Your Radius, Your World</h3><p>Miles connects you with people within a range. Use the slider to adjust your circle.</p></>}
+                                                {tourStep === 2 && <><MessageCircle size={36} color="var(--accent-red)" /><h3>The Local Feed</h3><p>Share updates, photos, and files with everyone in your current radius.</p></>}
+                                                {tourStep === 3 && <><MapIcon size={36} color="var(--accent-red)" /><h3>Interactive Proximity</h3><p>The map behind highlights your active zone. You only see messages within that area.</p></>}
+                                                {tourStep === 4 && <><Share2 size={36} color="var(--accent-red)" /><h3>Digital Identity</h3><p>Manage your social presence. Add digital handles and choose who sees them.</p></>}
                                             </div>
                                             <div className="tour-footer">
                                                 <button className="btn-tour-next" onClick={() => tourStep < 4 ? setTourStep(s => s + 1) : handleUpdateProfile({ onboarding_completed: true })}>
