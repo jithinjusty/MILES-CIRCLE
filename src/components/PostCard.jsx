@@ -209,14 +209,18 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                             border: isMine ? '1px solid rgba(255,255,255,0.3)' : '1px solid var(--glass-border)',
                             background: isMine ? 'rgba(255,255,255,0.1)' : 'var(--panel-bg)'
                         }}
-                        onClick={(e) => { e.stopPropagation(); onUserClick?.(post.user_id); }}
+                        onClick={(e) => { e.stopPropagation(); onUserClick?.(post.user_id, post.is_ai, post.ai_name); }}
                     >
-                        {post?.avatar_url ? <img src={post.avatar_url} alt="" /> : initial}
+                        {post?.is_ai ? (
+                            <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${post.ai_name || 'AI'}&backgroundColor=b6e3f4`} alt="" />
+                        ) : post?.avatar_url ? (
+                            <img src={post.avatar_url} alt="" />
+                        ) : initial}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
                         <span
                             style={{ fontSize: '0.85rem', fontWeight: '800', cursor: 'pointer', color: isMine ? 'white' : 'var(--accent-red)' }}
-                            onClick={(e) => { e.stopPropagation(); onUserClick?.(post.user_id); }}
+                            onClick={(e) => { e.stopPropagation(); onUserClick?.(post.user_id, post.is_ai, post.ai_name); }}
                         >
                             {displayName}
                         </span>

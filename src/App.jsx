@@ -1109,7 +1109,17 @@ function App() {
                                                         radius={radius}
                                                         refreshTrigger={feedTrigger}
                                                         session={session}
-                                                        onUserClick={async (userId) => {
+                                                        onUserClick={async (userId, isAi, aiName) => {
+                                                            const isReallyAi = !!isAi || (typeof isAi === 'string' && isAi.toLowerCase() === 'true');
+                                                            if (isReallyAi) {
+                                                                setViewingProfile({
+                                                                    full_name: aiName || 'AI Neighbor',
+                                                                    avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${aiName || 'AI'}&backgroundColor=b6e3f4`,
+                                                                    bio: 'I am a specialized AI neighbor assistant. I provide answers and helpful local info if nobody nearby can reply.',
+                                                                    is_ai: true
+                                                                });
+                                                                return;
+                                                            }
                                                             if (!userId) return;
                                                             try {
                                                                 const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
@@ -1412,42 +1422,50 @@ function App() {
                                                         {viewingProfile.avatar_url ? <img src={viewingProfile.avatar_url} alt="" /> : (viewingProfile.full_name || '?')[0].toUpperCase()}
                                                     </div>
                                                     <h2 className="viewer-name">{viewingProfile.full_name || 'Circle Member'}</h2>
-                                                    <p className="viewer-joined">Radius Citizen</p>
+                                                    <p className="viewer-joined">{viewingProfile.is_ai ? 'AI Assistant' : 'Radius Citizen'}</p>
                                                 </header>
-                                                <div className="viewer-stats">
-                                                    <div className="stat-item"><span className="stat-val">{viewingProfile.points || 0}</span><span className="stat-lbl">Points</span></div>
-                                                    <div className="stat-sep" />
-                                                    <div className="stat-item"><span className="stat-val">Active</span><span className="stat-lbl">Status</span></div>
-                                                </div>
+                                                {!viewingProfile.is_ai && (
+                                                    <div className="viewer-stats">
+                                                        <div className="stat-item"><span className="stat-val">{viewingProfile.points || 0}</span><span className="stat-lbl">Points</span></div>
+                                                        <div className="stat-sep" />
+                                                        <div className="stat-item"><span className="stat-val">Active</span><span className="stat-lbl">Status</span></div>
+                                                    </div>
+                                                )}
                                                 {viewingProfile.bio && (
                                                     <div className="viewer-bio-section" style={{ background: '#000', padding: '1.5rem', borderRadius: '24px', border: '1px solid var(--glass-border)', marginBottom: '1.5rem', textAlign: 'left' }}>
                                                         <h4 style={{ fontSize: '0.7rem', color: 'var(--accent-red)', marginBottom: '8px', textTransform: 'uppercase' }}>Biography</h4>
                                                         <p style={{ color: 'white', fontSize: '0.9rem', lineHeight: '1.6', margin: 0 }}>{viewingProfile.bio}</p>
                                                     </div>
                                                 )}
-                                                <div className="viewer-info-rows">
-                                                    {viewingProfile.address_public && viewingProfile.address && <div className="viewer-info-row"><MapPin size={16} color="var(--accent-red)" /> <span>{viewingProfile.address}</span></div>}
-                                                    {viewingProfile.mobile_public && viewingProfile.mobile && <div className="viewer-info-row"><Phone size={16} color="var(--accent-red)" /> <span>{viewingProfile.mobile}</span></div>}
-                                                </div>
-                                                <div className="viewer-social-links">
-                                                    {['facebook', 'linkedin', 'instagram', 'youtube', 'whatsapp'].map(key => {
-                                                        const url = key === 'whatsapp' ? (viewingProfile.whatsapp_number ? `https://wa.me/${viewingProfile.whatsapp_number.replace(/\D/g, '')}` : null) : viewingProfile[`${key}_url`];
-                                                        return viewingProfile[`${key}_public`] && url && (
-                                                            <a key={key} href={url.startsWith('http') ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" className={`viewer-social-icon ${key}`}>
-                                                                {key === 'facebook' && <Facebook size={18} />}
-                                                                {key === 'linkedin' && <Linkedin size={18} />}
-                                                                {key === 'instagram' && <Instagram size={18} />}
-                                                                {key === 'youtube' && <Youtube size={18} />}
-                                                                {key === 'whatsapp' && <WhatsAppIcon size={18} color="#25D366" />}
-                                                            </a>
-                                                        );
-                                                    })}
-                                                </div>
-                                                <div className="viewer-actions-row">
-                                                    <button className="btn-rate up" onClick={() => handleRate(1)}><ShieldCheck size={20} /> Like</button>
-                                                    <button className="btn-rate down" onClick={() => handleRate(-1)}><X size={20} /> Dislike</button>
-                                                    <button className="btn-report" onClick={handleReport}><Lock size={20} /> Report</button>
-                                                </div>
+                                                {!viewingProfile.is_ai && (
+                                                    <div className="viewer-info-rows">
+                                                        {viewingProfile.address_public && viewingProfile.address && <div className="viewer-info-row"><MapPin size={16} color="var(--accent-red)" /> <span>{viewingProfile.address}</span></div>}
+                                                        {viewingProfile.mobile_public && viewingProfile.mobile && <div className="viewer-info-row"><Phone size={16} color="var(--accent-red)" /> <span>{viewingProfile.mobile}</span></div>}
+                                                    </div>
+                                                )}
+                                                {!viewingProfile.is_ai && (
+                                                    <>
+                                                        <div className="viewer-social-links">
+                                                            {['facebook', 'linkedin', 'instagram', 'youtube', 'whatsapp'].map(key => {
+                                                                const url = key === 'whatsapp' ? (viewingProfile.whatsapp_number ? `https://wa.me/${viewingProfile.whatsapp_number.replace(/\D/g, '')}` : null) : viewingProfile[`${key}_url`];
+                                                                return viewingProfile[`${key}_public`] && url && (
+                                                                    <a key={key} href={url.startsWith('http') ? url : `https://${url}`} target="_blank" rel="noopener noreferrer" className={`viewer-social-icon ${key}`}>
+                                                                        {key === 'facebook' && <Facebook size={18} />}
+                                                                        {key === 'linkedin' && <Linkedin size={18} />}
+                                                                        {key === 'instagram' && <Instagram size={18} />}
+                                                                        {key === 'youtube' && <Youtube size={18} />}
+                                                                        {key === 'whatsapp' && <WhatsAppIcon size={18} color="#25D366" />}
+                                                                    </a>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        <div className="viewer-actions-row">
+                                                            <button className="btn-rate up" onClick={() => handleRate(1)}><ShieldCheck size={20} /> Like</button>
+                                                            <button className="btn-rate down" onClick={() => handleRate(-1)}><X size={20} /> Dislike</button>
+                                                            <button className="btn-report" onClick={handleReport}><Lock size={20} /> Report</button>
+                                                        </div>
+                                                    </>
+                                                )}
                                                 <button className="btn-viewer-close" onClick={() => setViewingProfile(null)}>Dismiss</button>
                                             </div>
                                         </div>
