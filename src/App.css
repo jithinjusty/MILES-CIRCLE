@@ -1107,6 +1107,13 @@ body {
     font-weight: 700;
     cursor: pointer;
     font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.tour-skip:hover {
+    color: var(--text-primary);
+    opacity: 1;
+    transform: translateY(-1px);
 }
 
 .btn-onboarding-next {

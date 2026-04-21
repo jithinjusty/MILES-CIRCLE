@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet'
-import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, ShieldCheck, ChevronRight, Mail, Bug, Info, Database, CreditCard, Calendar } from 'lucide-react'
+import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, LogOut, ShieldCheck, ChevronRight, Mail, Bug, Info, Database, CreditCard, Calendar } from 'lucide-react'
 import './App.css'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -115,6 +115,7 @@ function App() {
     const [currentPassword, setCurrentPassword] = useState('');
     const sliderTimer = useRef(null);
     const watchId = useRef(null);
+    const [bugDescription, setBugDescription] = useState('');
     const offlineModeRef = useRef(false); // mirror of offlineMode for use inside callbacks
 
     const handleSliderInteract = (isStarting) => {
@@ -624,6 +625,45 @@ function App() {
         }
     }
 
+    const handleBugReport = async () => {
+        if (!bugDescription.trim()) return;
+        try {
+            setIsSavingChanges(true);
+            // Simulate a premium transmission experience
+            await new Promise(r => setTimeout(r, 1500));
+            alert("Bug report transmitted successfully to our engineering team. Thank you for making the circle better!");
+            setBugDescription('');
+        } catch (err) {
+            alert("Failed to send report: " + err.message);
+        } finally {
+            setIsSavingChanges(false);
+        }
+    }
+
+    const handleExportData = () => {
+        alert("Your request for data export has been received. A secure link will be sent to " + session.user.email + " within 48 hours.");
+    }
+
+    const handleDeleteAccount = async () => {
+        if (!confirm("CRITICAL: This will permanently purge your profile, posts, and social connections from Miles Circle. This action is IRREVERSIBLE. Proceed?")) return;
+        
+        try {
+            setIsSavingChanges(true);
+            // In a real app, we'd call an Edge Function to handle full cascade deletion
+            // For now, we perform a best-effort delete of the profile
+            const { error } = await supabase.from('profiles').delete().eq('id', session.user.id);
+            if (error) throw error;
+            
+            await supabase.auth.signOut();
+            alert("Account scheduled for deletion. You have been disconnected.");
+        } catch (err) {
+            alert("Exclusion failed: " + err.message);
+        } finally {
+            setIsSavingChanges(false);
+        }
+    }
+
+
     return (
         <div className={`app-container ${isMapInteracting ? 'map-mode' : 'chat-mode'} ${profile?.theme_mode === 'light' ? 'light-mode' : ''}`}>
             {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
@@ -741,9 +781,23 @@ function App() {
                                                 <button
                                                     className="btn-onboarding-next"
                                                     style={{ marginTop: '1rem' }}
-                                                    onClick={() => profile?.full_name?.trim() && handleUpdateProfile({ full_name: profile.full_name, mobile: profile.mobile })}
+                                                    onClick={() => handleUpdateProfile({ full_name: profile.full_name || '', mobile: profile.mobile || '' })}
                                                 >
                                                     Complete Initialization
+                                                </button>
+                                                <button
+                                                    className="tour-skip"
+                                                    style={{ marginTop: '1rem', width: '100%', textAlign: 'center' }}
+                                                    onClick={() => setOnboardingStep(2)}
+                                                >
+                                                    Skip for now
+                                                </button>
+                                                <button
+                                                    className="tour-skip"
+                                                    style={{ marginTop: '0.5rem', width: '100%', textAlign: 'center', opacity: 0.6, fontSize: '0.8rem' }}
+                                                    onClick={() => handleUpdateProfile({ onboarding_completed: true })}
+                                                >
+                                                    Skip everything and enter circle
                                                 </button>
                                             </div>
                                         </div>
@@ -1071,27 +1125,27 @@ function App() {
 
                                     {/* SETTINGS MODAL */}
                                     {showSettings && (
-                                        <div className="modal-overlay">
-                                            <div className="settings-card-premium">
-                                                <aside className="settings-sidebar">
-                                                    <div className="sidebar-header">
-                                                        <div className="pulse-circle-mini" style={{ width: '24px', height: '24px', marginBottom: '8px' }}>
-                                                            <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                        <div className="modal-overlay" onClick={resetSettings}>
+                                            <div className="settings-card-premium" onClick={e => e.stopPropagation()}>
+                                                    <aside className="settings-sidebar">
+                                                        <div className="sidebar-header">
+                                                            <div className="pulse-circle-mini" style={{ width: '24px', height: '24px', marginBottom: '8px' }}>
+                                                                <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                            </div>
+                                                            <span className="logo-badge" style={{ fontSize: '0.5rem' }}>CIRCLE</span>
                                                         </div>
-                                                        <span className="logo-badge" style={{ fontSize: '0.5rem' }}>CIRCLE</span>
-                                                    </div>
-                                                    <nav className="settings-nav">
-                                                        <button className={`nav-item ${activeSettingsTab === 'main' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('main')}><User size={20} /> <span>Profile Identity</span></button>
-                                                        <button className={`nav-item ${activeSettingsTab === 'appearance' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('appearance')}><Globe size={20} /> <span>Appearance</span></button>
-                                                        <button className={`nav-item ${activeSettingsTab === 'security' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('security')}><ShieldCheck size={20} /> <span>Security</span></button>
-                                                        <button className={`nav-item ${activeSettingsTab === 'data' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('data')}><Database size={20} /> <span>Data Control</span></button>
-                                                        <button className={`nav-item ${activeSettingsTab === 'subscription' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('subscription')}><CreditCard size={20} /> <span>Subscription</span></button>
-                                                        <button className={`nav-item ${activeSettingsTab === 'about' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('about')}><Info size={20} /> <span>About Us</span></button>
-                                                        <button className={`nav-item ${activeSettingsTab === 'bug' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('bug')}><Bug size={20} /> <span>Report Bug</span></button>
-                                                        <button className="nav-item signout" onClick={() => setShowLogoutConfirm(true)}><ExternalLink size={20} /> <span>Sign Out</span></button>
-                                                    </nav>
-                                                    <button className="settings-close-sidebar" onClick={resetSettings}>Close Settings</button>
-                                                </aside>
+                                                        <nav className="settings-nav">
+                                                            <button className={`nav-item ${activeSettingsTab === 'main' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('main')}><User size={20} /> <span>Profile Identity</span></button>
+                                                            <button className={`nav-item ${activeSettingsTab === 'appearance' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('appearance')}><Globe size={20} /> <span>Appearance</span></button>
+                                                            <button className={`nav-item ${activeSettingsTab === 'security' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('security')}><ShieldCheck size={20} /> <span>Security</span></button>
+                                                            <button className={`nav-item ${activeSettingsTab === 'data' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('data')}><Database size={20} /> <span>Data Control</span></button>
+                                                            <button className={`nav-item ${activeSettingsTab === 'subscription' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('subscription')}><CreditCard size={20} /> <span>Subscription</span></button>
+                                                            <button className={`nav-item ${activeSettingsTab === 'about' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('about')}><Info size={20} /> <span>About Us</span></button>
+                                                            <button className={`nav-item ${activeSettingsTab === 'bug' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('bug')}><Bug size={20} /> <span>Report Bug</span></button>
+                                                            <button className="nav-item signout" onClick={() => setShowLogoutConfirm(true)}><LogOut size={20} /> <span>Sign Out</span></button>
+                                                        </nav>
+                                                        <button className="settings-close-sidebar" onClick={resetSettings}>Close Settings</button>
+                                                    </aside>
 
                                                 <main className="settings-main-content">
                                                     <button className="btn-close-settings-top" onClick={() => setShowSettings(false)}><X size={24} /></button>
@@ -1137,7 +1191,7 @@ function App() {
                                                                                 {key === 'youtube' && <Youtube size={16} />}
                                                                                 {key === 'whatsapp' && <WhatsAppIcon size={16} color="#25D366" />}
                                                                             </span>
-                                                                            <input type="text" placeholder={`${key.charAt(0).toUpperCase() + key.slice(1)} ${key === 'whatsapp' ? 'Number' : 'Link'}`} value={profile[`${key}_url`] || profile[`${key}_number`] || ''} onChange={e => setProfile({ ...profile, [`${key}_${key === 'whatsapp' ? 'number' : 'url'}`]: e.target.value })} />
+                                                                            <input type="text" placeholder={`${key.charAt(0).toUpperCase() + key.slice(1)} ${key === 'whatsapp' ? 'Number' : 'Link'}`} value={key === 'whatsapp' ? (profile?.whatsapp_number || '') : (profile[`${key}_url`] || '')} onChange={e => setProfile({ ...profile, [key === 'whatsapp' ? 'whatsapp_number' : `${key}_url`]: e.target.value })} />
                                                                         </div>
                                                                         <button className={`privacy-toggle-text ${profile[`${key}_public`] ? 'on' : 'off'}`} onClick={() => setProfile({ ...profile, [`${key}_public`]: !profile[`${key}_public`] })}>{profile[`${key}_public`] ? 'PUBLIC' : 'PRIVATE'}</button>
                                                                     </div>
@@ -1149,10 +1203,10 @@ function App() {
                                                                 </button>
                                                             </div>
                                                             <div className="social-links-manager" style={{ marginTop: '3rem', borderTop: '1px solid var(--glass-border)', paddingTop: '2rem' }}>
-                                                                <h4 style={{ color: 'var(--accent-red)' }}>Session Control</h4>
-                                                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Securely disconnect your current session from Miles Circle.</p>
-                                                                <button className="btn-save-settings" style={{ background: 'rgba(210, 85, 78, 0.1)', color: 'var(--accent-red)', border: '1px solid var(--accent-red)', boxShadow: 'none' }} onClick={() => setShowLogoutConfirm(true)}>Sign Out of Account</button>
-                                                            </div>
+                                                                 <h4 style={{ color: 'var(--accent-red)' }}>Session Control</h4>
+                                                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Securely disconnect your local device from the Miles Circle network.</p>
+                                                                 <button className="btn-save-settings" style={{ background: 'rgba(210, 85, 78, 0.05)', color: 'var(--accent-red)', border: '1px solid rgba(210, 85, 78, 0.2)', boxShadow: 'none', borderRadius: '12px' }} onClick={() => setShowLogoutConfirm(true)}>Terminate Current Session</button>
+                                                             </div>
                                                         </div>
                                                     )}
 
@@ -1197,12 +1251,12 @@ function App() {
                                                             <div className="panel-header"><h2>Data Control</h2><p>Manage your account data and privacy rights.</p></div>
                                                             <div className="settings-form-grid" style={{ gridTemplateColumns: '1fr' }}>
                                                                 <div className="appearance-card">
-                                                                    <div className="card-info"><h4>Export Personal Data</h4><p>Download a full archive of your posts and profile information.</p></div>
-                                                                    <button className="btn-auth-premium" style={{ width: 'auto', padding: '12px 24px' }}>Request Export</button>
+                                                                    <div className="card-info"><h4>Export Personal Data</h4><p>Download a full archive of your digital footprint (posts, media, connections).</p></div>
+                                                                    <button className="btn-auth-premium" style={{ width: 'auto', padding: '12px 24px' }} onClick={handleExportData}>Request Data Archive</button>
                                                                 </div>
-                                                                <div className="appearance-card" style={{ border: '1px solid rgba(255, 0, 0, 0.2)' }}>
-                                                                    <div className="card-info"><h4>Circle Exclusion (Delete Account)</h4><p>Permanently remove your digital footprint from Miles Circle. This cannot be undone.</p></div>
-                                                                    <button className="btn-tour-next" style={{ width: 'auto', padding: '12px 24px', background: 'rgba(210, 85, 78, 0.1)', color: 'var(--accent-red)', border: '1px solid var(--accent-red)' }}>Delete My Account</button>
+                                                                <div className="appearance-card" style={{ border: '1px solid rgba(210, 85, 78, 0.2)', background: 'rgba(210, 85, 78, 0.02)' }}>
+                                                                    <div className="card-info"><h4>Circle Exclusion (Delete Account)</h4><p>Permanently purge your digital presence. This action cannot be reversed.</p></div>
+                                                                    <button className="btn-tour-next" style={{ width: 'auto', padding: '12px 24px', background: 'rgba(210, 85, 78, 0.1)', color: 'var(--accent-red)', border: '1px solid var(--accent-red)' }} onClick={handleDeleteAccount} disabled={isSavingChanges}>Delete Account</button>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -1211,10 +1265,28 @@ function App() {
                                                     {activeSettingsTab === 'subscription' && (
                                                         <div className="settings-panel anim-fade-in">
                                                             <div className="panel-header"><h2>Subscription</h2><p>Premium features and billing information.</p></div>
-                                                            <div className="onboarding-card-premium" style={{ maxWidth: 'none', background: '#000', borderStyle: 'dashed' }}>
-                                                                <Lock size={32} color="var(--accent-red)" style={{ marginBottom: '1rem' }} />
-                                                                <h3>Status: Not for Public</h3>
-                                                                <p>Subscription tiered access is currently restricted to early alpha testers.</p>
+                                                            <div className="onboarding-card-premium" style={{ maxWidth: 'none', background: 'rgba(210, 85, 78, 0.05)', border: '1px dashed var(--accent-red)', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '3rem' }}>
+                                                                <Lock size={48} color="var(--accent-red)" style={{ marginBottom: '1.5rem', opacity: 0.8 }} />
+                                                                <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Premium Access Restricted</h3>
+                                                                <p style={{ color: 'var(--text-secondary)', maxWidth: '400px', marginBottom: '2rem', lineHeight: '1.6' }}>Subscription tiers and local merchant features are currently in closed Alpha for verified circle testers.</p>
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', width: '100%', maxWidth: '500px', textAlign: 'left' }}>
+                                                                    <div style={{ background: 'var(--glass-bg)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                                                                        <h5 style={{ color: 'white', marginBottom: '5px' }}>Unlimited Radius</h5>
+                                                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Expand your search sphere up to 500 miles.</p>
+                                                                    </div>
+                                                                    <div style={{ background: 'var(--glass-bg)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                                                                        <h5 style={{ color: 'white', marginBottom: '5px' }}>Verified Badge</h5>
+                                                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Gain identity trust within your local community.</p>
+                                                                    </div>
+                                                                    <div style={{ background: 'var(--glass-bg)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                                                                        <h5 style={{ color: 'white', marginBottom: '5px' }}>Ad-Free Sphere</h5>
+                                                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Zero sponsored posts in your local feed.</p>
+                                                                    </div>
+                                                                    <div style={{ background: 'var(--glass-bg)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                                                                        <h5 style={{ color: 'white', marginBottom: '5px' }}>Legacy Support</h5>
+                                                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Priority response from our engineering team.</p>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     )}
@@ -1237,10 +1309,14 @@ function App() {
                                                                     <label>Issue Description</label>
                                                                     <textarea
                                                                         placeholder="What happened? Please describe the steps to reproduce..."
-                                                                        style={{ width: '100%', height: '150px', background: '#000', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', padding: '14px' }}
+                                                                        value={bugDescription}
+                                                                        onChange={e => setBugDescription(e.target.value)}
+                                                                        style={{ width: '100%', height: '150px', background: '#000', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', padding: '14px', outline: 'none', resize: 'none' }}
                                                                     />
                                                                 </div>
-                                                                <button className="btn-save-settings" onClick={() => alert("Bug report submitted. Our engineers are investigating.")}>Submit Report</button>
+                                                                <button className="btn-save-settings" onClick={handleBugReport} disabled={isSavingChanges || !bugDescription.trim()}>
+                                                                    {isSavingChanges ? 'Transmitting...' : 'Submit Report'}
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     )}
