@@ -69,6 +69,7 @@ body {
     justify-content: space-between;
     align-items: center;
     background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, transparent 100%);
+    pointer-events: auto;
     z-index: 100;
     /* Allow clicks on header elements like avatar */
     height: 100px; /* Increased to fit extra padding */
@@ -3081,5 +3082,10 @@ body {
     .btn-onboarding-next {
         padding: 16px !important;
         font-size: 1rem !important;
+    }
+
+    .chat-input-wrapper {
+        margin: 0.5rem 1rem calc(1rem + env(safe-area-inset-bottom)) !important;
+        padding-bottom: env(safe-area-inset-bottom) !important;
     }
 }
