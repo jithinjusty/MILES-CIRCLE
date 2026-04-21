@@ -368,6 +368,27 @@ function App() {
         }
     }
 
+    // Radius Animation for Tour
+    useEffect(() => {
+        let interval;
+        if (onboardingStep === 2 && tourStep === 2) {
+            let growing = true;
+            interval = setInterval(() => {
+                setRadius(prev => {
+                    const val = parseFloat(prev);
+                    if (growing) {
+                        if (val >= 10) { growing = false; return 9; }
+                        return val + 1;
+                    } else {
+                        if (val <= 1) { growing = true; return 2; }
+                        return val - 1;
+                    }
+                });
+            }, 500);
+        }
+        return () => clearInterval(interval);
+    }, [onboardingStep, tourStep]);
+
     const handleUpdateProfile = async (updates) => {
         setIsSavingChanges(true);
         try {
@@ -824,8 +845,8 @@ function App() {
                                                 {tourStep === 2 && (
                                                     <>
                                                         <MapPin size={36} color="var(--accent-red)" />
-                                                        <h3>The Proximity Radius</h3>
-                                                        <p>Use the <strong>toggle bar</strong> on the right to expand your circle. A wider radius means you see more neighbors and posts!</p>
+                                                        <h3>Interactive Proximity</h3>
+                                                        <p>Watch the map! The <strong>toggle bar</strong> on the right lets you expand your circle. A wider radius means you see more neighbors and posts!</p>
                                                     </>
                                                 )}
                                                 {tourStep === 3 && (
