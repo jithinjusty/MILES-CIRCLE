@@ -489,7 +489,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                         boxShadow: '0 8px 24px rgba(var(--accent-red-rgb), 0.4)',
                         display: 'flex',
                         alignItems: 'center',
-                        justify-content: 'center',
+                        justifyContent: 'center',
                         cursor: 'pointer',
                         zIndex: 100,
                         transition: 'all 0.3s'
