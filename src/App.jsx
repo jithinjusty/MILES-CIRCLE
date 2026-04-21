@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet'
-import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, LogOut, ShieldCheck, ChevronRight, Mail, Bug, Info, Database, CreditCard, Calendar } from 'lucide-react'
+import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, LogOut, ShieldCheck, ChevronRight, Mail, Bug, Info, Database, CreditCard, Calendar, Sparkles } from 'lucide-react'
 import './App.css'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -811,43 +811,66 @@ function App() {
                                     {onboardingStep === 2 && (
                                         <div className="onboarding-card-premium tour-card" style={{ boxShadow: '0 0 0 1000px rgba(0,0,0,0.6)' }}>
                                             <div className="tour-steps-indicator">
-                                                {[1, 2, 3, 4].map(s => <div key={s} className={`step-dot ${tourStep === s ? 'active' : ''}`}></div>)}
+                                                {[1, 2, 3, 4, 5, 6].map(s => <div key={s} className={`step-dot ${tourStep === s ? 'active' : ''}`}></div>)}
                                             </div>
                                             <div className="tour-content">
                                                 {tourStep === 1 && (
+                                                    <>
+                                                        <Globe size={36} color="var(--accent-red)" />
+                                                        <h3>Welcome to the Circle</h3>
+                                                        <p>Miles Circle is a proximity-based social network. Connect with people who are physically near you right now!</p>
+                                                    </>
+                                                )}
+                                                {tourStep === 2 && (
                                                     <>
                                                         <MapPin size={36} color="var(--accent-red)" />
                                                         <h3>The Proximity Radius</h3>
                                                         <p>Use the <strong>toggle bar</strong> on the right to expand your circle. A wider radius means you see more neighbors and posts!</p>
                                                     </>
                                                 )}
-                                                {tourStep === 2 && (
+                                                {tourStep === 3 && (
                                                     <>
                                                         <MessageCircle size={36} color="var(--accent-red)" />
                                                         <h3>Hyper-Local Feed</h3>
-                                                        <p>Messages you see are strictly from people currently within your radius. Refresh to catch new neighbors!</p>
-                                                    </>
-                                                )}
-                                                {tourStep === 3 && (
-                                                    <>
-                                                        <Share2 size={36} color="var(--accent-red)" />
-                                                        <h3>Social Presence</h3>
-                                                        <p>In <strong>Settings</strong>, you can add your social handles. Neighbors can see your public profiles to connect outside the Circle.</p>
+                                                        <p>All messages are from people currently within your radius. You can reply, react, and share files instantly.</p>
                                                     </>
                                                 )}
                                                 {tourStep === 4 && (
                                                     <>
-                                                        <User size={36} color="var(--accent-red)" />
-                                                        <h3>Identity Control</h3>
-                                                        <p>You control your privacy. Use the <strong>Public/Private</strong> toggles in your profile to decide what others see.</p>
+                                                        <Sparkles size={36} color="var(--accent-red)" />
+                                                        <h3>AI Local Neighbors</h3>
+                                                        <p>Our context-aware AI neighbors might chime in to help with local info, weather, or just to keep the circle active!</p>
+                                                    </>
+                                                )}
+                                                {tourStep === 5 && (
+                                                    <>
+                                                        <Share2 size={36} color="var(--accent-red)" />
+                                                        <h3>Social Presence</h3>
+                                                        <p>In <strong>Settings</strong>, add your social handles. Set them to <strong>Public</strong> to let neighbors connect with you externally.</p>
+                                                    </>
+                                                )}
+                                                {tourStep === 6 && (
+                                                    <>
+                                                        <ShieldCheck size={36} color="var(--accent-red)" />
+                                                        <h3>Trust & Safety</h3>
+                                                        <p>Rate neighbors and build reputation. You control exactly what data stays private in your Identity Control.</p>
                                                     </>
                                                 )}
                                             </div>
                                             <div className="tour-footer">
-                                                <button className="btn-tour-next" onClick={() => tourStep < 4 ? setTourStep(s => s + 1) : handleUpdateProfile({ onboarding_completed: true })}>
-                                                    {tourStep < 4 ? 'Next Step' : 'Enter the Circle'}
+                                                <button className="btn-tour-next" onClick={() => tourStep < 6 ? setTourStep(s => s + 1) : handleUpdateProfile({ onboarding_completed: true })}>
+                                                    {tourStep < 6 ? 'Next Step' : 'Enter the Circle'}
                                                 </button>
-                                                <button className="tour-skip" onClick={() => handleUpdateProfile({ onboarding_completed: true })}>Skip Tour</button>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.5rem' }}>
+                                                    <button className="tour-skip" onClick={() => handleUpdateProfile({ onboarding_completed: true })}>Skip Tour</button>
+                                                    <button 
+                                                        className="tour-skip" 
+                                                        style={{ opacity: 0.5, fontSize: '0.75rem' }}
+                                                        onClick={() => supabase.auth.signOut()}
+                                                    >
+                                                        Sign Out & Restart Session
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     )}
