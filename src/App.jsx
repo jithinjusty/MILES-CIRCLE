@@ -371,10 +371,22 @@ function App() {
     const handleUpdateProfile = async (updates) => {
         setIsSavingChanges(true);
         try {
+            // If newPassword is provided and we are in Step 1, update auth too
+            if (onboardingStep === 1 && newPassword) {
+                const hasUpper = /[A-Z]/.test(newPassword);
+                const hasLower = /[a-z]/.test(newPassword);
+                const hasNumber = /[0-9]/.test(newPassword);
+                if (newPassword.length < 8 || !hasUpper || !hasLower || !hasNumber) {
+                    throw new Error("Password must be 8+ characters and include uppercase, lowercase, and a number.");
+                }
+                const { error: authError } = await supabase.auth.updateUser({ password: newPassword });
+                if (authError) throw authError;
+                setNewPassword(''); // clear after success
+            }
+
             const { error } = await supabase
                 .from('profiles')
-                .update(updates)
-                .eq('id', session.user.id)
+                .upsert({ id: session.user.id, ...updates })
 
             if (error) throw error;
 
@@ -782,22 +794,23 @@ function App() {
                                                     className="btn-onboarding-next"
                                                     style={{ marginTop: '1rem' }}
                                                     onClick={() => handleUpdateProfile({ full_name: profile.full_name || '', mobile: profile.mobile || '' })}
+                                                    disabled={isSavingChanges}
                                                 >
-                                                    Complete Initialization
+                                                    {isSavingChanges ? 'Synchronizing Circle...' : 'Join the Circle'}
                                                 </button>
                                                 <button
                                                     className="tour-skip"
                                                     style={{ marginTop: '1rem', width: '100%', textAlign: 'center' }}
                                                     onClick={() => setOnboardingStep(2)}
                                                 >
-                                                    Skip for now
+                                                    Skip setup for now
                                                 </button>
                                                 <button
                                                     className="tour-skip"
                                                     style={{ marginTop: '0.5rem', width: '100%', textAlign: 'center', opacity: 0.6, fontSize: '0.8rem' }}
                                                     onClick={() => handleUpdateProfile({ onboarding_completed: true })}
                                                 >
-                                                    Skip everything and enter circle
+                                                    Skip all and enter Circle
                                                 </button>
                                             </div>
                                         </div>
