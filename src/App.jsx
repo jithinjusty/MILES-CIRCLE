@@ -737,7 +737,7 @@ function App() {
                         <>
                             {/* ONBOARDING FLOW */}
                             {onboardingStep > 0 && (
-                                <div className="onboarding-overlay" style={{ zIndex: 3000 }}>
+                                <div className={`onboarding-overlay ${onboardingStep === 2 ? 'tour-mode' : ''}`} style={{ zIndex: 3000 }}>
                                     {onboardingStep === 1 && (
                                         <div className="onboarding-card-premium anim-fade-in">
                                             <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
@@ -809,15 +809,39 @@ function App() {
                                         </div>
                                     )}
                                     {onboardingStep === 2 && (
-                                        <div className="onboarding-card-premium tour-card">
+                                        <div className="onboarding-card-premium tour-card" style={{ boxShadow: '0 0 0 1000px rgba(0,0,0,0.6)' }}>
                                             <div className="tour-steps-indicator">
                                                 {[1, 2, 3, 4].map(s => <div key={s} className={`step-dot ${tourStep === s ? 'active' : ''}`}></div>)}
                                             </div>
                                             <div className="tour-content">
-                                                {tourStep === 1 && <><Globe size={36} color="var(--accent-red)" /><h3>Your Radius, Your World</h3><p>Miles connects you with people within a range. Use the slider to adjust your circle.</p></>}
-                                                {tourStep === 2 && <><MessageCircle size={36} color="var(--accent-red)" /><h3>The Local Feed</h3><p>Share updates, photos, and files with everyone in your current radius.</p></>}
-                                                {tourStep === 3 && <><MapIcon size={36} color="var(--accent-red)" /><h3>Interactive Proximity</h3><p>The map behind highlights your active zone. You only see messages within that area.</p></>}
-                                                {tourStep === 4 && <><Share2 size={36} color="var(--accent-red)" /><h3>Digital Identity</h3><p>Manage your social presence. Add digital handles and choose who sees them.</p></>}
+                                                {tourStep === 1 && (
+                                                    <>
+                                                        <MapPin size={36} color="var(--accent-red)" />
+                                                        <h3>The Proximity Radius</h3>
+                                                        <p>Use the <strong>toggle bar</strong> on the right to expand your circle. A wider radius means you see more neighbors and posts!</p>
+                                                    </>
+                                                )}
+                                                {tourStep === 2 && (
+                                                    <>
+                                                        <MessageCircle size={36} color="var(--accent-red)" />
+                                                        <h3>Hyper-Local Feed</h3>
+                                                        <p>Messages you see are strictly from people currently within your radius. Refresh to catch new neighbors!</p>
+                                                    </>
+                                                )}
+                                                {tourStep === 3 && (
+                                                    <>
+                                                        <Share2 size={36} color="var(--accent-red)" />
+                                                        <h3>Social Presence</h3>
+                                                        <p>In <strong>Settings</strong>, you can add your social handles. Neighbors can see your public profiles to connect outside the Circle.</p>
+                                                    </>
+                                                )}
+                                                {tourStep === 4 && (
+                                                    <>
+                                                        <User size={36} color="var(--accent-red)" />
+                                                        <h3>Identity Control</h3>
+                                                        <p>You control your privacy. Use the <strong>Public/Private</strong> toggles in your profile to decide what others see.</p>
+                                                    </>
+                                                )}
                                             </div>
                                             <div className="tour-footer">
                                                 <button className="btn-tour-next" onClick={() => tourStep < 4 ? setTourStep(s => s + 1) : handleUpdateProfile({ onboarding_completed: true })}>
@@ -831,7 +855,7 @@ function App() {
                             )}
 
                             {/* MAIN APP CONTENT */}
-                            {onboardingStep === 0 && (
+                            {(onboardingStep === 0 || onboardingStep === 2) && (
                                 <>
                                     {/* STATUS OVERLAYS */}
                                     {(!locationAvailable || locationError) && !offlineMode && (
