@@ -366,7 +366,7 @@ function App() {
             if (isMock) return;
             setSession(s);
             if (s) fetchProfile(s.user.id);
-            else { setProfile({}); setOnboardingStep(0); }
+            else { setProfile({}); setOnboardingStep(0); document.body.classList.remove('light-mode'); }
             setAuthLoading(false);
         });
 
@@ -887,11 +887,11 @@ function App() {
                                     <form onSubmit={handleRecoverySubmit} className="auth-form-classic" style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                                         <div className="field-block">
                                             <label style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>New Secret Password</label>
-                                            <input type="password" placeholder="Min 8 characters, Upper, Lower, Number" className="auth-input-classic" value={newPassword} onChange={e => setNewPassword(e.target.value)} required style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white' }} />
+                                            <input type="password" placeholder="Min 8 characters, Upper, Lower, Number" className="auth-input-classic" value={newPassword} onChange={e => setNewPassword(e.target.value)} required style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)' }} />
                                         </div>
                                         <div className="field-block">
                                             <label style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px', display: 'block' }}>Confirm Password</label>
-                                            <input type="password" placeholder="Repeat Secret Password" className="auth-input-classic" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} required style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white' }} />
+                                            <input type="password" placeholder="Repeat Secret Password" className="auth-input-classic" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} required style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)' }} />
                                         </div>
                                         <button type="submit" className="btn-onboarding-next" style={{ marginTop: '1rem' }}>Establish New Credentials</button>
                                         <button type="button" className="nav-item" onClick={() => { setIsRecovering(false); window.history.replaceState({}, '', '/'); }} style={{ justifyContent: 'center', background: 'transparent' }}>Return to Gateway</button>
@@ -924,7 +924,7 @@ function App() {
                                                         placeholder="e.g. Alex Rivera"
                                                         value={profile?.full_name || ''}
                                                         onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                                                        style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', outline: 'none' }}
+                                                        style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)', outline: 'none' }}
                                                     />
                                                 </div>
                                                 <div className="field-block">
@@ -934,7 +934,7 @@ function App() {
                                                         placeholder="+1 (555) 000-0000"
                                                         value={profile?.mobile || ''}
                                                         onChange={(e) => setProfile({ ...profile, mobile: e.target.value })}
-                                                        style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', outline: 'none' }}
+                                                        style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)', outline: 'none' }}
                                                     />
                                                 </div>
 
@@ -948,7 +948,7 @@ function App() {
                                                             placeholder="Min 8 chars, A-Z, 0-9"
                                                             value={newPassword}
                                                             onChange={(e) => setNewPassword(e.target.value)}
-                                                            style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', outline: 'none' }}
+                                                            style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)', outline: 'none' }}
                                                         />
                                                     </div>
                                                 )}
@@ -1439,7 +1439,7 @@ function App() {
                                                                         placeholder="Tell the circle about yourself..."
                                                                         value={profile?.bio || ''}
                                                                         onChange={e => setProfile({ ...profile, bio: e.target.value })}
-                                                                        style={{ width: '100%', height: '100px', background: '#000', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', padding: '14px', outline: 'none', resize: 'none' }}
+                                                                        style={{ width: '100%', height: '100px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)', padding: '14px', outline: 'none', resize: 'none' }}
                                                                     />
                                                                 </div>
                                                                 <div className="field-block privacy">
@@ -1582,7 +1582,7 @@ function App() {
                                                                         placeholder="What happened? Please describe the steps to reproduce..."
                                                                         value={bugDescription}
                                                                         onChange={e => setBugDescription(e.target.value)}
-                                                                        style={{ width: '100%', height: '150px', background: '#000', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', padding: '14px', outline: 'none', resize: 'none' }}
+                                                                        style={{ width: '100%', height: '150px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)', padding: '14px', outline: 'none', resize: 'none' }}
                                                                     />
                                                                 </div>
                                                                 <button className="btn-save-settings" onClick={handleBugReport} disabled={isSavingChanges || !bugDescription.trim()}>

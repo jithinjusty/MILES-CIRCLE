@@ -72,7 +72,7 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
                                 border: '1px solid var(--glass-border)',
                                 borderRadius: '20px',
                                 padding: '1.5rem',
-                                color: 'white',
+                                color: 'var(--text-primary)',
                                 fontSize: '1.1rem',
                                 minHeight: '180px',
                                 outline: 'none',

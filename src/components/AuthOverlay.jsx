@@ -191,7 +191,7 @@ export default function AuthOverlay({ onInstall }) {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         className="auth-input-classic"
-                                        style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', fontSize: '1rem', outline: 'none' }}
+                                        style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)', fontSize: '1rem', outline: 'none' }}
                                         required
                                     />
                                 </div>
@@ -211,7 +211,7 @@ export default function AuthOverlay({ onInstall }) {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="auth-input-classic"
-                                    style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', fontSize: '1rem', outline: 'none' }}
+                                    style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)', fontSize: '1rem', outline: 'none' }}
                                     required
                                 />
                             </div>
@@ -230,7 +230,7 @@ export default function AuthOverlay({ onInstall }) {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         className="auth-input-classic"
-                                        style={{ width: '100%', padding: '16px', paddingRight: '50px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', fontSize: '1rem', outline: 'none' }}
+                                        style={{ width: '100%', padding: '16px', paddingRight: '50px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)', fontSize: '1rem', outline: 'none' }}
                                         required
                                         minLength={isSignUp ? 8 : 6}
                                     />
@@ -254,7 +254,7 @@ export default function AuthOverlay({ onInstall }) {
                                             value={confirmPassword}
                                             onChange={(e) => setConfirmPassword(e.target.value)}
                                             className="auth-input-classic"
-                                            style={{ width: '100%', padding: '16px', paddingRight: '50px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'white', fontSize: '1rem', outline: 'none' }}
+                                            style={{ width: '100%', padding: '16px', paddingRight: '50px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)', fontSize: '1rem', outline: 'none' }}
                                             required
                                         />
                                         <button
