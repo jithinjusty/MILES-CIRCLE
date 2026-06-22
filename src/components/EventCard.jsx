@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MapPin, Calendar, Navigation, Star, Crosshair, Trash2, Clock, AlertTriangle } from 'lucide-react'
 import { MapContainer, TileLayer, Marker } from 'react-leaflet'
 import { supabase } from '../lib/supabase'
@@ -19,6 +19,35 @@ export default function EventCard({ event, session, userReaction, onReactionChan
     const [localUserReaction, setLocalUserReaction] = useState(userReaction)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [flashTimerText, setFlashTimerText] = useState('')
+
+    useEffect(() => {
+        if (!event.is_flash) return;
+
+        const updateTimer = () => {
+            const now = new Date();
+            const start = new Date(event.event_date);
+            const end = new Date(event.expires_at);
+
+            if (now < start) {
+                const diffMs = start - now;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffSecs = Math.floor((diffMs % 60000) / 1000);
+                setFlashTimerText(`Starts in ${diffMins}m ${diffSecs}s`);
+            } else if (now >= start && now < end) {
+                const diffMs = end - now;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffSecs = Math.floor((diffMs % 60000) / 1000);
+                setFlashTimerText(`Expires in ${diffMins}m ${diffSecs}s`);
+            } else {
+                setFlashTimerText('Expired');
+            }
+        };
+
+        updateTimer();
+        const interval = setInterval(updateTimer, 1000);
+        return () => clearInterval(interval);
+    }, [event.is_flash, event.event_date, event.expires_at]);
 
     const formatTimeAgo = (timestamp) => {
         if (!timestamp) return ''
@@ -169,22 +198,52 @@ export default function EventCard({ event, session, userReaction, onReactionChan
     const expiryText = formatExpiry(event.expires_at)
 
     return (
-        <div className="event-card anim-fade-in">
+        <div className={`event-card anim-fade-in ${event.is_flash ? 'flash-active' : ''}`} style={event.is_flash ? {
+            border: '2px solid rgba(255,159,67,0.5)',
+            boxShadow: '0 12px 30px rgba(255,159,67,0.15)',
+            background: 'linear-gradient(180deg, rgba(255,159,67,0.04) 0%, var(--panel-bg) 100%)'
+        } : {}}>
             {/* Event Image */}
             {event.image_url && (
-                <div className="event-card-image">
+                <div className="event-card-image" style={{ position: 'relative' }}>
                     <img src={event.image_url} alt={event.title} />
-                    {event.event_date && (
-                        <div className="event-date-badge">
-                            <Calendar size={14} />
-                            <span>{formatEventDate(event.event_date)}</span>
+                    {event.is_flash ? (
+                        <div className="event-flash-badge" style={{
+                            position: 'absolute',
+                            top: '12px',
+                            left: '12px',
+                            background: 'linear-gradient(135deg, #ff9f43 0%, #ff5252 100%)',
+                            color: 'white',
+                            padding: '6px 12px',
+                            borderRadius: '12px',
+                            fontSize: '0.78rem',
+                            fontWeight: '900',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            boxShadow: '0 4px 12px rgba(255,159,67,0.4)',
+                            animation: flashTimerText !== 'Expired' ? 'pulse-orange 1.5s infinite alternate' : 'none',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px'
+                        }}>
+                            <span>⚡</span>
+                            <span>{flashTimerText}</span>
                         </div>
-                    )}
-                    {expiryText && (
-                        <div className={`event-expiry-badge ${expiryText === 'Expired' ? 'expired' : ''}`}>
-                            <Clock size={12} />
-                            <span>{expiryText}</span>
-                        </div>
+                    ) : (
+                        <>
+                            {event.event_date && (
+                                <div className="event-date-badge">
+                                    <Calendar size={14} />
+                                    <span>{formatEventDate(event.event_date)}</span>
+                                </div>
+                            )}
+                            {expiryText && (
+                                <div className={`event-expiry-badge ${expiryText === 'Expired' ? 'expired' : ''}`}>
+                                    <Clock size={12} />
+                                    <span>{expiryText}</span>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             )}
@@ -248,20 +307,41 @@ export default function EventCard({ event, session, userReaction, onReactionChan
                     <p className="event-card-desc">{event.description}</p>
                 )}
 
-                {/* Expiry (if no image to show badge on) */}
-                {!event.image_url && expiryText && (
-                    <div className={`event-meta-row expiry-row ${expiryText === 'Expired' ? 'expired' : ''}`}>
+                {/* Flash Timer / Expiry (if no image to show badge on) */}
+                {event.is_flash ? (
+                    <div className="event-meta-row flash-row" style={{
+                        background: 'rgba(255,159,67,0.1)',
+                        border: '1px solid rgba(255,159,67,0.3)',
+                        padding: '10px 14px',
+                        borderRadius: '12px',
+                        color: '#ff9f43',
+                        fontWeight: '800',
+                        fontSize: '0.88rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '1rem',
+                        boxShadow: '0 4px 12px rgba(255,159,67,0.05)',
+                        animation: flashTimerText !== 'Expired' ? 'pulse-orange-border 1.5s infinite alternate' : 'none'
+                    }}>
                         <Clock size={16} />
-                        <span>{expiryText}</span>
+                        <span>⚡ {flashTimerText}</span>
                     </div>
-                )}
-
-                {/* Date (if no image to pin it on) */}
-                {!event.image_url && event.event_date && (
-                    <div className="event-meta-row">
-                        <Calendar size={16} />
-                        <span>{formatEventDate(event.event_date)}</span>
-                    </div>
+                ) : (
+                    <>
+                        {!event.image_url && expiryText && (
+                            <div className={`event-meta-row expiry-row ${expiryText === 'Expired' ? 'expired' : ''}`}>
+                                <Clock size={16} />
+                                <span>{expiryText}</span>
+                            </div>
+                        )}
+                        {!event.image_url && event.event_date && (
+                            <div className="event-meta-row">
+                                <Calendar size={16} />
+                                <span>{formatEventDate(event.event_date)}</span>
+                            </div>
+                        )}
+                    </>
                 )}
 
                 {/* GPS Location with Zoomed-Out Mini Map */}

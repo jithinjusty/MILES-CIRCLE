@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 
-export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply, posts }) {
+export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply, posts, isHelpful, onHelpfulToggle }) {
     const [showMenu, setShowMenu] = useState(false);
     const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
     const [translatedText, setTranslatedText] = useState(null);
@@ -211,14 +211,17 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
             <div
                 className={`message-card premium-shadow anim-fade-in ${isMine ? 'mine' : ''}`}
                 style={{
-                    background: isMine ? 'linear-gradient(135deg, var(--accent-red) 0%, #B2443E 100%)' : 'var(--chat-bg)',
-                    color: isMine ? 'white' : 'var(--text-primary)',
+                    background: post?.is_alert 
+                        ? 'linear-gradient(135deg, rgba(210, 85, 78, 0.15) 0%, rgba(210, 85, 78, 0.05) 100%)'
+                        : (isMine ? 'linear-gradient(135deg, var(--accent-red) 0%, #B2443E 100%)' : 'var(--chat-bg)'),
+                    color: (isMine && !post?.is_alert) ? 'white' : 'var(--text-primary)',
                     padding: '1rem 1.25rem',
                     borderRadius: isMine ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-                    border: isMine ? 'none' : '1px solid var(--glass-border)',
+                    border: post?.is_alert ? '2px solid var(--accent-red)' : (isMine ? 'none' : '1px solid var(--glass-border)'),
+                    animation: post?.is_alert ? 'alert-glow 1.5s infinite alternate' : 'none',
                     maxWidth: '85%',
                     alignSelf: isMine ? 'flex-end' : 'flex-start',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+                    boxShadow: post?.is_alert ? '0 10px 30px rgba(210, 85, 78, 0.25)' : '0 10px 30px rgba(0,0,0,0.15)',
                     cursor: 'pointer',
                     position: 'relative',
                     userSelect: 'none'
@@ -228,6 +231,25 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                 onTouchEnd={handleTouchEnd}
                 onTouchMove={handleTouchEnd}
             >
+                {/* Alert Header Banner */}
+                {post?.is_alert && (
+                    <div style={{
+                        background: 'var(--accent-red)',
+                        color: 'white',
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '0.7rem',
+                        fontWeight: '900',
+                        marginBottom: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                    }}>
+                        <span>🚨</span> Urgent Broadcast Alert
+                    </div>
+                )}
                 {/* Header */}
                 <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '0.6rem', flexDirection: isMine ? 'row-reverse' : 'row' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexDirection: isMine ? 'row-reverse' : 'row' }}>
@@ -349,6 +371,49 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                 {aiGenerating && (
                     <div style={{ marginTop: '8px', fontSize: '0.75rem', opacity: 0.7, fontStyle: 'italic' }}>
                         ✨ Generating reply...
+                    </div>
+                )}
+
+                {/* Footer Helpfulness Action */}
+                {!post.is_ai && (
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginTop: '8px',
+                        paddingTop: '6px',
+                        borderTop: (isMine && !post?.is_alert) ? '1px solid rgba(255,255,255,0.15)' : '1px solid var(--glass-border)',
+                        fontSize: '0.72rem',
+                        opacity: 0.8
+                    }}>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (isMine) {
+                                    alert("You cannot upvote your own post.");
+                                    return;
+                                }
+                                onHelpfulToggle?.(post.id, post.user_id);
+                            }}
+                            style={{
+                                background: isHelpful ? 'rgba(210,85,78,0.15)' : 'transparent',
+                                border: 'none',
+                                color: isMine ? 'rgba(255,255,255,0.5)' : (isHelpful ? 'var(--accent-red)' : 'var(--text-secondary)'),
+                                cursor: isMine ? 'default' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                borderRadius: '8px',
+                                fontWeight: '700',
+                            }}
+                        >
+                            <span>🙌</span> Helpful
+                        </button>
+                        <span style={{ color: (isMine && !post?.is_alert) ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)', fontWeight: '800' }}>
+                            {post.helpful_count || 0} helpful
+                        </span>
                     </div>
                 )}
             </div>

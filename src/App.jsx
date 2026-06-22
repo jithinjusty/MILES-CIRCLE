@@ -74,6 +74,7 @@ function App() {
     const [activeNeighbors, setActiveNeighbors] = useState([]);
     const [selectedPostFile, setSelectedPostFile] = useState(null);
     const [attachedImageUrl, setAttachedImageUrl] = useState(null);
+    const [showVibeCheck, setShowVibeCheck] = useState(false);
     const [radius, setRadius] = useState(() => {
         const saved = localStorage.getItem('miles_preferred_radius');
         const val = saved ? parseFloat(saved) : 1;
@@ -155,34 +156,81 @@ function App() {
     };
 
     // Custom Leaflet icon for active neighbors
-    const neighborIcon = (initial, avatarUrl) => L.divIcon({
-        className: 'custom-neighbor-marker',
-        html: `
+    const neighborIcon = (initial, avatarUrl, points = 0, vibe = null) => {
+        let haloColor = 'var(--accent-red)';
+        let haloStyle = '';
+        let glowStyle = 'rgba(0,0,0,0.3)';
+        
+        if (points >= 300) {
+            haloColor = '#E5E4E2'; // Platinum
+            glowStyle = 'rgba(229, 228, 226, 0.6)';
+            haloStyle = 'animation: pulse-platinum 2s infinite; border: 2.5px solid #E5E4E2;';
+        } else if (points >= 100) {
+            haloColor = '#FFD700'; // Gold
+            glowStyle = 'rgba(255, 215, 0, 0.6)';
+            haloStyle = 'animation: pulse-gold 2s infinite; border: 2px solid #FFD700;';
+        } else if (points >= 30) {
+            haloColor = '#C0C0C0'; // Silver
+            glowStyle = 'rgba(192, 192, 192, 0.4)';
+            haloStyle = 'border: 2px solid #C0C0C0;';
+        } else if (points >= 10) {
+            haloColor = '#CD7F32'; // Bronze
+            glowStyle = 'rgba(205, 127, 50, 0.3)';
+            haloStyle = 'border: 2px solid #CD7F32;';
+        } else {
+            haloStyle = 'border: 2px solid var(--accent-red);';
+        }
+
+        // Show vibe emoji as a floating bubble if set
+        const vibeBubble = vibe ? `
             <div style="
-                width: 32px; height: 32px;
-                background: var(--panel-bg);
-                border: 2px solid var(--accent-red);
-                border-radius: 10px;
-                display: flex; align-items: center; justify-content: center;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                overflow: hidden;
-            ">
-                \${avatarUrl ? \`<img src="\${avatarUrl}" style="width: 100%; height: 100%; object-fit: cover;" />\` : \`
-                    <span style="color: var(--accent-red); font-size: 0.75rem; font-weight: 800; font-family: var(--font-family);">\${initial}</span>
-                \`}
-            </div>
-            <div style="
-                width: 8px; height: 8px;
-                background: var(--accent-red);
-                border-radius: 50%;
                 position: absolute;
-                bottom: -4px; left: 12px;
-                box-shadow: 0 0 8px var(--accent-red);
-            "></div>
-        `,
-        iconSize: [32, 32],
-        iconAnchor: [16, 32]
-    });
+                top: -10px;
+                right: -10px;
+                background: var(--panel-bg);
+                border: 1px solid var(--glass-border);
+                border-radius: 50%;
+                width: 18px;
+                height: 18px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.65rem;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+                z-index: 10;
+            ">${vibe}</div>
+        ` : '';
+
+        return L.divIcon({
+            className: 'custom-neighbor-marker',
+            html: `
+                ${vibeBubble}
+                <div style="
+                    width: 32px; height: 32px;
+                    background: var(--panel-bg);
+                    ${haloStyle}
+                    border-radius: 10px;
+                    display: flex; align-items: center; justify-content: center;
+                    box-shadow: 0 4px 12px ${glowStyle};
+                    overflow: hidden;
+                ">
+                    \${avatarUrl ? \`<img src="\${avatarUrl}" style="width: 100%; height: 100%; object-fit: cover;" />\` : \`
+                        <span style="color: \${haloColor}; font-size: 0.75rem; font-weight: 800; font-family: var(--font-family);">\${initial}</span>
+                    \`}
+                </div>
+                <div style="
+                    width: 8px; height: 8px;
+                    background: \${haloColor};
+                    border-radius: 50%;
+                    position: absolute;
+                    bottom: -4px; left: 12px;
+                    box-shadow: 0 0 8px \${haloColor};
+                "></div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 32]
+        });
+    };
 
     // Update presence in DB whenever position changes
     useEffect(() => {
@@ -463,6 +511,14 @@ function App() {
 
                 if (data.preferred_radius) setRadius(parseFloat(data.preferred_radius));
                 if (!data.onboarding_completed) setOnboardingStep(1)
+                else {
+                    // Check if vibe check-in is needed (older than 24 hours)
+                    const lastUpdated = data.vibe_updated_at ? new Date(data.vibe_updated_at).getTime() : 0;
+                    const dayInMs = 24 * 60 * 60 * 1000;
+                    if (Date.now() - lastUpdated > dayInMs) {
+                        setShowVibeCheck(true);
+                    }
+                }
             } else if (error && (error.code === 'PGRST116' || error.message.includes('0 rows'))) {
                 // Profile doesn't exist yet, trigger onboarding to collect basic info
                 setOnboardingStep(1);
@@ -526,7 +582,6 @@ function App() {
 
             if (updates.onboarding_completed) setOnboardingStep(0)
             else if (onboardingStep === 1) setOnboardingStep(2)
-
             // If explicit save from settings, close modal and ensure we are in chat mode (feed)
             if (!updates.onboarding_completed && onboardingStep === 0) {
                 setShowSettings(false);
@@ -534,11 +589,24 @@ function App() {
             }
         } catch (err) {
             console.error("Profile update failed:", err);
-            alert("Failed to save changes: " + err.message);
+            alert("Save failed: " + err.message);
         } finally {
             setIsSavingChanges(false);
         }
-    }
+    };
+
+    const handleSelectVibe = async (vibe) => {
+        try {
+            const updates = {
+                daily_vibe: vibe,
+                vibe_updated_at: new Date().toISOString()
+            };
+            await handleUpdateProfile(updates);
+            setShowVibeCheck(false);
+        } catch (err) {
+            console.error("Vibe update error:", err);
+        }
+    };
 
     const handleRecoverySubmit = async (e) => {
         if (e) e.preventDefault();
@@ -1194,7 +1262,21 @@ function App() {
                                         {locationAvailable && (
                                             <MapContainer center={position} zoom={13} zoomControl={false} className="map-view">
                                                 <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-                                                <Marker position={position} />
+                                                <Marker 
+                                                    position={position} 
+                                                    icon={neighborIcon(
+                                                        (profile?.full_name || '?')[0].toUpperCase(), 
+                                                        profile?.avatar_url, 
+                                                        profile?.points || 0, 
+                                                        profile?.daily_vibe
+                                                    )} 
+                                                    eventHandlers={{
+                                                        click: () => {
+                                                            setShowSettings(true);
+                                                            setActiveSettingsTab('main');
+                                                        }
+                                                    }}
+                                                />
                                                 <Circle center={position} pathOptions={{ color: 'var(--accent-red)', fillColor: 'var(--accent-red)', fillOpacity: 0.1, weight: 2, dashArray: '4, 8' }} radius={radius * 1609.34} />
                                                 {activeNeighbors.map(neighbor => {
                                                     const fuzzyPos = getFuzzyCoords(neighbor.id, neighbor.last_lat, neighbor.last_lng);
@@ -1203,7 +1285,7 @@ function App() {
                                                         <Marker 
                                                             key={neighbor.id} 
                                                             position={fuzzyPos} 
-                                                            icon={neighborIcon(initial, neighbor.avatar_url)}
+                                                            icon={neighborIcon(initial, neighbor.avatar_url, neighbor.points || 0, neighbor.daily_vibe)}
                                                             eventHandlers={{
                                                                 click: () => setViewingProfile(neighbor)
                                                             }}
@@ -1797,6 +1879,61 @@ function App() {
                                     {/* PHOTO EDITOR */}
                                     {selectedFile && <PhotoEditor file={selectedFile} onSave={handleSaveEditedPhoto} onCancel={() => setSelectedFile(null)} />}
                                     {selectedPostFile && <PhotoEditor file={selectedPostFile} onSave={handleSaveEditedPostPhoto} onCancel={() => setSelectedPostFile(null)} />}
+
+                                    {/* DAILY VIBE CHECK-IN MODAL */}
+                                    {showVibeCheck && session && onboardingStep === 0 && (
+                                        <div className="modal-overlay" style={{ zIndex: 4000 }}>
+                                            <div className="onboarding-card-premium anim-fade-in" style={{ maxWidth: '420px', textAlign: 'center' }}>
+                                                <header style={{ marginBottom: '1.5rem' }}>
+                                                    <span style={{ fontSize: '2.5rem' }}>✨</span>
+                                                    <h2 className="onboarding-title" style={{ fontSize: '1.6rem', marginTop: '10px' }}>Daily Vibe Check</h2>
+                                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '6px' }}>Let neighbors know what your vibe is today.</p>
+                                                </header>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', margin: '2rem 0' }}>
+                                                    {[
+                                                        { emoji: '🧘', label: 'Calm' },
+                                                        { emoji: '🚗', label: 'Busy' },
+                                                        { emoji: '🌧️', label: 'Cozy' },
+                                                        { emoji: '🎉', label: 'Festive' },
+                                                        { emoji: '⚡', label: 'Energetic' }
+                                                    ].map(v => (
+                                                        <button
+                                                            key={v.emoji}
+                                                            type="button"
+                                                            onClick={() => handleSelectVibe(v.emoji)}
+                                                            title={v.label}
+                                                            style={{
+                                                                background: 'var(--glass-bg)',
+                                                                border: '1px solid var(--glass-border)',
+                                                                borderRadius: '16px',
+                                                                fontSize: '1.8rem',
+                                                                padding: '12px 6px',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.2s',
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                alignItems: 'center',
+                                                                gap: '6px'
+                                                            }}
+                                                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-red)'; e.currentTarget.style.transform = 'scale(1.08)'; }}
+                                                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--glass-border)'; e.currentTarget.style.transform = 'none'; }}
+                                                        >
+                                                            <span>{v.emoji}</span>
+                                                            <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', fontWeight: '800' }}>{v.label}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="nav-item"
+                                                    onClick={() => setShowVibeCheck(false)}
+                                                    style={{ width: '100%', justifyContent: 'center', background: 'transparent', color: 'var(--text-secondary)' }}
+                                                >
+                                                    Skip for Now
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </>

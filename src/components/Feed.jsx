@@ -11,6 +11,9 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const [unreadCount, setUnreadCount] = useState(0)
     const [showScrollDown, setShowScrollDown] = useState(false)
     const [activeCategory, setActiveCategory] = useState('all')
+    const [helpfulPosts, setHelpfulPosts] = useState({})
+    const [swiperMode, setSwiperMode] = useState(false)
+    const [swiperIndex, setSwiperIndex] = useState(0)
     const feedEndRef = useRef(null)
     const aiTimerRef = useRef(null)
     const isInitialLoad = useRef(true);
@@ -95,6 +98,13 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
         }
     }, [posts, session])
 
+    useEffect(() => {
+        setSwiperIndex(0);
+        if (activeCategory !== 'buysell') {
+            setSwiperMode(false);
+        }
+    }, [activeCategory, posts.length]);
+
     const fetchPosts = async () => {
         // Prevent fetching if coordinates are invalid
         if (!position || isNaN(position[0]) || isNaN(position[1])) {
@@ -119,7 +129,24 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
                 throw queryError;
             }
 
-            setPosts((data || []).slice(0, 100))
+            const fetchedPosts = (data || []).slice(0, 100);
+            setPosts(fetchedPosts)
+
+            if (session?.user?.id && fetchedPosts.length > 0) {
+                const postIds = fetchedPosts.map(p => p.id);
+                const { data: helpfulData, error: helpfulError } = await supabase
+                    .rpc('get_user_helpful_posts', {
+                        p_user_id: session.user.id,
+                        p_post_ids: postIds
+                    });
+                if (!helpfulError && helpfulData) {
+                    const helpfulMap = {};
+                    helpfulData.forEach(item => {
+                        helpfulMap[item.post_id] = true;
+                    });
+                    setHelpfulPosts(helpfulMap);
+                }
+            }
         } catch (err) {
             console.error('Feed fetch error:', err)
             setError(err.message || 'Failed to load posts')
@@ -127,6 +154,76 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
             setLoading(false)
         }
     }
+
+    const handleHelpfulToggle = async (postId, authorId) => {
+        if (!session?.user?.id) {
+            alert("Please sign in to upvote posts!");
+            return;
+        }
+
+        const currentlyHelpful = !!helpfulPosts[postId];
+        
+        // Optimistic UI updates
+        setHelpfulPosts(prev => ({
+            ...prev,
+            [postId]: !currentlyHelpful
+        }));
+        
+        setPosts(prevPosts => prevPosts.map(p => {
+            if (p.id === postId) {
+                const currentCount = p.helpful_count || 0;
+                return {
+                    ...p,
+                    helpful_count: currentlyHelpful ? Math.max(0, currentCount - 1) : currentCount + 1
+                };
+            }
+            return p;
+        }));
+
+        try {
+            if (currentlyHelpful) {
+                const { error } = await supabase
+                    .from('post_helpful')
+                    .delete()
+                    .eq('post_id', postId)
+                    .eq('user_id', session.user.id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('post_helpful')
+                    .insert([{
+                        post_id: postId,
+                        user_id: session.user.id,
+                        author_id: authorId
+                    }]);
+                if (error) throw error;
+            }
+        } catch (err) {
+            console.error("Failed to toggle helpful status:", err);
+            // Rollback optimistic update
+            setHelpfulPosts(prev => ({
+                ...prev,
+                [postId]: currentlyHelpful
+            }));
+            setPosts(prevPosts => prevPosts.map(p => {
+                if (p.id === postId) {
+                    const currentCount = p.helpful_count || 0;
+                    return {
+                        ...p,
+                        helpful_count: currentlyHelpful ? currentCount + 1 : Math.max(0, currentCount - 1)
+                    };
+                }
+                return p;
+            }));
+        }
+    };
+
+    const handleSwipeRight = (post) => {
+        const replyName = post.is_ai ? post.ai_name : (post.full_name || post.user_email?.split('@')[0] || 'Someone');
+        const ctx = { id: post.id, content: post.content, author: replyName };
+        onReplyChange?.(ctx, `Hi! I saw your post "${post.content.substring(0, 30)}${post.content.length > 30 ? '...' : ''}" in Buy & Sell. Is this still available?`);
+        setSwiperIndex(prev => prev + 1);
+    };
 
     useEffect(() => {
         fetchPosts()
@@ -501,16 +598,44 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                 top: 0,
                 zIndex: 10,
                 scrollbarWidth: 'none',
-                msOverflowStyle: 'none'
+                msOverflowStyle: 'none',
+                alignItems: 'center'
             }}>
-                {categories.map(cat => (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    {categories.map(cat => (
+                        <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => setActiveCategory(cat.id)}
+                            style={{
+                                background: activeCategory === cat.id ? 'var(--accent-red)' : 'var(--glass-bg)',
+                                color: activeCategory === cat.id ? 'white' : 'var(--text-primary)',
+                                border: '1px solid var(--glass-border)',
+                                borderRadius: '20px',
+                                padding: '8px 16px',
+                                fontSize: '0.8rem',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                whiteSpace: 'nowrap',
+                                transition: 'all 0.2s ease',
+                                boxShadow: activeCategory === cat.id ? '0 4px 12px rgba(210,85,78,0.3)' : 'none'
+                            }}
+                        >
+                            <span>{cat.icon}</span>
+                            <span>{cat.label}</span>
+                        </button>
+                    ))}
+                </div>
+                {activeCategory === 'buysell' && (
                     <button
-                        key={cat.id}
                         type="button"
-                        onClick={() => setActiveCategory(cat.id)}
+                        onClick={() => setSwiperMode(!swiperMode)}
                         style={{
-                            background: activeCategory === cat.id ? 'var(--accent-red)' : 'var(--glass-bg)',
-                            color: activeCategory === cat.id ? 'white' : 'var(--text-primary)',
+                            background: swiperMode ? '#2ecc71' : 'var(--glass-bg)',
+                            color: swiperMode ? 'white' : 'var(--text-primary)',
                             border: '1px solid var(--glass-border)',
                             borderRadius: '20px',
                             padding: '8px 16px',
@@ -522,29 +647,168 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                             gap: '6px',
                             whiteSpace: 'nowrap',
                             transition: 'all 0.2s ease',
-                            boxShadow: activeCategory === cat.id ? '0 4px 12px rgba(210,85,78,0.3)' : 'none'
+                            boxShadow: swiperMode ? '0 4px 12px rgba(46,204,113,0.3)' : 'none',
+                            marginLeft: 'auto'
                         }}
                     >
-                        <span>{cat.icon}</span>
-                        <span>{cat.label}</span>
+                        <span>🛍️</span>
+                        <span>{swiperMode ? 'List View' : 'Swiper Mode'}</span>
                     </button>
-                ))}
+                )}
             </div>
 
-            <div className="app-feed-container" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.2rem', paddingBottom: '0.5rem', paddingTop: '1rem' }}>
-                {filteredPosts.map((post) => (
-                    <PostCard
-                        key={post.id}
-                        post={post}
-                        posts={posts}
-                        isMine={post.user_id === session?.user?.id && !post.is_ai}
-                        onUserClick={onUserClick}
-                        onReply={handleReply}
-                        onAIReply={handleAIReply}
-                    />
-                ))}
-                <div ref={feedEndRef} />
-            </div>
+            {swiperMode ? (
+                <div className="swiper-container" style={{
+                    padding: '2rem 1.5rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    position: 'relative',
+                    minHeight: '450px'
+                }}>
+                    {swiperIndex < filteredPosts.length ? (
+                        <div style={{ width: '100%', maxWidth: '420px', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            {/* Visual Stack Effect */}
+                            {swiperIndex + 2 < filteredPosts.length && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '-20px',
+                                    width: '90%',
+                                    height: '320px',
+                                    background: 'var(--panel-bg)',
+                                    border: '1px solid var(--glass-border)',
+                                    borderRadius: '20px',
+                                    opacity: 0.2,
+                                    transform: 'scale(0.9)',
+                                    zIndex: 1,
+                                    pointerEvents: 'none'
+                                }} />
+                            )}
+                            {swiperIndex + 1 < filteredPosts.length && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '-10px',
+                                    width: '95%',
+                                    height: '320px',
+                                    background: 'var(--panel-bg)',
+                                    border: '1px solid var(--glass-border)',
+                                    borderRadius: '20px',
+                                    opacity: 0.5,
+                                    transform: 'scale(0.95)',
+                                    zIndex: 2,
+                                    pointerEvents: 'none'
+                                }} />
+                            )}
+                            {/* Front Card */}
+                            <div style={{ width: '100%', zIndex: 3, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+                                <PostCard
+                                    post={filteredPosts[swiperIndex]}
+                                    posts={posts}
+                                    isMine={filteredPosts[swiperIndex].user_id === session?.user?.id && !filteredPosts[swiperIndex].is_ai}
+                                    onUserClick={onUserClick}
+                                    onReply={handleReply}
+                                    onAIReply={handleAIReply}
+                                    isHelpful={!!helpfulPosts[filteredPosts[swiperIndex].id]}
+                                    onHelpfulToggle={handleHelpfulToggle}
+                                />
+                            </div>
+
+                            {/* Tinder Swipe Controls */}
+                            <div style={{
+                                display: 'flex',
+                                gap: '24px',
+                                marginTop: '24px',
+                                zIndex: 4,
+                                justifyContent: 'center',
+                                width: '100%'
+                            }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setSwiperIndex(prev => prev + 1)}
+                                    style={{
+                                        width: '60px',
+                                        height: '60px',
+                                        borderRadius: '50%',
+                                        border: '1px solid rgba(210,85,78,0.3)',
+                                        background: 'var(--panel-bg)',
+                                        color: 'var(--accent-red)',
+                                        fontSize: '1.5rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                                        transition: 'transform 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    title="Skip Listing"
+                                >
+                                    ❌
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleSwipeRight(filteredPosts[swiperIndex])}
+                                    style={{
+                                        width: '60px',
+                                        height: '60px',
+                                        borderRadius: '50%',
+                                        border: '1px solid rgba(46,204,113,0.3)',
+                                        background: 'var(--panel-bg)',
+                                        color: '#2ecc71',
+                                        fontSize: '1.5rem',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                                        transition: 'transform 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    title="Interested / Send Inquiry"
+                                >
+                                    ❤️
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="system-welcome-card anim-fade-in" style={{ textAlign: 'center', padding: '30px', maxWidth: '400px' }}>
+                            <div style={{ fontSize: '3rem', marginBottom: '15px' }}>🛍️</div>
+                            <h3>No More Listings</h3>
+                            <p style={{ color: 'var(--text-secondary)', margin: '10px 0 20px', fontSize: '0.9rem' }}>
+                                You have swiped through all local Buy & Sell posts.
+                            </p>
+                            <button
+                                type="button"
+                                className="btn-onboarding-next"
+                                style={{ padding: '10px 20px', fontSize: '0.85rem' }}
+                                onClick={() => setSwiperIndex(0)}
+                            >
+                                Start Over
+                            </button>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <div className="app-feed-container" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.2rem', paddingBottom: '0.5rem', paddingTop: '1rem' }}>
+                    {filteredPosts.map((post) => (
+                        <PostCard
+                            key={post.id}
+                            post={post}
+                            posts={posts}
+                            isMine={post.user_id === session?.user?.id && !post.is_ai}
+                            onUserClick={onUserClick}
+                            onReply={handleReply}
+                            onAIReply={handleAIReply}
+                            isHelpful={!!helpfulPosts[post.id]}
+                            onHelpfulToggle={handleHelpfulToggle}
+                        />
+                    ))}
+                    <div ref={feedEndRef} />
+                </div>
+            )}
 
             {/* Floating New Message Notification */}
             {showScrollDown && (

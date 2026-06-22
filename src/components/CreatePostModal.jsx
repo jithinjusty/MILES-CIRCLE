@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 
 export default function CreatePostModal({ position, radius, onClose, onPostCreated }) {
     const [content, setContent] = useState('')
+    const [isAlert, setIsAlert] = useState(false)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
 
@@ -31,13 +32,15 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
                     {
                         user_id: user.id,
                         content: content.trim(),
-                        location: locationWKT
+                        location: locationWKT,
+                        is_alert: isAlert
                     }
                 ])
 
             if (insertError) throw insertError
 
             setContent('')
+            setIsAlert(false)
             onPostCreated?.()
             onClose()
         } catch (err) {
@@ -91,7 +94,7 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
                         </div>
                     </div>
 
-                    <div className="post-tools" style={{ display: 'flex', gap: '8px', marginBottom: '2.5rem' }}>
+                    <div className="post-tools" style={{ display: 'flex', gap: '8px', marginBottom: '2.5rem', flexWrap: 'wrap' }}>
                         <button
                             type="button"
                             className="nav-item"
@@ -118,6 +121,27 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
                         >
                             <LinkIcon size={18} />
                             <span>Add Link</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setIsAlert(!isAlert)}
+                            style={{
+                                background: isAlert ? 'rgba(210, 85, 78, 0.2)' : 'var(--glass-bg)',
+                                border: `1px solid ${isAlert ? 'var(--accent-red)' : 'var(--glass-border)'}`,
+                                borderRadius: '12px',
+                                padding: '12px 16px',
+                                color: isAlert ? 'var(--accent-red)' : 'var(--text-primary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                cursor: 'pointer',
+                                fontSize: '0.9rem',
+                                transition: 'all 0.2s',
+                                fontWeight: isAlert ? '800' : '400'
+                            }}
+                        >
+                            <span>🚨</span>
+                            <span>Broadcast Alert</span>
                         </button>
                     </div>
 

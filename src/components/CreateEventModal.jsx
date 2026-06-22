@@ -18,6 +18,7 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
     const [description, setDescription] = useState('')
     const [eventDate, setEventDate] = useState('')
     const [expiresAt, setExpiresAt] = useState('')
+    const [isFlash, setIsFlash] = useState(false)
     const [imageFile, setImageFile] = useState(null)
     const [imagePreview, setImagePreview] = useState(null)
     const [loading, setLoading] = useState(false)
@@ -25,6 +26,28 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
     const [eventLocation, setEventLocation] = useState(null)
     const [isLocating, setIsLocating] = useState(false)
     const fileInputRef = useRef(null)
+
+    const handleFlashToggle = () => {
+        const nextFlash = !isFlash
+        setIsFlash(nextFlash)
+        if (nextFlash) {
+            // Auto-set event date to now and expiresAt to now + 1 hour
+            const now = new Date()
+            const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000)
+            
+            // Format to YYYY-MM-DDTHH:MM (local time compatible with datetime-local)
+            const formatLocal = (d) => {
+                const tzOffset = d.getTimezoneOffset() * 60000;
+                return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+            }
+            
+            setEventDate(formatLocal(now))
+            setExpiresAt(formatLocal(oneHourLater))
+        } else {
+            setEventDate('')
+            setExpiresAt('')
+        }
+    }
 
     const handleImageSelect = (e) => {
         const file = e.target.files?.[0]
@@ -121,7 +144,8 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                     expires_at: expiresAt || null,
                     location_lat: eventLocation.lat,
                     location_lng: eventLocation.lng,
-                    location_name: `${eventLocation.lat.toFixed(6)}, ${eventLocation.lng.toFixed(6)}`
+                    location_name: `${eventLocation.lat.toFixed(6)}, ${eventLocation.lng.toFixed(6)}`,
+                    is_flash: isFlash
                 }])
 
             if (insertError) throw insertError
@@ -285,6 +309,28 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                         )}
                     </div>
 
+                    {/* Flash Meetup Toggle */}
+                    <div className="event-field" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: isFlash ? 'rgba(210,85,78,0.1)' : 'var(--glass-bg)', border: `1px solid ${isFlash ? 'var(--accent-red)' : 'var(--glass-border)'}`, borderRadius: '14px', cursor: 'pointer', transition: 'all 0.2s', marginBottom: '10px' }} onClick={handleFlashToggle}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontSize: '0.9rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px', color: isFlash ? 'var(--accent-red)' : 'var(--text-primary)' }}>
+                                ⚡ Spontaneous Flash Meetup
+                            </span>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                                Active for exactly 1 hour. Urgently notify neighbors nearby.
+                            </span>
+                        </div>
+                        <div style={{
+                            width: '40px', height: '24px', borderRadius: '12px', background: isFlash ? 'var(--accent-red)' : 'rgba(255,255,255,0.15)',
+                            position: 'relative', transition: 'background 0.2s'
+                        }}>
+                            <div style={{
+                                width: '18px', height: '18px', borderRadius: '50%', background: 'white',
+                                position: 'absolute', top: '3px', left: isFlash ? '19px' : '3px',
+                                transition: 'left 0.2s'
+                            }} />
+                        </div>
+                    </div>
+
                     {/* Event Date */}
                     <div className="event-field">
                         <label>Event Date & Time</label>
@@ -294,6 +340,7 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                                 type="datetime-local"
                                 value={eventDate}
                                 onChange={e => setEventDate(e.target.value)}
+                                disabled={isFlash}
                             />
                         </div>
                     </div>
@@ -312,6 +359,7 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                                 type="datetime-local"
                                 value={expiresAt}
                                 onChange={e => setExpiresAt(e.target.value)}
+                                disabled={isFlash}
                             />
                         </div>
                         <span className="field-note">
