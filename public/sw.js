@@ -33,6 +33,11 @@ self.addEventListener('activate', (event) => {
 
 // Network-First for index.html, Cache-First for others
 self.addEventListener('fetch', (event) => {
+    // Only intercept GET requests from the same origin (local assets)
+    if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
+        return;
+    }
+
     const url = new URL(event.request.url);
 
     if (url.pathname === '/' || url.pathname === '/index.html') {

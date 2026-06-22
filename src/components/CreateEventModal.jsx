@@ -111,7 +111,7 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
             }
 
             const { error: insertError } = await supabase
-                .from('events')
+                .from('local_events')
                 .insert([{
                     user_id: user.id,
                     title: title.trim(),

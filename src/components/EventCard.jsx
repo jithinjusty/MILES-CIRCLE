@@ -15,6 +15,7 @@ export default function EventCard({ event, session, userReaction, onReactionChan
     const [showReactions, setShowReactions] = useState(false)
     const [isReacting, setIsReacting] = useState(false)
     const [localReactionCount, setLocalReactionCount] = useState(event?.reaction_count || 0)
+    const [localGoingCount, setLocalGoingCount] = useState(event?.going_count || 0)
     const [localUserReaction, setLocalUserReaction] = useState(userReaction)
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
@@ -82,7 +83,11 @@ export default function EventCard({ event, session, userReaction, onReactionChan
 
                 if (error) throw error
                 setLocalUserReaction(null)
-                setLocalReactionCount(prev => Math.max(0, prev - 1))
+                if (reactionType === 'going') {
+                    setLocalGoingCount(prev => Math.max(0, prev - 1))
+                } else {
+                    setLocalReactionCount(prev => Math.max(0, prev - 1))
+                }
                 onReactionChange?.(event.id, null)
             } else {
                 if (localUserReaction) {
@@ -93,6 +98,15 @@ export default function EventCard({ event, session, userReaction, onReactionChan
                         .eq('user_id', session.user.id)
 
                     if (error) throw error
+                    
+                    // Update reaction counts locally based on the transitions
+                    if (localUserReaction === 'going') {
+                        setLocalGoingCount(prev => Math.max(0, prev - 1))
+                        setLocalReactionCount(prev => prev + 1)
+                    } else if (reactionType === 'going') {
+                        setLocalReactionCount(prev => Math.max(0, prev - 1))
+                        setLocalGoingCount(prev => prev + 1)
+                    }
                 } else {
                     const { error } = await supabase
                         .from('event_reactions')
@@ -103,7 +117,11 @@ export default function EventCard({ event, session, userReaction, onReactionChan
                         })
 
                     if (error) throw error
-                    setLocalReactionCount(prev => prev + 1)
+                    if (reactionType === 'going') {
+                        setLocalGoingCount(prev => prev + 1)
+                    } else {
+                        setLocalReactionCount(prev => prev + 1)
+                    }
                 }
                 setLocalUserReaction(reactionType)
                 onReactionChange?.(event.id, reactionType)
@@ -126,7 +144,7 @@ export default function EventCard({ event, session, userReaction, onReactionChan
         setIsDeleting(true)
         try {
             const { error } = await supabase
-                .from('events')
+                .from('local_events')
                 .delete()
                 .eq('id', event.id)
                 .eq('user_id', session.user.id)
@@ -144,7 +162,7 @@ export default function EventCard({ event, session, userReaction, onReactionChan
     const isMine = event.user_id === session?.user?.id
     const name = event?.full_name || 'Anonymous'
     const initial = (event?.full_name || '?')[0].toUpperCase()
-    const activeReactionEmoji = localUserReaction
+    const activeReactionEmoji = localUserReaction && localUserReaction !== 'going'
         ? REACTION_TYPES.find(r => r.type === localUserReaction)?.emoji
         : null
     const hasCoords = event.location_lat && event.location_lng
@@ -281,9 +299,9 @@ export default function EventCard({ event, session, userReaction, onReactionChan
                     {/* Reactions Button */}
                     <div className="event-reaction-wrapper">
                         <button
-                            className={`event-react-btn ${localUserReaction ? 'reacted' : ''}`}
-                            onClick={() => localUserReaction ? handleReaction(localUserReaction) : setShowReactions(!showReactions)}
-                            onMouseEnter={() => !localUserReaction && setShowReactions(true)}
+                            className={`event-react-btn ${localUserReaction && localUserReaction !== 'going' ? 'reacted' : ''}`}
+                            onClick={() => (localUserReaction && localUserReaction !== 'going') ? handleReaction(localUserReaction) : setShowReactions(!showReactions)}
+                            onMouseEnter={() => (localUserReaction === null || localUserReaction === 'going') && setShowReactions(true)}
                             disabled={isReacting}
                         >
                             <span className="react-emoji">
@@ -311,6 +329,35 @@ export default function EventCard({ event, session, userReaction, onReactionChan
                             </div>
                         )}
                     </div>
+
+                    {/* RSVP "Going" Button */}
+                    <button
+                        className={`event-rsvp-btn ${localUserReaction === 'going' ? 'going' : ''}`}
+                        onClick={() => handleReaction('going')}
+                        disabled={isReacting}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 16px',
+                            borderRadius: '12px',
+                            background: localUserReaction === 'going' ? 'linear-gradient(135deg, var(--accent-red) 0%, #B2443E 100%)' : 'rgba(255,255,255,0.06)',
+                            border: '1px solid var(--glass-border)',
+                            color: 'white',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            fontWeight: '700',
+                            transition: 'all 0.2s',
+                        }}
+                    >
+                        <span>✨ Going</span>
+                        <span className="rsvp-count" style={{
+                            background: 'rgba(0,0,0,0.2)',
+                            padding: '2px 6px',
+                            borderRadius: '6px',
+                            fontSize: '0.75rem'
+                        }}>{localGoingCount}</span>
+                    </button>
 
                     {/* Directions Button */}
                     <button className="event-directions-btn" onClick={handleDirections}>

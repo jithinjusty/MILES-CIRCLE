@@ -10,11 +10,36 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const [replyingTo, setReplyingTo] = useState(null)
     const [unreadCount, setUnreadCount] = useState(0)
     const [showScrollDown, setShowScrollDown] = useState(false)
+    const [activeCategory, setActiveCategory] = useState('all')
     const feedEndRef = useRef(null)
     const aiTimerRef = useRef(null)
     const isInitialLoad = useRef(true);
     const prevPostsLength = useRef(0);
     const scrollContainerRef = useRef(null);
+
+    const getPostCategory = (content) => {
+        if (!content) return 'general';
+        const lower = content.toLowerCase();
+        
+        if (lower.includes('#buysell') || lower.includes('#buy') || lower.includes('#sell') || lower.includes('#forsale') ||
+            (/\b(selling|buying|for sale|price|price:)\b/.test(lower))) {
+            return 'buysell';
+        }
+        if (lower.includes('#lostfound') || lower.includes('#lost') || lower.includes('#found') ||
+            (/\b(lost|found|missing|lost my|found a)\b/.test(lower))) {
+            return 'lostfound';
+        }
+        if (lower.includes('#recommend') || lower.includes('#review') || lower.includes('#places') ||
+            (/\b(recommend|recommendation|best place|where can i find|good doctor|good cafe)\b/.test(lower))) {
+            return 'recommendations';
+        }
+        return 'general';
+    };
+
+    const filteredPosts = posts.filter(post => {
+        if (activeCategory === 'all') return true;
+        return getPostCategory(post.content) === activeCategory;
+    });
 
     const scrollToBottom = (behavior = 'smooth') => {
         feedEndRef.current?.scrollIntoView({ behavior });
@@ -454,10 +479,60 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
         scrollToBottom('smooth');
     };
 
+    const categories = [
+        { id: 'all', label: 'All sphere', icon: '🌍' },
+        { id: 'general', label: 'General', icon: '💬' },
+        { id: 'buysell', label: 'Buy & Sell', icon: '🏷️' },
+        { id: 'lostfound', label: 'Lost & Found', icon: '🔍' },
+        { id: 'recommendations', label: 'Recommendations', icon: '🌟' }
+    ];
+
     return (
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0', position: 'relative' }}>
-            <div className="app-feed-container" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.2rem', paddingBottom: '0.5rem' }}>
-                {posts.map((post) => (
+            {/* Category Filter Bar */}
+            <div className="feed-category-bar" style={{
+                display: 'flex',
+                gap: '8px',
+                padding: '12px 16px',
+                overflowX: 'auto',
+                borderBottom: '1px solid var(--glass-border)',
+                background: 'var(--panel-bg)',
+                position: 'sticky',
+                top: 0,
+                zIndex: 10,
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none'
+            }}>
+                {categories.map(cat => (
+                    <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setActiveCategory(cat.id)}
+                        style={{
+                            background: activeCategory === cat.id ? 'var(--accent-red)' : 'var(--glass-bg)',
+                            color: activeCategory === cat.id ? 'white' : 'var(--text-primary)',
+                            border: '1px solid var(--glass-border)',
+                            borderRadius: '20px',
+                            padding: '8px 16px',
+                            fontSize: '0.8rem',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            whiteSpace: 'nowrap',
+                            transition: 'all 0.2s ease',
+                            boxShadow: activeCategory === cat.id ? '0 4px 12px rgba(210,85,78,0.3)' : 'none'
+                        }}
+                    >
+                        <span>{cat.icon}</span>
+                        <span>{cat.label}</span>
+                    </button>
+                ))}
+            </div>
+
+            <div className="app-feed-container" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.2rem', paddingBottom: '0.5rem', paddingTop: '1rem' }}>
+                {filteredPosts.map((post) => (
                     <PostCard
                         key={post.id}
                         post={post}

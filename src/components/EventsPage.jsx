@@ -63,11 +63,11 @@ export default function EventsPage({ position, radius, distanceUnit = 'miles', s
 
         // Real-time subscription for new events
         const channel = supabase
-            .channel('public:events')
+            .channel('public:local_events')
             .on('postgres_changes', {
                 event: '*',
                 schema: 'public',
-                table: 'events'
+                table: 'local_events'
             }, () => {
                 fetchEvents()
             })

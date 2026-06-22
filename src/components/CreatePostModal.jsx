@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { X, Send, MapPin, Link as LinkIcon, Paperclip } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
-export default function CreatePostModal({ position, onClose, onPostCreated }) {
+export default function CreatePostModal({ position, radius, onClose, onPostCreated }) {
     const [content, setContent] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)

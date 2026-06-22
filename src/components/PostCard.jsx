@@ -6,8 +6,36 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
     const [translatedText, setTranslatedText] = useState(null);
     const [translating, setTranslating] = useState(false);
     const [aiGenerating, setAiGenerating] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
     const longPressTimer = useRef(null);
     const menuRef = useRef(null);
+
+    const handleSpeak = (e) => {
+        e.stopPropagation();
+        if ('speechSynthesis' in window) {
+            if (isSpeaking) {
+                window.speechSynthesis.cancel();
+                setIsSpeaking(false);
+            } else {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(post.content);
+                utterance.onend = () => setIsSpeaking(false);
+                utterance.onerror = () => setIsSpeaking(false);
+                setIsSpeaking(true);
+                window.speechSynthesis.speak(utterance);
+            }
+        } else {
+            alert("Text-to-speech is not supported in this browser.");
+        }
+    };
+
+    useEffect(() => {
+        return () => {
+            if (isSpeaking) {
+                window.speechSynthesis.cancel();
+            }
+        };
+    }, [isSpeaking]);
 
     const formatTimeAgo = (timestamp) => {
         if (!timestamp) return '';
@@ -201,33 +229,56 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                 onTouchMove={handleTouchEnd}
             >
                 {/* Header */}
-                <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.6rem', flexDirection: isMine ? 'row-reverse' : 'row' }}>
-                    <div
-                        className="user-avatar-btn mini"
-                        style={{
-                            width: '30px', height: '30px', borderRadius: '10px', fontSize: '0.75rem', flexShrink: 0,
-                            border: isMine ? '1px solid rgba(255,255,255,0.3)' : '1px solid var(--glass-border)',
-                            background: isMine ? 'rgba(255,255,255,0.1)' : 'var(--panel-bg)'
-                        }}
-                        onClick={(e) => { e.stopPropagation(); onUserClick?.(post.user_id, post.is_ai, post.ai_name); }}
-                    >
-                        {post?.is_ai ? (
-                            <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${post.ai_name || 'AI'}&backgroundColor=b6e3f4`} alt="" />
-                        ) : post?.avatar_url ? (
-                            <img src={post.avatar_url} alt="" />
-                        ) : initial}
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
-                        <span
-                            style={{ fontSize: '0.85rem', fontWeight: '800', cursor: 'pointer', color: isMine ? 'white' : 'var(--accent-red)' }}
+                <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: '0.6rem', flexDirection: isMine ? 'row-reverse' : 'row' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexDirection: isMine ? 'row-reverse' : 'row' }}>
+                        <div
+                            className="user-avatar-btn mini"
+                            style={{
+                                width: '30px', height: '30px', borderRadius: '10px', fontSize: '0.75rem', flexShrink: 0,
+                                border: isMine ? '1px solid rgba(255,255,255,0.3)' : '1px solid var(--glass-border)',
+                                background: isMine ? 'rgba(255,255,255,0.1)' : 'var(--panel-bg)'
+                            }}
                             onClick={(e) => { e.stopPropagation(); onUserClick?.(post.user_id, post.is_ai, post.ai_name); }}
                         >
-                            {displayName}
-                        </span>
-                        <span style={{ fontSize: '0.65rem', color: isMine ? 'rgba(255,255,255,0.65)' : 'var(--text-secondary)' }}>
-                            {formatTimeAgo(post?.created_at)}
-                        </span>
+                            {post?.is_ai ? (
+                                <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${post.ai_name || 'AI'}&backgroundColor=b6e3f4`} alt="" />
+                            ) : post?.avatar_url ? (
+                                <img src={post.avatar_url} alt="" />
+                            ) : initial}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start' }}>
+                            <span
+                                style={{ fontSize: '0.85rem', fontWeight: '800', cursor: 'pointer', color: isMine ? 'white' : 'var(--accent-red)' }}
+                                onClick={(e) => { e.stopPropagation(); onUserClick?.(post.user_id, post.is_ai, post.ai_name); }}
+                            >
+                                {displayName}
+                            </span>
+                            <span style={{ fontSize: '0.65rem', color: isMine ? 'rgba(255,255,255,0.65)' : 'var(--text-secondary)' }}>
+                                {formatTimeAgo(post?.created_at)}
+                            </span>
+                        </div>
                     </div>
+                    <button 
+                        type="button"
+                        onClick={handleSpeak}
+                        title={isSpeaking ? "Stop listening" : "Listen to post"}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '1rem',
+                            padding: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: 0.6,
+                            transition: 'opacity 0.2s',
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                        onMouseLeave={(e) => e.currentTarget.style.opacity = 0.6}
+                    >
+                        {isSpeaking ? '🔇' : '🔊'}
+                    </button>
                 </div>
 
                 {/* Quoted Reply Preview */}
@@ -276,6 +327,23 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                         })
                     )}
                 </div>
+
+                {/* Image Attachment */}
+                {post?.image_url && (
+                    <div style={{
+                        marginTop: '10px',
+                        borderRadius: '12px',
+                        overflow: 'hidden',
+                        maxHeight: '240px',
+                        border: isMine ? 'none' : '1px solid var(--glass-border)'
+                    }}>
+                        <img 
+                            src={post.image_url} 
+                            alt="Attachment" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                        />
+                    </div>
+                )}
 
                 {/* AI generating indicator */}
                 {aiGenerating && (

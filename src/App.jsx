@@ -69,6 +69,11 @@ function App() {
     const [authLoading, setAuthLoading] = useState(true);
     const [session, setSession] = useState(null)
     const [profile, setProfile] = useState({});
+    const [isMock, setIsMock] = useState(() => new URLSearchParams(window.location.search).get('mock_user') === 'true');
+    const [showSandbox, setShowSandbox] = useState(false);
+    const [activeNeighbors, setActiveNeighbors] = useState([]);
+    const [selectedPostFile, setSelectedPostFile] = useState(null);
+    const [attachedImageUrl, setAttachedImageUrl] = useState(null);
     const [radius, setRadius] = useState(() => {
         const saved = localStorage.getItem('miles_preferred_radius');
         const val = saved ? parseFloat(saved) : 1;
@@ -136,6 +141,94 @@ function App() {
 
     // Keep ref in sync with state so location callbacks can read the current value
     useEffect(() => { offlineModeRef.current = offlineMode; }, [offlineMode]);
+
+    // Deterministic offset based on user ID hash to keep presence dot stable but offset
+    const getFuzzyCoords = (userId, lat, lng) => {
+        if (!userId) return [lat, lng];
+        let hash = 0;
+        for (let i = 0; i < userId.length; i++) {
+            hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const latOffset = ((hash & 0xFF) / 255.0 - 0.5) * 0.0008;
+        const lngOffset = (((hash >> 8) & 0xFF) / 255.0 - 0.5) * 0.0008;
+        return [lat + latOffset, lng + lngOffset];
+    };
+
+    // Custom Leaflet icon for active neighbors
+    const neighborIcon = (initial, avatarUrl) => L.divIcon({
+        className: 'custom-neighbor-marker',
+        html: `
+            <div style="
+                width: 32px; height: 32px;
+                background: var(--panel-bg);
+                border: 2px solid var(--accent-red);
+                border-radius: 10px;
+                display: flex; align-items: center; justify-content: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                overflow: hidden;
+            ">
+                \${avatarUrl ? \`<img src="\${avatarUrl}" style="width: 100%; height: 100%; object-fit: cover;" />\` : \`
+                    <span style="color: var(--accent-red); font-size: 0.75rem; font-weight: 800; font-family: var(--font-family);">\${initial}</span>
+                \`}
+            </div>
+            <div style="
+                width: 8px; height: 8px;
+                background: var(--accent-red);
+                border-radius: 50%;
+                position: absolute;
+                bottom: -4px; left: 12px;
+                box-shadow: 0 0 8px var(--accent-red);
+            "></div>
+        `,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32]
+    });
+
+    // Update presence in DB whenever position changes
+    useEffect(() => {
+        if (!session?.user?.id || !position || isNaN(position[0]) || isNaN(position[1])) return;
+        
+        const updatePresence = async () => {
+            try {
+                await supabase
+                    .from('profiles')
+                    .update({
+                        last_lat: position[0],
+                        last_lng: position[1],
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', session.user.id);
+            } catch (err) {
+                console.error("Presence report error:", err);
+            }
+        };
+
+        updatePresence();
+    }, [position, session?.user?.id]);
+
+    // Fetch active neighbors in the circle
+    useEffect(() => {
+        if (!session?.user?.id || !position || isNaN(position[0]) || isNaN(position[1])) return;
+
+        const fetchNeighbors = async () => {
+            try {
+                const { data, error } = await supabase.rpc('get_active_neighbors_within_radius', {
+                    user_lat: parseFloat(position[0]),
+                    user_lng: parseFloat(position[1]),
+                    radius_miles: parseFloat(radius) || 1
+                });
+                if (!error && data) {
+                    setActiveNeighbors(data.filter(n => n.id !== session.user.id));
+                }
+            } catch (err) {
+                console.error("Error fetching active neighbors:", err);
+            }
+        };
+
+        fetchNeighbors();
+        const interval = setInterval(fetchNeighbors, 30000);
+        return () => clearInterval(interval);
+    }, [position, radius, session?.user?.id]);
 
     const updateLocation = () => {
         // Never auto-update while user has explicitly chosen offline mode
@@ -251,13 +344,26 @@ function App() {
             setShowInstallBanner(true);
         });
 
-        supabase.auth.getSession().then(({ data: { session: s } }) => {
-            setSession(s);
-            if (s) fetchProfile(s.user.id);
+        if (isMock) {
+            const mockSession = {
+                user: {
+                    id: "17958e69-0321-4d91-bafb-bc7e1a109574",
+                    email: "chacko.mariner@gmail.com"
+                }
+            };
+            setSession(mockSession);
+            fetchProfile(mockSession.user.id);
             setAuthLoading(false);
-        });
+        } else {
+            supabase.auth.getSession().then(({ data: { session: s } }) => {
+                setSession(s);
+                if (s) fetchProfile(s.user.id);
+                setAuthLoading(false);
+            });
+        }
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+            if (isMock) return;
             setSession(s);
             if (s) fetchProfile(s.user.id);
             else { setProfile({}); setOnboardingStep(0); }
@@ -304,7 +410,7 @@ function App() {
         const checkNewEvents = async () => {
             try {
                 let query = supabase
-                    .from('events')
+                    .from('local_events')
                     .select('id, created_at', { count: 'exact', head: true });
 
                 if (lastSeen) {
@@ -328,7 +434,7 @@ function App() {
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
-                table: 'events'
+                table: 'local_events'
             }, (payload) => {
                 // Don't notify for own events
                 if (payload.new.user_id !== session.user.id) {
@@ -524,7 +630,7 @@ function App() {
 
     const handleSendMessage = async (e) => {
         if (e) e.preventDefault();
-        if (!messageContent.trim() || isSending) return;
+        if ((!messageContent.trim() && !attachedImageUrl) || isSending) return;
 
         const originalContent = messageContent;
         setMessageContent(''); // Clear immediately for live feel
@@ -537,7 +643,7 @@ function App() {
             const locationWKT = `POINT(${position[1]} ${position[0]})`;
             const insertPayload = {
                 user_id: user.id,
-                content: originalContent.trim(),
+                content: originalContent.trim() || null,
                 location: locationWKT
             };
             if (replyingTo) {
@@ -545,10 +651,14 @@ function App() {
                 insertPayload.reply_to_content = replyingTo.content?.substring(0, 200);
                 insertPayload.reply_to_author = replyingTo.author;
             }
+            if (attachedImageUrl) {
+                insertPayload.image_url = attachedImageUrl;
+            }
             const { error } = await supabase
                 .from('posts')
                 .insert([insertPayload]);
             setReplyingTo(null);
+            setAttachedImageUrl(null);
 
             if (error) throw error;
             setFeedTrigger(prev => prev + 1);
@@ -563,7 +673,11 @@ function App() {
 
     const handleAttachmentAction = (type) => {
         setShowAttachmentMenu(false);
-        if (type === 'photo' || type === 'file') {
+        if (type === 'photo') {
+            document.getElementById('post-image-upload').click();
+            return;
+        }
+        if (type === 'file') {
             alert("This feature is only available for subscribed users.");
             return;
         }
@@ -603,6 +717,40 @@ function App() {
         } catch (error) {
             console.error('Error uploading avatar:', error.message);
             alert("Avatar upload failed: " + error.message);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const handlePostImageSelect = (event) => {
+        if (!event.target.files || event.target.files.length === 0) return;
+        setSelectedPostFile(event.target.files[0]);
+    };
+
+    const handleSaveEditedPostPhoto = async (blob) => {
+        try {
+            setUploading(true);
+            setSelectedPostFile(null); // Close editor
+
+            const fileExt = 'jpg';
+            const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            let { error: uploadError } = await supabase.storage
+                .from('post-images')
+                .upload(filePath, blob);
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('post-images')
+                .getPublicUrl(filePath);
+
+            setAttachedImageUrl(publicUrl);
+            alert('Photo attached! Send your message to post it.');
+        } catch (error) {
+            console.error('Error uploading post photo:', error.message);
+            alert("Photo upload failed: " + error.message);
         } finally {
             setUploading(false);
         }
@@ -1048,6 +1196,20 @@ function App() {
                                                 <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
                                                 <Marker position={position} />
                                                 <Circle center={position} pathOptions={{ color: 'var(--accent-red)', fillColor: 'var(--accent-red)', fillOpacity: 0.1, weight: 2, dashArray: '4, 8' }} radius={radius * 1609.34} />
+                                                {activeNeighbors.map(neighbor => {
+                                                    const fuzzyPos = getFuzzyCoords(neighbor.id, neighbor.last_lat, neighbor.last_lng);
+                                                    const initial = (neighbor.full_name || '?')[0].toUpperCase();
+                                                    return (
+                                                        <Marker 
+                                                            key={neighbor.id} 
+                                                            position={fuzzyPos} 
+                                                            icon={neighborIcon(initial, neighbor.avatar_url)}
+                                                            eventHandlers={{
+                                                                click: () => setViewingProfile(neighbor)
+                                                            }}
+                                                        />
+                                                    );
+                                                })}
                                                 <MapController center={position} radius={radius} isInteracting={isMapInteracting} />
                                             </MapContainer>
                                         )}
@@ -1141,6 +1303,9 @@ function App() {
                                                 </div>
 
                                                 <form className="chat-input-wrapper" onSubmit={handleSendMessage} style={{ flexDirection: 'column', gap: 0, alignItems: 'stretch' }}>
+                                                    {/* Hidden File Input for Post Media Uploads */}
+                                                    <input type="file" id="post-image-upload" hidden accept="image/*" onChange={handlePostImageSelect} />
+
                                                     {/* Reply Preview Bar */}
                                                     {replyingTo && (
                                                         <div style={{
@@ -1159,6 +1324,28 @@ function App() {
                                                             <button type="button" onClick={() => setReplyingTo(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '4px' }}>✕</button>
                                                         </div>
                                                     )}
+
+                                                    {/* Image Attachment Preview Bar */}
+                                                    {attachedImageUrl && (
+                                                        <div style={{
+                                                            display: 'flex', alignItems: 'center', gap: '12px',
+                                                            padding: '8px 14px',
+                                                            background: 'var(--panel-bg)',
+                                                            borderTop: '1px solid var(--glass-border)',
+                                                            borderLeft: '3px solid var(--accent-red)',
+                                                            borderRadius: replyingTo ? '0' : '12px 12px 0 0',
+                                                            fontSize: '0.78rem'
+                                                        }}>
+                                                            <div style={{ position: 'relative', width: '40px', height: '40px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                                                                <img src={attachedImageUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                            </div>
+                                                            <div style={{ flex: 1, color: 'var(--text-secondary)' }}>
+                                                                Photo attached and ready to post.
+                                                            </div>
+                                                            <button type="button" onClick={() => setAttachedImageUrl(null)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, padding: '4px' }}>✕</button>
+                                                        </div>
+                                                    )}
+
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px' }}>
                                                         {showAttachmentMenu && (
                                                             <div className="attachment-menu-popover">
@@ -1170,8 +1357,8 @@ function App() {
                                                         <button type="button" className={`chat-plus-btn ${showAttachmentMenu ? 'active' : ''}`} onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}>
                                                             <Plus size={24} style={{ transform: showAttachmentMenu ? 'rotate(45deg)' : 'none' }} />
                                                         </button>
-                                                        <input type="text" className="chat-input-main" placeholder="Message Circle..." value={messageContent} onChange={e => setMessageContent(e.target.value)} disabled={isSending} />
-                                                        <button type="submit" className="chat-send-btn-new" disabled={!messageContent.trim() || isSending}>
+                                                        <input type="text" className="chat-input-main" placeholder={attachedImageUrl ? "Add a caption..." : "Message Circle..."} value={messageContent} onChange={e => setMessageContent(e.target.value)} disabled={isSending} />
+                                                        <button type="submit" className="chat-send-btn-new" disabled={(!messageContent.trim() && !attachedImageUrl) || isSending}>
                                                             {isSending ? <div className="spinner-tiny"></div> : <Send size={18} />}
                                                         </button>
                                                     </div>
@@ -1492,8 +1679,124 @@ function App() {
                                         />
                                     )}
 
+                                    {/* SANDBOX TESTING PANEL */}
+                                    {isMock && (
+                                        <div className="sandbox-panel-container" style={{
+                                            position: 'fixed',
+                                            bottom: '90px',
+                                            left: '25px',
+                                            zIndex: 9998,
+                                            fontFamily: 'var(--font-family)'
+                                        }}>
+                                            {!showSandbox ? (
+                                                <button
+                                                    onClick={() => setShowSandbox(true)}
+                                                    style={{
+                                                        background: 'var(--color-charcoal)',
+                                                        color: 'white',
+                                                        border: '1px solid var(--accent-red)',
+                                                        borderRadius: '30px',
+                                                        padding: '10px 18px',
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: '800',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '8px',
+                                                        boxShadow: '0 8px 30px rgba(0,0,0,0.5)',
+                                                        transition: 'all 0.3s ease'
+                                                    }}
+                                                >
+                                                    <Sparkles size={14} color="var(--accent-red)" />
+                                                    <span>Sandbox Tools</span>
+                                                </button>
+                                            ) : (
+                                                <div style={{
+                                                    background: 'rgba(14, 14, 14, 0.95)',
+                                                    border: '1px solid var(--glass-border)',
+                                                    borderRadius: '20px',
+                                                    padding: '1.25rem',
+                                                    width: '280px',
+                                                    boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
+                                                    backdropFilter: 'blur(20px)',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '12px'
+                                                }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--glass-border)', paddingBottom: '8px' }}>
+                                                        <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: '800', color: 'var(--accent-red)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sandbox Tools</h4>
+                                                        <button onClick={() => setShowSandbox(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1rem', padding: '2px' }}>✕</button>
+                                                    </div>
+                                                    
+                                                    {/* Teleport section */}
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)' }}>TELEPORT COORDINATES</span>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                                                            <button type="button" className="sandbox-btn" onClick={() => { setPosition([18.9750, 72.8258]); setLocationAvailable(true); setLocationError(null); }} style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer', textAlign: 'center' }}>🇮🇳 Mumbai</button>
+                                                            <button type="button" className="sandbox-btn" onClick={() => { setPosition([40.7128, -74.0060]); setLocationAvailable(true); setLocationError(null); }} style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer', textAlign: 'center' }}>🇺🇸 New York</button>
+                                                            <button type="button" className="sandbox-btn" onClick={() => { setPosition([51.5074, -0.1278]); setLocationAvailable(true); setLocationError(null); }} style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer', textAlign: 'center' }}>🇬🇧 London</button>
+                                                            <button type="button" className="sandbox-btn" onClick={() => { setPosition([35.6762, 139.6503]); setLocationAvailable(true); setLocationError(null); }} style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'white', borderRadius: '8px', padding: '6px 8px', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer', textAlign: 'center' }}>🇯🇵 Tokyo</button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Insert Mock Posts */}
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)' }}>MOCK DATA GENERATION</span>
+                                                        <button 
+                                                            type="button"
+                                                            onClick={async () => {
+                                                                if (!position) return alert("Please set location first");
+                                                                const mockData = [
+                                                                    { content: "Hey neighbors! Just tried the new bakery down the street. Their croissants are amazing! 🥐", offset: [0.002, -0.003], name: "Rohan" },
+                                                                    { content: "Is anyone else experiencing a power outage? In the south block.", offset: [-0.004, 0.005], name: "Emma" },
+                                                                    { content: "Beautiful morning for a run in the park! 🏃‍♂️☀️", offset: [0.008, 0.009], name: "Kenji" },
+                                                                    { content: "Lost keys near the community hall. Please DM if found!", offset: [-0.001, -0.001], name: "Sarah" }
+                                                                ];
+                                                                const postsToInsert = mockData.map(p => {
+                                                                    const lat = position[0] + p.offset[0];
+                                                                    const lng = position[1] + p.offset[1];
+                                                                    return {
+                                                                        user_id: session.user.id,
+                                                                        content: p.content,
+                                                                        location: `POINT(${lng} ${lat})`,
+                                                                        is_ai: true,
+                                                                        ai_name: p.name
+                                                                    };
+                                                                });
+                                                                const { error } = await supabase.from('posts').insert(postsToInsert);
+                                                                if (!error) {
+                                                                    setFeedTrigger(prev => prev + 1);
+                                                                    alert("Mock posts generated near your coordinates!");
+                                                                } else {
+                                                                    alert("Failed: " + error.message);
+                                                                }
+                                                            }}
+                                                            style={{
+                                                                background: 'var(--accent-red)',
+                                                                color: 'white',
+                                                                border: 'none',
+                                                                borderRadius: '8px',
+                                                                padding: '8px 12px',
+                                                                fontSize: '0.8rem',
+                                                                fontWeight: '700',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                gap: '6px'
+                                                            }}
+                                                        >
+                                                            <Sparkles size={12} /> Populate Local Feed
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* PHOTO EDITOR */}
                                     {selectedFile && <PhotoEditor file={selectedFile} onSave={handleSaveEditedPhoto} onCancel={() => setSelectedFile(null)} />}
+                                    {selectedPostFile && <PhotoEditor file={selectedPostFile} onSave={handleSaveEditedPostPhoto} onCancel={() => setSelectedPostFile(null)} />}
                                 </>
                             )}
                         </>
