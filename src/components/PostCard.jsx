@@ -280,27 +280,29 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                             </span>
                         </div>
                     </div>
-                    <button 
-                        type="button"
-                        onClick={handleSpeak}
-                        title={isSpeaking ? "Stop listening" : "Listen to post"}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '1rem',
-                            padding: '4px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            opacity: 0.6,
-                            transition: 'opacity 0.2s',
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
-                        onMouseLeave={(e) => e.currentTarget.style.opacity = 0.6}
-                    >
-                        {isSpeaking ? '🔇' : '🔊'}
-                    </button>
+                    {!post.image_url && post.content && (
+                        <button 
+                            type="button"
+                            onClick={handleSpeak}
+                            title={isSpeaking ? "Stop listening" : "Listen to post"}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontSize: '1rem',
+                                padding: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                opacity: 0.6,
+                                transition: 'opacity 0.2s',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                            onMouseLeave={(e) => e.currentTarget.style.opacity = 0.6}
+                        >
+                            {isSpeaking ? '🔇' : '🔊'}
+                        </button>
+                    )}
                 </div>
 
                 {/* Quoted Reply Preview */}

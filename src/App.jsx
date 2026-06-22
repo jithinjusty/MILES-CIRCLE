@@ -685,15 +685,8 @@ function App() {
     }
 
     const handleChatScroll = (e) => {
-        const currentScroll = e.currentTarget.scrollTop;
-        if (currentScroll < lastChatScroll.current - 10) {
-            // Scrolling UP towards older messages -> hide header
-            if (!isHeaderHidden) setIsHeaderHidden(true);
-        } else if (currentScroll > lastChatScroll.current + 10) {
-            // Scrolling DOWN towards latest -> show header
-            if (isHeaderHidden) setIsHeaderHidden(false);
-        }
-        lastChatScroll.current = currentScroll;
+        // Keep header statically visible at all times to prevent layout shifts and scroll jumping
+        lastChatScroll.current = e.currentTarget.scrollTop;
     };
 
     const handleSendMessage = async (e) => {
@@ -1353,6 +1346,7 @@ function App() {
                                                         radius={radius}
                                                         refreshTrigger={feedTrigger}
                                                         session={session}
+                                                        activeNeighborsCount={activeNeighbors.length + 1}
                                                         onUserClick={async (userId, isAi, aiName) => {
                                                             const isReallyAi = !!isAi || (typeof isAi === 'string' && isAi.toLowerCase() === 'true');
                                                             if (isReallyAi) {

@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PostCard from './PostCard'
 
-export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange }) {
+export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1 }) {
     const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -593,7 +593,9 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                 padding: '12px 16px',
                 overflowX: 'auto',
                 borderBottom: '1px solid var(--glass-border)',
-                background: 'var(--panel-bg)',
+                background: 'rgba(30, 30, 30, 0.7)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
                 position: 'sticky',
                 top: 0,
                 zIndex: 10,
@@ -792,7 +794,42 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                     )}
                 </div>
             ) : (
-                <div className="app-feed-container" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.2rem', paddingBottom: '0.5rem', paddingTop: '1rem' }}>
+                <div className="app-feed-container" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1.5rem', boxSizing: 'border-box' }}>
+                    {/* Active Proximity Radar Stats Bar */}
+                    <div className="proximity-radar-stats" style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: '12px',
+                        padding: '14px 8px',
+                        background: 'var(--panel-bg)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: '16px',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        marginBottom: '0.5rem'
+                    }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '1.25rem' }}>👥</span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Neighbors</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: '900', color: 'var(--text-primary)' }}>{activeNeighborsCount} online</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px', borderLeft: '1px solid var(--glass-border)', borderRight: '1px solid var(--glass-border)' }}>
+                            <span style={{ fontSize: '1.25rem' }}>🚨</span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Alerts</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: '900', color: posts.filter(p => p.is_alert).length > 0 ? 'var(--accent-red)' : 'var(--text-primary)' }}>
+                                {posts.filter(p => p.is_alert).length} active
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '1.25rem' }}>⚡</span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Flash Meets</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: '900', color: '#ff9f43' }}>
+                                Live map
+                            </span>
+                        </div>
+                    </div>
+
                     {filteredPosts.map((post) => (
                         <PostCard
                             key={post.id}
