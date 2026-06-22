@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Circle, Popup, useMap } from 'react-leaflet'
 import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, LogOut, ShieldCheck, ChevronRight, Mail, Bug, Info, Database, CreditCard, Calendar, Sparkles } from 'lucide-react'
 import './App.css'
 import L from 'leaflet';
@@ -72,6 +72,7 @@ function App() {
     const [isMock, setIsMock] = useState(() => new URLSearchParams(window.location.search).get('mock_user') === 'true');
     const [showSandbox, setShowSandbox] = useState(false);
     const [activeNeighbors, setActiveNeighbors] = useState([]);
+    const [events, setEvents] = useState([]);
     const [selectedPostFile, setSelectedPostFile] = useState(null);
     const [attachedImageUrl, setAttachedImageUrl] = useState(null);
     const [showVibeCheck, setShowVibeCheck] = useState(false);
@@ -232,6 +233,38 @@ function App() {
         });
     };
 
+    const eventIcon = (isFlash = false) => {
+        const background = isFlash 
+            ? 'linear-gradient(135deg, #ff9f43 0%, #ff5252 100%)' 
+            : 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)';
+        const emoji = isFlash ? '⚡' : '📅';
+        const shadow = isFlash 
+            ? 'rgba(255, 159, 67, 0.5)' 
+            : 'rgba(155, 89, 182, 0.4)';
+        const pulseAnim = isFlash ? 'animation: pulse-orange 1.5s infinite;' : 'animation: pulse-purple 2s infinite;';
+
+        return L.divIcon({
+            className: 'custom-event-marker',
+            html: `
+                <div style="
+                    width: 32px; height: 32px;
+                    background: ${background};
+                    border: 2px solid white;
+                    border-radius: 50%;
+                    display: flex; align-items: center; justify-content: center;
+                    box-shadow: 0 4px 12px ${shadow};
+                    ${pulseAnim}
+                    font-size: 0.95rem;
+                ">
+                    ${emoji}
+                </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -16]
+        });
+    };
+
     // Update presence in DB whenever position changes
     useEffect(() => {
         if (!session?.user?.id || !position || isNaN(position[0]) || isNaN(position[1])) return;
@@ -277,6 +310,44 @@ function App() {
         const interval = setInterval(fetchNeighbors, 30000);
         return () => clearInterval(interval);
     }, [position, radius, session?.user?.id]);
+
+    // Fetch local events for map markers
+    useEffect(() => {
+        if (!position || isNaN(position[0]) || isNaN(position[1])) return;
+
+        const fetchEventsForMap = async () => {
+            try {
+                const { data, error } = await supabase.rpc('get_events_within_radius', {
+                    user_lat: parseFloat(position[0]),
+                    user_lng: parseFloat(position[1]),
+                    radius_miles: parseFloat(radius) || 1
+                });
+                if (!error && data) {
+                    setEvents(data);
+                }
+            } catch (err) {
+                console.error("Error fetching map events:", err);
+            }
+        };
+
+        fetchEventsForMap();
+        
+        // Listen to changes to events table in real-time to update the map markers instantly
+        const channel = supabase
+            .channel('map-events-tracker')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'local_events'
+            }, () => {
+                fetchEventsForMap();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [position, radius]);
 
     const updateLocation = () => {
         // Never auto-update while user has explicitly chosen offline mode
@@ -1283,6 +1354,59 @@ function App() {
                                                                 click: () => setViewingProfile(neighbor)
                                                             }}
                                                         />
+                                                    );
+                                                })}
+                                                {events.map(event => {
+                                                    if (!event.location_lat || !event.location_lng) return null;
+                                                    return (
+                                                        <Marker 
+                                                            key={`map-event-${event.id}`} 
+                                                            position={[event.location_lat, event.location_lng]} 
+                                                            icon={eventIcon(event.is_flash)}
+                                                        >
+                                                            <Popup>
+                                                                <div style={{
+                                                                    background: 'rgba(30, 30, 30, 0.9)',
+                                                                    color: '#fff',
+                                                                    padding: '12px',
+                                                                    borderRadius: '16px',
+                                                                    fontFamily: 'var(--font-family)',
+                                                                    fontSize: '0.85rem',
+                                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                                    minWidth: '200px',
+                                                                    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                                                                    backdropFilter: 'blur(20px)',
+                                                                    WebkitBackdropFilter: 'blur(20px)'
+                                                                }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                                                        <span style={{ fontSize: '1.1rem' }}>{event.is_flash ? '⚡' : '📅'}</span>
+                                                                        <span style={{ fontWeight: '900', color: event.is_flash ? '#ff9f43' : '#9b59b6', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>
+                                                                            {event.is_flash ? 'Flash Meetup' : 'Event'}
+                                                                        </span>
+                                                                    </div>
+                                                                    <h4 style={{ margin: '0 0 6px', fontWeight: '800', fontSize: '1rem', color: 'white' }}>{event.title}</h4>
+                                                                    <p style={{ margin: '0 0 10px', color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', lineHeight: '1.4' }}>{event.description || 'No description provided.'}</p>
+                                                                    <button
+                                                                        onClick={() => setShowEvents(true)}
+                                                                        style={{
+                                                                            background: 'var(--accent-red)',
+                                                                            color: 'white',
+                                                                            border: 'none',
+                                                                            borderRadius: '8px',
+                                                                            padding: '6px 12px',
+                                                                            fontSize: '0.75rem',
+                                                                            fontWeight: '800',
+                                                                            cursor: 'pointer',
+                                                                            width: '100%',
+                                                                            textAlign: 'center',
+                                                                            boxShadow: '0 4px 12px rgba(210,85,78,0.25)'
+                                                                        }}
+                                                                    >
+                                                                        View Event & RSVP
+                                                                    </button>
+                                                                </div>
+                                                            </Popup>
+                                                        </Marker>
                                                     );
                                                 })}
                                                 <MapController center={position} radius={radius} isInteracting={isMapInteracting} />
