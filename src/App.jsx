@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, Circle, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Circle, Popup, useMap, ZoomControl } from 'react-leaflet'
 import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, LogOut, ShieldCheck, ChevronRight, Mail, Bug, Info, Database, CreditCard, Calendar, Sparkles, Wallet } from 'lucide-react'
 import './App.css'
 import L from 'leaflet';
@@ -31,7 +31,7 @@ import EventsPage from './components/EventsPage'
 
 const INITIAL_POSITION = null; // No default location, must be detected
 
-function MapController({ center, radius, isInteracting }) {
+function MapController({ center, radius, isInteracting, isExploreMapMode }) {
     const map = useMap();
     const isInteractingRef = useRef(isInteracting);
     const fitBoundsTimerRef = useRef(null);
@@ -43,6 +43,7 @@ function MapController({ center, radius, isInteracting }) {
 
     useEffect(() => {
         if (!map || !center || isNaN(center[0]) || isNaN(center[1])) return;
+        if (isExploreMapMode) return; // Do not auto-fit bounds when exploring the map
 
         // Debounce: wait 150ms after the last radius/center change before fitting
         if (fitBoundsTimerRef.current) clearTimeout(fitBoundsTimerRef.current);
@@ -77,7 +78,7 @@ function MapController({ center, radius, isInteracting }) {
         }, 150);
 
         return () => { if (fitBoundsTimerRef.current) clearTimeout(fitBoundsTimerRef.current); };
-    }, [center, radius, map]);
+    }, [center, radius, map, isExploreMapMode]);
     return null;
 }
 
@@ -192,6 +193,7 @@ function App() {
     const [showEvents, setShowEvents] = useState(false);
     const [newEventsCount, setNewEventsCount] = useState(0);
     const lastEventCheckRef = useRef(null);
+    const [isExploreMapMode, setIsExploreMapMode] = useState(false);
     const [newPassword, setNewPassword] = useState('');
     const [waves, setWaves] = useState([]);
     const [incomingWave, setIncomingWave] = useState(null);
@@ -1426,6 +1428,7 @@ function App() {
 
     const handleAnswerQuestion = (post) => {
         setIsMapInteracting(false);
+        setIsExploreMapMode(false);
         const replyName = post.is_ai ? post.ai_name : (post.full_name || post.user_email?.split('@')[0] || 'Someone');
         setReplyingTo({
             id: post.id,
@@ -1474,7 +1477,7 @@ function App() {
 
 
     return (
-        <div className={`app-container ${(isMapInteracting || !isSliderHidden) ? 'map-mode' : 'chat-mode'} ${profile?.theme_mode === 'light' ? 'light-mode' : ''}`}>
+        <div className={`app-container ${(isMapInteracting || !isSliderHidden || isExploreMapMode) ? 'map-mode' : 'chat-mode'} ${profile?.theme_mode === 'light' ? 'light-mode' : ''}`}>
             {incomingWave && (
                 <div style={{
                     position: 'fixed',
@@ -2039,6 +2042,7 @@ function App() {
 
                                             <MapContainer center={position} zoom={13} zoomControl={false} className="map-view">
                                                 <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                                                {isExploreMapMode && <ZoomControl position="bottomright" />}
                                                 <Marker 
                                                     position={position} 
                                                     icon={neighborIcon(
@@ -2128,7 +2132,8 @@ function App() {
                                                     const coords = parseWKTPoint(post.location);
                                                     if (!coords) return null;
 
-                                                    const isQuestion = post.content && post.content.includes('?') && !post.reply_to_id;
+                                                    const hasReplies = mapPosts.some(p => p.reply_to_id === post.id);
+                                                    const isQuestion = post.content && post.content.trim().endsWith('?') && !post.reply_to_id && !hasReplies;
                                                     const isAlert = post.is_alert && !post.reply_to_id;
 
                                                     if (isQuestion) {
@@ -2162,7 +2167,10 @@ function App() {
                                                                             "{post.content.length > 80 ? post.content.substring(0, 80) + '...' : post.content}"
                                                                         </p>
                                                                         <button
-                                                                            onClick={() => handleAnswerQuestion(post)}
+                                                                            onClick={() => {
+                                                                                handleAnswerQuestion(post);
+                                                                                // Dismiss popup by triggering a map interaction reset or similar
+                                                                            }}
                                                                             style={{
                                                                                 background: '#2ecc71',
                                                                                 color: 'white',
@@ -2243,7 +2251,7 @@ function App() {
 
                                                     return null;
                                                 })}
-                                                <MapController center={position} radius={radius} isInteracting={isMapInteracting} />
+                                                <MapController center={position} radius={radius} isInteracting={isMapInteracting} isExploreMapMode={isExploreMapMode} />
                                             </MapContainer>
                                         )}
 
@@ -2400,6 +2408,27 @@ function App() {
                                                             <Globe size={13} /> Go Online
                                                         </button>
                                                     )}
+                                                    <button 
+                                                         className={`header-map-btn ${isExploreMapMode ? 'active' : ''}`} 
+                                                         onClick={() => setIsExploreMapMode(!isExploreMapMode)} 
+                                                         title="Explore Map"
+                                                         style={{
+                                                             background: isExploreMapMode ? 'var(--accent-red)' : 'rgba(255, 255, 255, 0.1)',
+                                                             border: 'none',
+                                                             color: 'white',
+                                                             width: '40px',
+                                                             height: '40px',
+                                                             borderRadius: '50%',
+                                                             display: 'flex',
+                                                             alignItems: 'center',
+                                                             justifyContent: 'center',
+                                                             cursor: 'pointer',
+                                                             marginRight: '8px',
+                                                             transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                                                         }}
+                                                     >
+                                                         <MapIcon size={20} style={{ transform: isExploreMapMode ? 'scale(1.15)' : 'none', transition: 'transform 0.3s' }} />
+                                                     </button>
                                                     <button className="header-events-btn" onClick={() => { setShowEvents(true); setNewEventsCount(0); localStorage.setItem('miles_last_event_seen', new Date().toISOString()); }} title="Events">
                                                         <Calendar size={20} />
                                                         {newEventsCount > 0 && (
@@ -2413,10 +2442,10 @@ function App() {
                                             </header>
 
                                             <div className="chat-center-container" style={{
-                                                opacity: isMapInteracting ? 0.3 : 1,
-                                                filter: isMapInteracting ? 'blur(12px)' : 'none',
+                                                opacity: isExploreMapMode ? 0 : (isMapInteracting ? 0.3 : 1),
+                                                filter: (isMapInteracting || isExploreMapMode) ? 'blur(12px)' : 'none',
                                                 transition: 'all 0.5s cubic-bezier(0.19, 1, 0.22, 1)',
-                                                pointerEvents: isMapInteracting ? 'none' : 'auto'
+                                                pointerEvents: (isMapInteracting || isExploreMapMode) ? 'none' : 'auto'
                                             }}>
                                                 <div className="chat-messages-scroll" onScroll={handleChatScroll}>
                                                     <Feed
