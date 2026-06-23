@@ -3,9 +3,56 @@ import { RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PostCard from './PostCard'
 
-export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1 }) {
+export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick }) {
     const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(true)
+    const [toast, setToast] = useState(null)
+    const [confirmModal, setConfirmModal] = useState(null)
+
+    const feedEndRef = useRef(null)
+    const feedStartRef = useRef(null)
+    const aiTimerRef = useRef(null)
+    const isInitialLoad = useRef(true);
+    const prevPostsLength = useRef(0);
+    const scrollContainerRef = useRef(null);
+
+    // Aggregate daily vibes of neighbors in the current sphere
+    const getNeighborhoodVibes = () => {
+        const vibeCounts = {};
+        let totalVibesCount = 0;
+
+        activeNeighbors.forEach(n => {
+            if (n.daily_vibe) {
+                vibeCounts[n.daily_vibe] = (vibeCounts[n.daily_vibe] || 0) + 1;
+                totalVibesCount++;
+            }
+        });
+
+        posts.forEach(p => {
+            if (p.daily_vibe) {
+                vibeCounts[p.daily_vibe] = (vibeCounts[p.daily_vibe] || 0) + 1;
+                totalVibesCount++;
+            }
+        });
+
+        if (totalVibesCount === 0) return [];
+
+        return Object.entries(vibeCounts)
+            .map(([vibe, count]) => ({
+                vibe,
+                count,
+                percentage: Math.round((count / totalVibesCount) * 100)
+            }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 3);
+    };
+
+    const neighborhoodVibes = getNeighborhoodVibes();
+
+    const showToast = (message, type = 'info') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 4000);
+    };
     const [error, setError] = useState(null)
     const [replyingTo, setReplyingTo] = useState(null)
     const [unreadCount, setUnreadCount] = useState(0)
@@ -15,13 +62,6 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const [helpfulPosts, setHelpfulPosts] = useState({})
     const [swiperMode, setSwiperMode] = useState(false)
     const [swiperIndex, setSwiperIndex] = useState(0)
-    const feedEndRef = useRef(null)
-    const feedStartRef = useRef(null)
-    const aiTimerRef = useRef(null)
-    const isInitialLoad = useRef(true);
-    const prevPostsLength = useRef(0);
-    const scrollContainerRef = useRef(null);
-
     const [announcements, setAnnouncements] = useState([])
     const [currentAnnounceIdx, setCurrentAnnounceIdx] = useState(0)
 
@@ -101,7 +141,7 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
             fetchOffers();
         } catch (err) {
             console.error("Error creating shop offer:", err);
-            alert("Failed to create offer: " + err.message);
+            showToast("Failed to create offer: " + err.message, "error");
         } finally {
             setPostingOffer(false);
         }
@@ -143,7 +183,7 @@ Details: ${buySellDesc.trim()}${contactText}`;
             fetchPosts();
         } catch (err) {
             console.error("Error creating buy/sell post:", err);
-            alert("Failed to post: " + err.message);
+            showToast("Failed to post: " + err.message, "error");
         } finally {
             setPostingBuySell(false);
         }
@@ -187,7 +227,7 @@ Details: ${lostFoundDesc.trim()}${contactText}`;
             fetchPosts();
         } catch (err) {
             console.error("Error creating lost/found post:", err);
-            alert("Failed to post: " + err.message);
+            showToast("Failed to post: " + err.message, "error");
         } finally {
             setPostingLostFound(false);
         }
@@ -211,6 +251,10 @@ Details: ${lostFoundDesc.trim()}${contactText}`;
         if (!content) return 'general';
         const lower = content.toLowerCase();
         
+        if (lower.includes('#bounty') || lower.includes('bounty:') || 
+            (/\b(bounty|reward|karma bounty|karma reward|help bounty)\b/.test(lower))) {
+            return 'bounty';
+        }
         if (lower.includes('#buysell') || lower.includes('#buy') || lower.includes('#sell') || lower.includes('#forsale') ||
             (/\b(selling|buying|for sale|price|price:)\b/.test(lower))) {
             return 'buysell';
@@ -365,7 +409,7 @@ Details: ${lostFoundDesc.trim()}${contactText}`;
 
     const handleHelpfulToggle = async (postId, authorId) => {
         if (!session?.user?.id) {
-            alert("Please sign in to upvote posts!");
+            showToast("Please sign in to upvote posts!", "error");
             return;
         }
 
@@ -851,6 +895,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
     const categories = [
         { id: 'all', label: 'All sphere', icon: '🌍' },
         { id: 'general', label: 'General', icon: '💬' },
+        { id: 'bounty', label: 'Bounties', icon: '💰' },
         { id: 'buysell', label: 'Buy & Sell', icon: '🏷️' },
         { id: 'offers', label: 'Local Offers', icon: '🎁' },
         { id: 'lostfound', label: 'Lost & Found', icon: '🔍' },
@@ -953,6 +998,52 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                 </div>
             </div>
 
+            {/* Neighborhood Vibe Gauge */}
+            {neighborhoodVibes.length > 0 && (
+                <div 
+                    onClick={onVibeClick}
+                    style={{
+                        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)',
+                        borderBottom: '1px solid var(--glass-border)',
+                        padding: '14px 18px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+                        boxSizing: 'border-box'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%)'}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '1.1rem' }}>🔮</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
+                                NEIGHBORHOOD VIBE DIAGNOSTIC
+                            </span>
+                        </div>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--accent-red)', fontWeight: '800', background: 'rgba(210, 85, 78, 0.1)', padding: '3px 8px', borderRadius: '8px' }}>
+                            Share Vibe + Streak 🔥
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {neighborhoodVibes.map((item, idx) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255,255,255,0.06)', padding: '4px 10px', borderRadius: '20px', border: '1px solid var(--glass-border)' }}>
+                                <span style={{ fontSize: '1rem' }}>{item.vibe}</span>
+                                <span style={{ fontSize: '0.8rem', fontWeight: '800', color: 'white' }}>{item.percentage}%</span>
+                            </div>
+                        ))}
+                        <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginLeft: 'auto' }}>
+                            {neighborhoodVibes[0].vibe === '☕' || neighborhoodVibes[0].vibe === '🛋️' || neighborhoodVibes[0].vibe === '🌧️'
+                                ? 'Cozy vibes. Perfect time to grab a coffee!' 
+                                : 'Energetic vibes. Go for a walk & say hello!'}
+                        </span>
+                    </div>
+                </div>
+            )}
+
             {/* Karma Announcement Board */}
             {announcements.length > 0 && (
                 <div 
@@ -1033,7 +1124,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                         color: '#FFC107',
                                         flexShrink: 0
                                     }}>
-                                        {avatar ? <img src={avatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : initials}
+                                        {avatar ? <img loading="lazy" src={avatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : initials}
                                     </div>
                                     <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#FFC107', whiteSpace: 'nowrap' }}>
                                         {authorName} ({points} pts):
@@ -1119,6 +1210,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                     isHelpful={!!helpfulPosts[filteredPosts[swiperIndex].id]}
                                     onHelpfulToggle={handleHelpfulToggle}
                                     session={session}
+                                    onTransferPoints={onTransferPoints}
                                 />
                             </div>
 
@@ -1299,6 +1391,8 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                             const event = new CustomEvent('karma-points-updated');
                                             window.dispatchEvent(event);
                                         }}
+                                        onToast={showToast}
+                                        onConfirm={setConfirmModal}
                                     />
                                 ))}
                             </div>
@@ -1316,6 +1410,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                 isHelpful={!!helpfulPosts[post.id]}
                                 onHelpfulToggle={handleHelpfulToggle}
                                 session={session}
+                                onTransferPoints={onTransferPoints}
                             />
                         ))
                     )}
@@ -1338,7 +1433,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                         background: 'var(--accent-red)',
                         color: 'white',
                         border: 'none',
-                        boxShadow: '0 8px 24px rgba(var(--accent-red-rgb), 0.4)',
+                        boxShadow: '0 8px 24px rgba(210, 85, 78, 0.4)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1850,48 +1945,128 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                     </div>
                 </div>
             )}
+
+            {toast && (
+                <div className="toast-anim" style={{
+                    position: 'fixed',
+                    top: '20px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: toast.type === 'error' ? 'rgba(210, 85, 78, 0.95)' : 'rgba(28, 28, 30, 0.95)',
+                    color: 'white',
+                    padding: '12px 24px',
+                    borderRadius: '16px',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+                    zIndex: 99999,
+                    backdropFilter: 'blur(10px)',
+                    border: toast.type === 'error' ? '1px solid rgba(210, 85, 78, 0.3)' : '1px solid var(--glass-border)',
+                    fontSize: '0.9rem',
+                    fontWeight: '700',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                }}>
+                    <span>{toast.type === 'error' ? '⚠️' : 'ℹ️'}</span>
+                    {toast.message}
+                </div>
+            )}
+
+            {confirmModal && (
+                <div className="modal-overlay" style={{ zIndex: 100000 }} onClick={() => confirmModal.onCancel()}>
+                    <div className="onboarding-card-premium" style={{
+                        maxWidth: '400px',
+                        padding: '2rem',
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1.5rem',
+                        boxSizing: 'border-box'
+                    }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>
+                            {confirmModal.message}
+                        </h3>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <button
+                                className="event-cancel-btn"
+                                onClick={() => confirmModal.onCancel()}
+                                style={{ flex: 1, padding: '12px', borderRadius: '12px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontWeight: '700', cursor: 'pointer' }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="btn-confirm-yes"
+                                onClick={() => {
+                                    confirmModal.onConfirm();
+                                    setConfirmModal(null);
+                                }}
+                                style={{ flex: 1, padding: '12px', borderRadius: '12px', background: 'var(--accent-red)', border: 'none', color: 'white', fontWeight: '700', cursor: 'pointer' }}
+                            >
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
 
-function ShopOfferCard({ offer, session, onUserClick, onRedeemSuccess }) {
+function ShopOfferCard({ offer, session, onUserClick, onRedeemSuccess, onToast, onConfirm }) {
     const [redeeming, setRedeeming] = useState(false);
     const [redeemedCode, setRedeemedCode] = useState(null);
     const isMine = offer.user_id === session?.user?.id;
 
     const handleRedeem = async () => {
         if (!session?.user?.id) {
-            alert("Please sign in to redeem offers!");
+            onToast?.("Please sign in to redeem offers!", "error");
             return;
         }
-        if (confirm(`Redeem this offer for ${offer.points_required} points?`)) {
-            setRedeeming(true);
-            try {
-                const { data, error } = await supabase.rpc('redeem_shop_offer', {
-                    p_offer_id: offer.id
-                });
-                if (error) throw error;
-                if (data?.success) {
-                    setRedeemedCode(data.code);
-                    onRedeemSuccess();
-                } else {
-                    alert(data?.message || "Failed to redeem offer.");
-                }
-            } catch (err) {
-                console.error("Redemption error:", err);
-                alert("Redemption failed: " + err.message);
-            } finally {
-                setRedeeming(false);
-            }
+        if (onConfirm) {
+            onConfirm({
+                message: `Redeem this offer for ${offer.points_required} points?`,
+                onConfirm: async () => {
+                    setRedeeming(true);
+                    try {
+                        const { data, error } = await supabase.rpc('redeem_shop_offer', {
+                            p_offer_id: offer.id
+                        });
+                        if (error) throw error;
+                        if (data?.success) {
+                            setRedeemedCode(data.code);
+                            onToast?.("Offer redeemed successfully!", "success");
+                            onRedeemSuccess?.();
+                        } else {
+                            onToast?.(data?.message || "Failed to redeem offer.", "error");
+                        }
+                    } catch (err) {
+                        console.error("Redemption error:", err);
+                        onToast?.("Redemption failed: " + err.message, "error");
+                    } finally {
+                        setRedeeming(false);
+                    }
+                },
+                onCancel: () => {}
+            });
         }
     };
 
     const handleDeleteOffer = async (e) => {
         e.stopPropagation();
-        if (confirm("Delete this advertisement?")) {
-            const { error } = await supabase.from('shop_offers').delete().eq('id', offer.id);
-            if (error) alert("Failed to delete offer: " + error.message);
-            else onRedeemSuccess();
+        if (!isMine) return;
+        if (onConfirm) {
+            onConfirm({
+                message: "Delete this advertisement?",
+                onConfirm: async () => {
+                    const { error } = await supabase.from('shop_offers').delete().eq('id', offer.id);
+                    if (error) {
+                        onToast?.("Failed to delete offer: " + error.message, "error");
+                    } else {
+                        onToast?.("Offer deleted.", "success");
+                        onRedeemSuccess?.();
+                    }
+                },
+                onCancel: () => {}
+            });
         }
     };
 
@@ -1913,7 +2088,7 @@ function ShopOfferCard({ offer, session, onUserClick, onRedeemSuccess }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div className="user-avatar-btn mini" style={{ width: '30px', height: '30px', borderRadius: '10px', fontSize: '0.75rem', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', flexShrink: 0 }}>
                         {offer.profiles?.avatar_url ? (
-                            <img src={offer.profiles.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img loading="lazy" src={offer.profiles.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
                             (offer.profiles?.full_name || 'Shop')[0].toUpperCase()
                         )}

@@ -9,7 +9,7 @@ export default function SplashScreen({ onComplete }) {
         }, 2500)
 
         const completeTimer = setTimeout(() => {
-            onComplete()
+            onComplete?.()
         }, 3000)
 
         return () => {

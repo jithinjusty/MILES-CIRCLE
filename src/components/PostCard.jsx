@@ -1,17 +1,93 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply, posts, isHelpful, onHelpfulToggle, session }) {
+export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply, posts, isHelpful, onHelpfulToggle, session, onTransferPoints }) {
     const [showMenu, setShowMenu] = useState(false);
     const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
     const [translatedText, setTranslatedText] = useState(null);
     const [translating, setTranslating] = useState(false);
     const [aiGenerating, setAiGenerating] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
-    const longPressTimer = useRef(null);
     const menuRef = useRef(null);
     const [localVotes, setLocalVotes] = useState(post?.poll_votes || {});
     const [listingStatus, setListingStatus] = useState(post?.listing_status || 'available');
+    const [inlineWarning, setInlineWarning] = useState(null);
+    const warningTimeoutRef = useRef(null);
+
+    const isBounty = post?.content && (
+        post.content.toLowerCase().includes('#bounty') ||
+        post.content.toLowerCase().includes('bounty:') ||
+        /\b(bounty|reward|karma bounty|karma reward|help bounty)\b/.test(post.content.toLowerCase())
+    );
+
+    const getBountyAmount = () => {
+        if (!post?.content) return null;
+        const matches = post.content.match(/(?:bounty|reward|karma)\s*[:#]?\s*(\d+)/i) || post.content.match(/(\d+)\s*(?:karma|pts|points)/i);
+        return matches ? parseInt(matches[1], 10) : null;
+    };
+    const bountyAmount = getBountyAmount();
+
+    const audioRegex = /🎙️\[ECHO:(data:audio\/[a-zA-Z0-9+=;/,:-]+)\]/;
+    const audioMatch = post.content ? post.content.match(audioRegex) : null;
+    const audioData = audioMatch ? audioMatch[1] : null;
+    const cleanContent = post.content ? post.content.replace(audioRegex, '').trim() : '';
+
+    const [playingAudio, setPlayingAudio] = useState(false);
+    const [playbackProgress, setPlaybackProgress] = useState(0);
+    const audioRef = useRef(null);
+
+    const toggleAudio = (e) => {
+        if (e) {
+            e.stopPropagation();
+            e.preventDefault();
+        }
+        if (!audioData) return;
+
+        if (!audioRef.current) {
+            audioRef.current = new Audio(audioData);
+            audioRef.current.onended = () => {
+                setPlayingAudio(false);
+                setPlaybackProgress(0);
+            };
+            audioRef.current.ontimeupdate = () => {
+                if (audioRef.current) {
+                    const progress = (audioRef.current.currentTime / audioRef.current.duration) * 100;
+                    setPlaybackProgress(progress || 0);
+                }
+            };
+        }
+
+        if (playingAudio) {
+            audioRef.current.pause();
+            setPlayingAudio(false);
+        } else {
+            audioRef.current.play().catch(err => console.error("Playback failed:", err));
+            setPlayingAudio(true);
+        }
+    };
+
+    useEffect(() => {
+        return () => {
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
+            }
+        };
+    }, []);
+
+    const showWarning = (msg) => {
+        if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
+        setInlineWarning(msg);
+        warningTimeoutRef.current = setTimeout(() => {
+            setInlineWarning(null);
+        }, 4000);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
+        };
+    }, []);
 
     useEffect(() => {
         if (post?.listing_status) {
@@ -30,7 +106,7 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
         } catch (err) {
             console.error("Failed to update status:", err);
             setListingStatus(post?.listing_status || 'available');
-            alert("Failed to update status. Please try again.");
+            showWarning("Failed to update status. Please try again.");
         }
     };
 
@@ -60,7 +136,7 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
     const handleVote = async (optionIdx) => {
         const currentUserId = session?.user?.id;
         if (!currentUserId) {
-            alert("Please sign in to vote in polls.");
+            showWarning("Please sign in to vote in polls.");
             return;
         }
         
@@ -78,7 +154,7 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
             console.error("Failed to cast vote:", error);
             // Rollback on error
             setLocalVotes(post.poll_votes || {});
-            alert("Failed to record vote. Please try again.");
+            showWarning("Failed to record vote. Please try again.");
         }
     };
 
@@ -97,7 +173,7 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                 window.speechSynthesis.speak(utterance);
             }
         } else {
-            alert("Text-to-speech is not supported in this browser.");
+            showWarning("Text-to-speech is not supported in this browser.");
         }
     };
 
@@ -151,27 +227,26 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
         };
     }, []);
 
-    // --- Long Press / Right-Click to open menu ---
+    // --- Single Click / Touch to open options menu ---
     const openMenu = (e) => {
         e.preventDefault();
+        e.stopPropagation();
         setTranslatedText(null);
-        const x = e.touches ? e.touches[0].clientX : e.clientX;
-        const y = e.touches ? e.touches[0].clientY : e.clientY;
+        let x = e.touches && e.touches[0] ? e.touches[0].clientX : e.clientX;
+        let y = e.touches && e.touches[0] ? e.touches[0].clientY : e.clientY;
+        
+        // Fallback for accessibility or click events without coordinates
+        if (!x && !y && e.currentTarget) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            x = rect.left + rect.width / 2;
+            y = rect.top + rect.height / 2;
+        }
+
         // Make sure the menu stays on screen
         const safeX = Math.min(x, window.innerWidth - 200);
         const safeY = Math.min(y, window.innerHeight - 160);
         setMenuPos({ x: safeX, y: safeY });
         setShowMenu(true);
-    };
-
-    const handleTouchStart = (e) => {
-        longPressTimer.current = setTimeout(() => {
-            openMenu(e);
-        }, 500);
-    };
-
-    const handleTouchEnd = () => {
-        if (longPressTimer.current) clearTimeout(longPressTimer.current);
     };
 
     // --- Translate ---
@@ -181,7 +256,7 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
         setShowMenu(false);
         try {
             // Google Translate free endpoint (gtx) — auto-detects language, translates to English
-            const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(post.content || '')}`);
+            const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(cleanContent || '')}`);
             const data = await res.json();
             if (data && data[0]) {
                 const translated = data[0].map(x => x[0]).join('');
@@ -258,11 +333,11 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
             if (suggestion.trim()) {
                 onAIReply?.(post, suggestion.trim());
             } else {
-                alert('Could not generate a reply right now. Please try again.');
+                showWarning('Could not generate a reply right now. Please try again.');
             }
         } catch (e) {
             console.error('AI reply generation failed', e);
-            alert('Could not generate reply. Check your API keys.');
+            showWarning('Could not generate reply. Check your API keys.');
         }
         setAiGenerating(false);
     };
@@ -330,10 +405,8 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                     position: 'relative',
                     userSelect: 'none'
                 }}
+                onClick={openMenu}
                 onContextMenu={openMenu}
-                onTouchStart={handleTouchStart}
-                onTouchEnd={handleTouchEnd}
-                onTouchMove={handleTouchEnd}
             >
                 {/* Alert Header Banner */}
                 {post?.is_alert && (
@@ -352,6 +425,77 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                         letterSpacing: '0.5px'
                     }}>
                         <span>🚨</span> Urgent Broadcast Alert
+                    </div>
+                )}
+                {/* Inline Warning Notification */}
+                {inlineWarning && (
+                    <div style={{
+                        background: 'rgba(210, 85, 78, 0.95)',
+                        color: 'white',
+                        padding: '8px 12px',
+                        borderRadius: '10px',
+                        fontSize: '0.75rem',
+                        fontWeight: '800',
+                        marginBottom: '8px',
+                        textAlign: 'center',
+                        border: '1px solid rgba(210, 85, 78, 0.3)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                        animation: 'anim-fade-in 0.2s ease-in-out'
+                    }}>
+                        ⚠️ {inlineWarning}
+                    </div>
+                )}
+                {isBounty && (
+                    <div style={{
+                        background: 'linear-gradient(135deg, rgba(241, 196, 15, 0.2) 0%, rgba(243, 156, 18, 0.05) 100%)',
+                        color: '#f1c40f',
+                        padding: '8px 12px',
+                        borderRadius: '12px',
+                        fontSize: '0.8rem',
+                        fontWeight: '800',
+                        marginBottom: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        border: '1px solid rgba(241, 196, 15, 0.3)',
+                        boxShadow: '0 4px 12px rgba(241, 196, 15, 0.08)',
+                        flexWrap: 'wrap',
+                        gap: '8px'
+                    }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span>💰</span> Active Bounty
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {bountyAmount && (
+                                <span style={{ background: '#f1c40f', color: 'black', padding: '2px 8px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: '900' }}>
+                                    {bountyAmount} Karma
+                                </span>
+                            )}
+                            {isMine && onTransferPoints && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onTransferPoints('', bountyAmount || '');
+                                    }}
+                                    style={{
+                                        background: 'white',
+                                        color: 'black',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        padding: '4px 8px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: '800',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                >
+                                    Reward Neighbor
+                                </button>
+                            )}
+                        </div>
                     </div>
                 )}
                 {/* Header */}
@@ -494,38 +638,106 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                         <div style={{ fontWeight: '700', marginBottom: '2px', color: isMine ? 'rgba(255,255,255,0.85)' : 'var(--accent-red)', fontSize: '0.72rem' }}>
                             ↩ {repliedToName || 'Someone'}
                         </div>
-                        <div style={{ color: isMine ? 'rgba(255,255,255,0.75)' : 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }}>
+                        <div style={{ color: isMine ? 'rgba(255,255,255,0.75)' : 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 'min(280px, 60vw)' }}>
                             {repliedToContent}
                         </div>
                     </div>
                 )}
 
+                {audioData && (
+                    <div 
+                        onClick={toggleAudio}
+                        style={{
+                            background: isMine ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.06)',
+                            border: '1px solid var(--glass-border)',
+                            borderRadius: '16px',
+                            padding: '10px 14px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            marginTop: '4px',
+                            marginBottom: '10px',
+                            cursor: 'pointer',
+                            boxSizing: 'border-box'
+                        }}
+                    >
+                        <button
+                            type="button"
+                            style={{
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '50%',
+                                background: 'var(--accent-red)',
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: 'white',
+                                cursor: 'pointer',
+                                fontSize: '1rem',
+                                flexShrink: 0
+                            }}
+                        >
+                            {playingAudio ? '⏸️' : '▶️'}
+                        </button>
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', opacity: 0.8, color: isMine ? 'white' : 'var(--text-primary)' }}>
+                                {playingAudio ? 'Playing Neighbor Voice...' : 'Voice Echo Memo'}
+                            </span>
+                            {/* Animated soundwaves when playing */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', height: '14px' }}>
+                                {[...Array(12)].map((_, i) => {
+                                    const heights = [6, 12, 8, 14, 10, 5, 12, 7, 14, 9, 12, 6];
+                                    const animDuration = 0.5 + (i % 3) * 0.2;
+                                    return (
+                                        <div
+                                            key={i}
+                                            style={{
+                                                width: '3px',
+                                                height: playingAudio ? `${heights[i % heights.length]}px` : '4px',
+                                                background: isMine ? 'white' : 'var(--accent-red)',
+                                                borderRadius: '2px',
+                                                transition: 'height 0.2s',
+                                                animation: playingAudio ? `soundwave-bounce ${animDuration}s infinite alternate ease-in-out` : 'none'
+                                            }}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Message Content */}
-                <div style={{
-                    fontSize: '0.97rem', lineHeight: '1.6', fontWeight: '400',
-                    wordBreak: 'break-word', color: isMine ? 'rgba(255,255,255,0.95)' : 'var(--text-primary)'
-                }}>
-                    {translating ? (
-                        <span style={{ opacity: 0.6, fontStyle: 'italic' }}>Translating...</span>
-                    ) : translatedText ? (
-                        <>
-                            <div style={{ opacity: 0.6, fontSize: '0.8rem', marginBottom: '4px', fontStyle: 'italic' }}>{post.content}</div>
-                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '4px' }}>🌐 {translatedText}</div>
-                        </>
-                    ) : (
-                        post?.content?.split(/(\s+)/).map((part, i) => {
-                            if (part.match(/^https?:\/\//)) {
-                                return (
-                                    <a key={i} href={part} target="_blank" rel="noopener noreferrer"
-                                        style={{ color: isMine ? 'white' : 'var(--accent-red)', textDecoration: 'underline', fontWeight: '600' }}>
-                                        {part}
-                                    </a>
-                                );
-                            }
-                            return part;
-                        })
-                    )}
-                </div>
+                {cleanContent && (
+                    <div style={{
+                        fontSize: '0.97rem', lineHeight: '1.6', fontWeight: '400',
+                        wordBreak: 'break-word', color: isMine ? 'rgba(255,255,255,0.95)' : 'var(--text-primary)',
+                        marginBottom: '4px'
+                    }}>
+                        {translating ? (
+                            <span style={{ opacity: 0.6, fontStyle: 'italic' }}>Translating...</span>
+                        ) : translatedText ? (
+                            <>
+                                <div style={{ opacity: 0.6, fontSize: '0.8rem', marginBottom: '4px', fontStyle: 'italic' }}>{cleanContent}</div>
+                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '4px' }}>🌐 {translatedText}</div>
+                            </>
+                        ) : (
+                            cleanContent.split(/(\s+)/).map((part, i) => {
+                                if (part.match(/^https?:\/\//)) {
+                                    return (
+                                        <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+                                            onClick={e => e.stopPropagation()}
+                                            style={{ color: isMine ? 'white' : 'var(--accent-red)', textDecoration: 'underline', fontWeight: '600' }}>
+                                            {part}
+                                        </a>
+                                    );
+                                }
+                                return part;
+                            })
+                        )}
+                    </div>
+                )}
 
                 {/* Image Attachment */}
                 {post?.image_url && (
@@ -540,6 +752,7 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                             src={post.image_url} 
                             alt="Attachment" 
                             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                            loading="lazy"
                         />
                     </div>
                 )}
@@ -677,7 +890,7 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                             onClick={(e) => {
                                 e.stopPropagation();
                                 if (isMine) {
-                                    alert("You cannot upvote your own post.");
+                                    showWarning("You cannot upvote your own post.");
                                     return;
                                 }
                                 onHelpfulToggle?.(post.id, post.user_id);

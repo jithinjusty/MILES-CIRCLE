@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Plus, RefreshCw, Calendar, Sparkles, ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import EventCard from './EventCard'
@@ -11,7 +11,7 @@ export default function EventsPage({ position, radius, distanceUnit = 'miles', s
     const [showCreate, setShowCreate] = useState(false)
     const [userReactions, setUserReactions] = useState({})
 
-    const fetchEvents = async () => {
+    const fetchEvents = useCallback(async () => {
         if (!position || isNaN(position[0]) || isNaN(position[1])) {
             setLoading(false)
             return
@@ -56,7 +56,7 @@ export default function EventsPage({ position, radius, distanceUnit = 'miles', s
         } finally {
             setLoading(false)
         }
-    }
+    }, [position, radius, session?.user])
 
     useEffect(() => {
         fetchEvents()
@@ -76,7 +76,7 @@ export default function EventsPage({ position, radius, distanceUnit = 'miles', s
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [position?.[0], position?.[1], radius])
+    }, [fetchEvents])
 
     const handleReactionChange = (eventId, reactionType) => {
         setUserReactions(prev => {

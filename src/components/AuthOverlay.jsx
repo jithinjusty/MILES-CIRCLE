@@ -64,18 +64,11 @@ export default function AuthOverlay({ onInstall }) {
                     errorText = 'This email ID is already registered with Miles Circle.';
                 }
             } else {
-                if (error.message.toLowerCase().includes('invalid login credentials')) {
-                    // Supabase returns 'Invalid login credentials' for both. 
-                    // To be specific, we could try to sign up or check if user exists, but standard practice is generic for security.
-                    // However, the user explicitly asked for specific messages.
-                    errorText = 'Invalid email or password. Please try again.';
-
-                    // Specific check for 'Email not confirmed' which is common
-                    if (error.message.toLowerCase().includes('email not confirmed')) {
-                        errorText = 'Please verify your email address first.';
-                    } else if (error.status === 400 || error.message.toLowerCase().includes('invalid login')) {
-                        errorText = 'Email unregistered or incorrect password.';
-                    }
+                const errMsg = error.message.toLowerCase();
+                if (errMsg.includes('email not confirmed')) {
+                    errorText = 'Please verify your email address first.';
+                } else if (errMsg.includes('invalid login credentials') || errMsg.includes('invalid login') || error.status === 400) {
+                    errorText = 'Email unregistered or incorrect password. Please try again.';
                 }
             }
             setMessage({ type: 'error', text: errorText })
@@ -114,18 +107,23 @@ export default function AuthOverlay({ onInstall }) {
     }
 
     const handleGoogleLogin = async () => {
+        setLoading(true)
+        setMessage(null)
         const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',
             options: {
                 redirectTo: window.location.origin
             }
         })
-        if (error) setMessage({ type: 'error', text: error.message })
+        if (error) {
+            setMessage({ type: 'error', text: error.message })
+            setLoading(false)
+        }
     }
 
     return (
-        <div className="auth-overlay-new">
-            <div className="auth-container anim-fade-in">
+        <div className="auth-overlay-new" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', overflowY: 'auto', padding: '1rem' }}>
+            <div className="auth-container anim-fade-in" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', maxWidth: '440px', margin: 'auto' }}>
                 <div className="brand-header-premium" style={{ textAlign: 'center', marginBottom: '0.5rem', width: '100%' }}>
                     <div className="logo-section" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '0.2rem' }}>
                         <div className="pulse-circle" style={{ width: '128px', height: '128px' }}>
@@ -135,7 +133,7 @@ export default function AuthOverlay({ onInstall }) {
                     <p className="auth-tagline" style={{ fontSize: '1rem', color: 'var(--text-secondary)' }}>Connect with your local circle.</p>
                 </div>
 
-                <div className="onboarding-card-premium" style={{ width: '100%', maxWidth: '440px', padding: '2rem' }}>
+                <div className="onboarding-card-premium" style={{ width: '100%', maxWidth: '440px', padding: '1.5rem', boxSizing: 'border-box' }}>
                     {message && (
                         <div className={`auth-message-classic ${message.type}`} style={{
                             marginBottom: '1.5rem',
@@ -156,22 +154,26 @@ export default function AuthOverlay({ onInstall }) {
                         <div className="auth-tabs" style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--glass-border)' }}>
                             <button
                                 className={`auth-tab ${!isSignUp ? 'active' : ''}`}
-                                onClick={() => { setIsSignUp(false); setMessage(null); }}
+                                onClick={() => { if (!loading) { setIsSignUp(false); setMessage(null); } }}
+                                disabled={loading}
                                 style={{
-                                    background: 'none', border: 'none', padding: '12px', fontSize: '1.1rem', fontWeight: '800', cursor: 'pointer',
+                                    background: 'none', border: 'none', padding: '12px', fontSize: '1.1rem', fontWeight: '800', cursor: loading ? 'not-allowed' : 'pointer',
                                     color: !isSignUp ? 'var(--accent-red)' : 'var(--text-secondary)',
-                                    borderBottom: !isSignUp ? '3px solid var(--accent-red)' : '3px solid transparent'
+                                    borderBottom: !isSignUp ? '3px solid var(--accent-red)' : '3px solid transparent',
+                                    opacity: loading ? 0.6 : 1
                                 }}
                             >
                                 Sign In
                             </button>
                             <button
                                 className={`auth-tab ${isSignUp ? 'active' : ''}`}
-                                onClick={() => { setIsSignUp(true); setMessage(null); }}
+                                onClick={() => { if (!loading) { setIsSignUp(true); setMessage(null); } }}
+                                disabled={loading}
                                 style={{
-                                    background: 'none', border: 'none', padding: '12px', fontSize: '1.1rem', fontWeight: '800', cursor: 'pointer',
+                                    background: 'none', border: 'none', padding: '12px', fontSize: '1.1rem', fontWeight: '800', cursor: loading ? 'not-allowed' : 'pointer',
                                     color: isSignUp ? 'var(--accent-red)' : 'var(--text-secondary)',
-                                    borderBottom: isSignUp ? '3px solid var(--accent-red)' : '3px solid transparent'
+                                    borderBottom: isSignUp ? '3px solid var(--accent-red)' : '3px solid transparent',
+                                    opacity: loading ? 0.6 : 1
                                 }}
                             >
                                 Register
@@ -193,12 +195,13 @@ export default function AuthOverlay({ onInstall }) {
                                         className="auth-input-classic"
                                         style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)', fontSize: '1rem', outline: 'none' }}
                                         required
+                                        disabled={loading}
                                     />
                                 </div>
                                 <button type="submit" className="btn-onboarding-next" disabled={loading} style={{ marginTop: '1rem' }}>
                                     {loading ? 'Sending Request...' : 'Send Recovery Link'}
                                 </button>
-                                <button type="button" onClick={() => setIsForgotPassword(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', fontWeight: '600', width: '100%', marginTop: '1rem' }}>Back to Sign In</button>
+                                <button type="button" onClick={() => setIsForgotPassword(false)} disabled={loading} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: '600', width: '100%', marginTop: '1rem', opacity: loading ? 0.6 : 1 }}>Back to Sign In</button>
                             </form>
                         </div>
                     ) : (
@@ -213,6 +216,7 @@ export default function AuthOverlay({ onInstall }) {
                                     className="auth-input-classic"
                                     style={{ width: '100%', padding: '16px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)', fontSize: '1rem', outline: 'none' }}
                                     required
+                                    disabled={loading}
                                 />
                             </div>
 
@@ -220,7 +224,7 @@ export default function AuthOverlay({ onInstall }) {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                                     <label style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block' }}>Password</label>
                                     {!isSignUp && (
-                                        <button type="button" onClick={() => setIsForgotPassword(true)} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', fontSize: '0.7rem', fontWeight: '800', cursor: 'pointer', padding: 0 }}>FORGOT?</button>
+                                        <button type="button" onClick={() => setIsForgotPassword(true)} disabled={loading} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', fontSize: '0.7rem', fontWeight: '800', cursor: loading ? 'not-allowed' : 'pointer', padding: 0, opacity: loading ? 0.6 : 1 }}>FORGOT?</button>
                                     )}
                                 </div>
                                 <div style={{ position: 'relative' }}>
@@ -233,11 +237,13 @@ export default function AuthOverlay({ onInstall }) {
                                         style={{ width: '100%', padding: '16px', paddingRight: '50px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)', fontSize: '1rem', outline: 'none' }}
                                         required
                                         minLength={isSignUp ? 8 : 6}
+                                        disabled={loading}
                                     />
                                     <button
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
-                                        style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '5px' }}
+                                        disabled={loading}
+                                        style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: loading ? 'not-allowed' : 'pointer', padding: '5px', opacity: loading ? 0.6 : 1 }}
                                     >
                                         {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                                     </button>
@@ -256,11 +262,13 @@ export default function AuthOverlay({ onInstall }) {
                                             className="auth-input-classic"
                                             style={{ width: '100%', padding: '16px', paddingRight: '50px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '14px', color: 'var(--text-primary)', fontSize: '1rem', outline: 'none' }}
                                             required
+                                            disabled={loading}
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setShowPassword(!showPassword)}
-                                            style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '5px' }}
+                                            disabled={loading}
+                                            style={{ position: 'absolute', right: '15px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: loading ? 'not-allowed' : 'pointer', padding: '5px', opacity: loading ? 0.6 : 1 }}
                                         >
                                             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                                         </button>
@@ -280,7 +288,7 @@ export default function AuthOverlay({ onInstall }) {
                                 lineHeight: '1.4'
                             }}>
                                 By continuing, you comply with Miles Circle's <br />
-                                <button type="button" onClick={() => { setPolicyType('terms'); setShowTerms(true); }} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', padding: 0, textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit' }}>Terms & Conditions</button> and <button type="button" onClick={() => { setPolicyType('privacy'); setShowTerms(true); }} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', padding: 0, textDecoration: 'underline', cursor: 'pointer', fontSize: 'inherit' }}>Privacy Policy</button>.
+                                <button type="button" onClick={() => { setPolicyType('terms'); setShowTerms(true); }} disabled={loading} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', padding: 0, textDecoration: 'underline', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 'inherit', opacity: loading ? 0.6 : 1 }}>Terms & Conditions</button> and <button type="button" onClick={() => { setPolicyType('privacy'); setShowTerms(true); }} disabled={loading} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', padding: 0, textDecoration: 'underline', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 'inherit', opacity: loading ? 0.6 : 1 }}>Privacy Policy</button>.
                             </p>
                         </form>
                     )}
@@ -292,14 +300,14 @@ export default function AuthOverlay({ onInstall }) {
                                 <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: 'var(--glass-border)', zIndex: -1 }}></div>
                             </div>
 
-                            <button onClick={handleGoogleLogin} className="auth-btn-secondary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontWeight: '700' }}>
+                            <button onClick={handleGoogleLogin} className="auth-btn-secondary" disabled={loading} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontWeight: '700', opacity: loading ? 0.6 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}>
                                 <svg width="20" height="20" viewBox="0 0 18 18">
                                     <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4" />
                                     <path d="M9.003 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.96v2.332C2.44 15.983 5.485 18 9.003 18z" fill="#34A853" />
                                     <path d="M3.964 10.712c-.18-.54-.282-1.117-.282-1.71 0-.593.102-1.17.282-1.71V4.96H.957C.347 6.175 0 7.55 0 9.002c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05" />
                                     <path d="M9.003 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.464.891 11.426 0 9.003 0 5.485 0 2.44 2.017.96 4.958L3.967 7.29c.708-2.127 2.692-3.71 5.036-3.71z" fill="#EA4335" />
                                 </svg>
-                                Google
+                                {loading ? 'Redirecting...' : 'Google'}
                             </button>
                         </>
                     )}
@@ -309,11 +317,12 @@ export default function AuthOverlay({ onInstall }) {
                 {showTerms && (
                     <div className="modal-overlay" style={{ zIndex: 10000 }} onClick={() => setShowTerms(false)}>
                         <div className="onboarding-card-premium" style={{
+                            width: '90%',
                             maxWidth: '700px',
-                            maxHeight: '80vh',
+                            maxHeight: '85vh',
                             overflowY: 'auto',
                             position: 'relative',
-                            padding: '3rem 2rem'
+                            padding: '2rem 1.25rem'
                         }} onClick={e => e.stopPropagation()}>
                             <button
                                 onClick={() => setShowTerms(false)}

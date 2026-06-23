@@ -36,6 +36,12 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
     const [isLocating, setIsLocating] = useState(false)
     const fileInputRef = useRef(null)
 
+    const getMinDateTime = () => {
+        const d = new Date()
+        const tzOffset = d.getTimezoneOffset() * 60000;
+        return new Date(d.getTime() - tzOffset).toISOString().slice(0, 16);
+    }
+
     const handleFlashToggle = () => {
         const nextFlash = !isFlash
         setIsFlash(nextFlash)
@@ -61,10 +67,18 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
     const handleImageSelect = (e) => {
         const file = e.target.files?.[0]
         if (!file) return
+
+        // Validate that it is an image
+        if (!file.type.startsWith('image/')) {
+            setError('Please select a valid image file (PNG, JPG, etc.)')
+            return
+        }
+
         if (file.size > 5 * 1024 * 1024) {
             setError('Image must be under 5MB')
             return
         }
+        setError(null)
         setImageFile(file)
         const reader = new FileReader()
         reader.onloadend = () => setImagePreview(reader.result)
@@ -116,8 +130,32 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
             return
         }
 
-        setLoading(true)
         setError(null)
+
+        // Validate date/expiry
+        if (!isFlash) {
+            const now = new Date()
+            if (eventDate) {
+                const parsedDate = parseLocalDateTime(eventDate)
+                if (parsedDate < now) {
+                    setError('Event date cannot be in the past.')
+                    return
+                }
+            }
+            if (expiresAt) {
+                const parsedExpiry = parseLocalDateTime(expiresAt)
+                if (parsedExpiry < now) {
+                    setError('Expiry date cannot be in the past.')
+                    return
+                }
+                if (eventDate && parsedExpiry < parseLocalDateTime(eventDate)) {
+                    setError('Expiry date must be after the event date.')
+                    return
+                }
+            }
+        }
+
+        setLoading(true)
 
         try {
             const { data: { user } } = await supabase.auth.getUser()
@@ -170,8 +208,8 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
     }
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="create-event-modal anim-fade-in" onClick={e => e.stopPropagation()}>
+        <div className="modal-overlay" onClick={onClose} style={{ padding: '10px', boxSizing: 'border-box' }}>
+            <div className="create-event-modal anim-fade-in" style={{ width: '100%', maxWidth: '560px', maxHeight: '95vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
                 <header className="create-event-header">
                     <div>
                         <h2>Create Event</h2>
@@ -320,8 +358,8 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
 
                     {/* Flash Meetup Toggle */}
                     <div className="event-field" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: isFlash ? 'rgba(210,85,78,0.1)' : 'var(--glass-bg)', border: `1px solid ${isFlash ? 'var(--accent-red)' : 'var(--glass-border)'}`, borderRadius: '14px', cursor: 'pointer', transition: 'all 0.2s', marginBottom: '10px' }} onClick={handleFlashToggle}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <span style={{ fontSize: '0.9rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px', color: isFlash ? 'var(--accent-red)' : 'var(--text-primary)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingRight: '8px' }}>
+                            <span style={{ fontSize: '0.9rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '6px', color: isFlash ? 'var(--accent-red)' : 'var(--text-primary)', flexWrap: 'wrap' }}>
                                 ⚡ Spontaneous Flash Meetup
                             </span>
                             <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
@@ -330,7 +368,7 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                         </div>
                         <div style={{
                             width: '40px', height: '24px', borderRadius: '12px', background: isFlash ? 'var(--accent-red)' : 'rgba(255,255,255,0.15)',
-                            position: 'relative', transition: 'background 0.2s'
+                            position: 'relative', transition: 'background 0.2s', flexShrink: 0
                         }}>
                             <div style={{
                                 width: '18px', height: '18px', borderRadius: '50%', background: 'white',
@@ -350,6 +388,7 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                                 value={eventDate}
                                 onChange={e => setEventDate(e.target.value)}
                                 disabled={isFlash}
+                                min={getMinDateTime()}
                             />
                         </div>
                     </div>
@@ -369,6 +408,7 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                                 value={expiresAt}
                                 onChange={e => setExpiresAt(e.target.value)}
                                 disabled={isFlash}
+                                min={eventDate || getMinDateTime()}
                             />
                         </div>
                         <span className="field-note">
@@ -377,17 +417,18 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                     </div>
 
                     {error && (
-                        <div className="event-error">{error}</div>
+                        <div className="event-error" style={{ color: 'var(--accent-red)', fontSize: '0.85rem', fontWeight: '700', padding: '10px', background: 'rgba(210,85,78,0.1)', border: '1px solid rgba(210,85,78,0.2)', borderRadius: '10px' }}>{error}</div>
                     )}
 
-                    <div className="create-event-actions">
-                        <button type="button" className="event-cancel-btn" onClick={onClose}>
+                    <div className="create-event-actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                        <button type="button" className="event-cancel-btn" onClick={onClose} style={{ flex: '1 1 120px' }}>
                             Cancel
                         </button>
                         <button
                             type="submit"
                             className="event-submit-btn"
                             disabled={loading || !title.trim() || !eventLocation}
+                            style={{ flex: '2 1 200px' }}
                         >
                             {loading ? (
                                 <><Loader size={18} className="spin-icon" /> Posting...</>

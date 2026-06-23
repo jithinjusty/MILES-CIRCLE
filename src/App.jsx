@@ -151,6 +151,47 @@ function App() {
     const [scanning, setScanning] = useState(false);
     const [copiedId, setCopiedId] = useState(false);
     const qrScannerRef = useRef(null);
+    const [toast, setToast] = useState(null);
+    const [confirmModal, setConfirmModal] = useState(null);
+    const isMounted = useRef(true);
+    const searchTimeoutRef = useRef(null);
+
+    const showToast = (message, type = 'info') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 4000);
+    };
+
+    const triggerConfirm = (message, onConfirm, onCancel = () => {}) => {
+        setConfirmModal({
+            message,
+            onConfirm: () => {
+                onConfirm();
+                setConfirmModal(null);
+            },
+            onCancel: () => {
+                onCancel();
+                setConfirmModal(null);
+            }
+        });
+    };
+
+    useEffect(() => {
+        const originalAlert = window.alert;
+        window.alert = (message) => {
+            if (!message) return;
+            const lower = message.toLowerCase();
+            let type = 'info';
+            if (lower.includes('success') || lower.includes('updated') || lower.includes('established') || lower.includes('transmitted') || lower.includes('sent') || lower.includes('generated') || lower.includes('submitted') || lower.includes('wave back') || lower.includes('photo attached') || lower.includes('waved')) {
+                type = 'success';
+            } else if (lower.includes('fail') || lower.includes('error') || lower.includes('incorrect') || lower.includes('already') || lower.includes('must be') || lower.includes('not match') || lower.includes('limit') || lower.includes('please') || lower.includes('cannot')) {
+                type = 'error';
+            }
+            showToast(message, type);
+        };
+        return () => {
+            window.alert = originalAlert;
+        };
+    }, []);
 
     const [radius, setRadius] = useState(() => {
         const saved = localStorage.getItem('miles_preferred_radius');
@@ -624,7 +665,7 @@ function App() {
             });
         }
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+        const { data: authListener } = supabase.auth.onAuthStateChange((_event, s) => {
             if (isMock) return;
             setSession(s);
             if (s) fetchProfile(s.user.id);
@@ -645,14 +686,21 @@ function App() {
                         setLocationError(null);
                     }
                 },
-                null,
+                (err) => {
+                    console.error("Geolocation watch error:", err);
+                    setLocationError(err.message || "Failed to track location");
+                },
                 { enableHighAccuracy: true }
             );
         }
         const verifyInterval = setInterval(updateLocation, 5 * 60 * 1000);
 
+        isMounted.current = true;
         return () => {
-            if (subscription) subscription.unsubscribe();
+            isMounted.current = false;
+            if (authListener?.subscription) {
+                authListener.subscription.unsubscribe();
+            }
             if (watchId.current) navigator.geolocation.clearWatch(watchId.current);
             clearInterval(verifyInterval);
         }
@@ -895,7 +943,7 @@ function App() {
             }
         } catch (err) {
             console.error("Profile update failed:", err);
-            alert("Save failed: " + err.message);
+            showToast("Save failed: " + err.message, "error");
         } finally {
             setIsSavingChanges(false);
         }
@@ -967,28 +1015,33 @@ function App() {
         }
     };
 
-    const handleSearchProfiles = async (query) => {
+    const handleSearchProfiles = (query) => {
         setSearchQuery(query);
         if (!query.trim()) {
             setSearchResults([]);
             return;
         }
-        try {
-            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-            let dbQuery = supabase.from('profiles');
-            
-            if (uuidRegex.test(query.trim())) {
-                dbQuery = dbQuery.select('id, full_name, avatar_url').eq('id', query.trim());
-            } else {
-                dbQuery = dbQuery.select('id, full_name, avatar_url').ilike('full_name', `%${query.trim()}%`).limit(10);
+        
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+        
+        searchTimeoutRef.current = setTimeout(async () => {
+            try {
+                const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                let dbQuery = supabase.from('profiles');
+                
+                if (uuidRegex.test(query.trim())) {
+                    dbQuery = dbQuery.select('id, full_name, avatar_url').eq('id', query.trim());
+                } else {
+                    dbQuery = dbQuery.select('id, full_name, avatar_url').ilike('full_name', `%${query.trim()}%`).limit(10);
+                }
+                
+                const { data, error } = await dbQuery;
+                if (error) throw error;
+                setSearchResults(data || []);
+            } catch (err) {
+                console.error("Error searching profiles:", err);
             }
-            
-            const { data, error } = await dbQuery;
-            if (error) throw error;
-            setSearchResults(data || []);
-        } catch (err) {
-            console.error("Error searching profiles:", err);
-        }
+        }, 300);
     };
 
     const fetchAndSelectRecipient = async (userId) => {
@@ -1019,6 +1072,7 @@ function App() {
         setTransferStatus(null);
         setTimeout(async () => {
             try {
+                if (!isMounted.current) return;
                 const html5QrCode = new Html5Qrcode("qr-reader");
                 qrScannerRef.current = html5QrCode;
                 
@@ -1042,10 +1096,18 @@ function App() {
                         // Silent during active search scanning
                     }
                 );
+
+                if (!isMounted.current) {
+                    if (html5QrCode.isScanning) {
+                        await html5QrCode.stop();
+                    }
+                }
             } catch (err) {
                 console.error("Failed to start QR scanner:", err);
-                setTransferStatus({ type: 'error', message: 'Failed to access camera: ' + err.message });
-                setScanning(false);
+                if (isMounted.current) {
+                    setTransferStatus({ type: 'error', message: 'Failed to access camera: ' + err.message });
+                    setScanning(false);
+                }
             }
         }, 100);
     };
@@ -1066,7 +1128,7 @@ function App() {
 
     useEffect(() => {
         return () => {
-            if (qrScannerRef.current) {
+            if (qrScannerRef.current && qrScannerRef.current.isScanning) {
                 qrScannerRef.current.stop().catch(err => console.error("Unmount scanner cleanup error:", err));
             }
         };
@@ -1375,22 +1437,23 @@ function App() {
 
     const handleReport = async () => {
         if (!session || !viewingProfile) return;
-        if (!confirm("Are you sure you want to report this profile for inappropriate content?")) return;
-        try {
-            const { error } = await supabase.from('reports').insert({
-                reporter_id: session.user.id,
-                reported_id: viewingProfile.id
-            });
-            if (error) {
-                if (error.code === '23505') alert("You have already reported this user.");
-                else throw error;
-            } else {
-                alert("Report submitted. Thank you for keeping Miles Circle safe.");
-                setViewingProfile(null);
+        triggerConfirm("Are you sure you want to report this profile for inappropriate content?", async () => {
+            try {
+                const { error } = await supabase.from('reports').insert({
+                    reporter_id: session.user.id,
+                    reported_id: viewingProfile.id
+                });
+                if (error) {
+                    if (error.code === '23505') showToast("You have already reported this user.", "error");
+                    else throw error;
+                } else {
+                    showToast("Report submitted. Thank you for keeping Miles Circle safe.", "success");
+                    setViewingProfile(null);
+                }
+            } catch (err) {
+                showToast(err.message, "error");
             }
-        } catch (err) {
-            alert(err.message);
-        }
+        });
     }
 
     const handleSendWave = async () => {
@@ -1457,27 +1520,87 @@ function App() {
     }
 
     const handleDeleteAccount = async () => {
-        if (!confirm("CRITICAL: This will permanently purge your profile, posts, and social connections from Miles Circle. This action is IRREVERSIBLE. Proceed?")) return;
-        
-        try {
-            setIsSavingChanges(true);
-            // In a real app, we'd call an Edge Function to handle full cascade deletion
-            // For now, we perform a best-effort delete of the profile
-            const { error } = await supabase.from('profiles').delete().eq('id', session.user.id);
-            if (error) throw error;
-            
-            await supabase.auth.signOut();
-            alert("Account scheduled for deletion. You have been disconnected.");
-        } catch (err) {
-            alert("Exclusion failed: " + err.message);
-        } finally {
-            setIsSavingChanges(false);
-        }
+        triggerConfirm("CRITICAL: This will permanently purge your profile, posts, and social connections from Miles Circle. This action is IRREVERSIBLE. Proceed?", async () => {
+            try {
+                setIsSavingChanges(true);
+                // In a real app, we'd call an Edge Function to handle full cascade deletion
+                // For now, we perform a best-effort delete of the profile
+                const { error } = await supabase.from('profiles').delete().eq('id', session.user.id);
+                if (error) throw error;
+                
+                await supabase.auth.signOut();
+                showToast("Account scheduled for deletion. You have been disconnected.", "success");
+            } catch (err) {
+                showToast("Exclusion failed: " + err.message, "error");
+            } finally {
+                setIsSavingChanges(false);
+            }
+        });
     }
 
 
     return (
         <div className={`app-container ${(isMapInteracting || !isSliderHidden || isExploreMapMode) ? 'map-mode' : 'chat-mode'} ${profile?.theme_mode === 'light' ? 'light-mode' : ''}`}>
+            {toast && (
+                <div className="toast-anim" style={{
+                    position: 'fixed',
+                    top: '80px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: toast.type === 'error' ? 'rgba(210, 85, 78, 0.95)' : toast.type === 'success' ? 'rgba(46, 204, 113, 0.95)' : 'rgba(28, 28, 30, 0.95)',
+                    color: 'white',
+                    padding: '12px 24px',
+                    borderRadius: '16px',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+                    zIndex: 100000,
+                    backdropFilter: 'blur(10px)',
+                    border: toast.type === 'error' ? '1px solid rgba(210, 85, 78, 0.3)' : toast.type === 'success' ? '1px solid rgba(46, 204, 113, 0.3)' : '1px solid var(--glass-border)',
+                    fontSize: '0.9rem',
+                    fontWeight: '700',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                }}>
+                    <span>{toast.type === 'error' ? '⚠️' : toast.type === 'success' ? '✅' : 'ℹ️'}</span>
+                    {toast.message}
+                </div>
+            )}
+
+            {confirmModal && (
+                <div className="modal-overlay" style={{ zIndex: 100001 }} onClick={() => confirmModal.onCancel()}>
+                    <div className="onboarding-card-premium" style={{
+                        maxWidth: '400px',
+                        padding: '2rem',
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '1.5rem',
+                        boxSizing: 'border-box'
+                    }} onClick={e => e.stopPropagation()}>
+                        <h3 style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--text-primary)', margin: 0 }}>
+                            {confirmModal.message}
+                        </h3>
+                        <div style={{ display: 'flex', gap: '12px' }}>
+                            <button
+                                className="event-cancel-btn"
+                                onClick={() => confirmModal.onCancel()}
+                                style={{ flex: 1, padding: '12px', borderRadius: '12px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)', fontWeight: '700', cursor: 'pointer' }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="btn-confirm-yes"
+                                onClick={() => {
+                                    confirmModal.onConfirm();
+                                }}
+                                style={{ flex: 1, padding: '12px', borderRadius: '12px', background: 'var(--accent-red)', border: 'none', color: 'white', fontWeight: '700', cursor: 'pointer' }}
+                            >
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             {incomingWave && (
                 <div style={{
                     position: 'fixed',
@@ -1857,7 +1980,7 @@ function App() {
                                                     gap: '6px'
                                                 }}>
                                                     <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>MY USER ID</span>
-                                                    <code style={{ fontSize: '0.85rem', color: 'white', wordBreak: 'break-all', fontFamily: 'monospace' }}>${session.user.id}</code>
+                                                    <code style={{ fontSize: '0.85rem', color: 'white', wordBreak: 'break-all', fontFamily: 'monospace' }}>{session.user.id}</code>
                                                 </div>
                                                 
                                                 <button
@@ -2067,10 +2190,50 @@ function App() {
                                                             key={neighbor.id} 
                                                             position={fuzzyPos} 
                                                             icon={neighborIcon(initial, neighbor.avatar_url, neighbor.points || 0, neighbor.daily_vibe)}
-                                                            eventHandlers={{
-                                                                click: () => setViewingProfile(neighbor)
-                                                            }}
-                                                        />
+                                                        >
+                                                            <Popup>
+                                                                <div style={{
+                                                                    background: 'rgba(30, 30, 30, 0.95)',
+                                                                    color: '#fff',
+                                                                    padding: '12px 14px',
+                                                                    borderRadius: '16px',
+                                                                    fontFamily: 'var(--font-family)',
+                                                                    fontSize: '0.85rem',
+                                                                    border: '1px solid rgba(255,255,255,0.1)',
+                                                                    minWidth: '180px',
+                                                                    textAlign: 'center',
+                                                                    boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                                                                    backdropFilter: 'blur(20px)',
+                                                                    WebkitBackdropFilter: 'blur(20px)'
+                                                                }}>
+                                                                    <div style={{ fontWeight: '800', marginBottom: '4px', fontSize: '0.92rem', color: 'white' }}>{neighbor.full_name || 'Circle Member'}</div>
+                                                                    <div style={{ color: 'var(--accent-red)', fontSize: '0.75rem', fontWeight: '800', marginBottom: '8px' }}>🔥 {neighbor.points || 0} Karma Points</div>
+                                                                    {neighbor.daily_vibe && (
+                                                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>Today: {neighbor.daily_vibe}</div>
+                                                                    )}
+                                                                    <button
+                                                                        onClick={() => setViewingProfile(neighbor)}
+                                                                        style={{
+                                                                            background: 'var(--accent-red)',
+                                                                            border: 'none',
+                                                                            borderRadius: '8px',
+                                                                            padding: '6px 12px',
+                                                                            color: 'white',
+                                                                            fontWeight: '800',
+                                                                            cursor: 'pointer',
+                                                                            fontSize: '0.75rem',
+                                                                            width: '100%',
+                                                                            boxSizing: 'border-box',
+                                                                            transition: 'all 0.2s'
+                                                                        }}
+                                                                        onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                                                                        onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                                                    >
+                                                                        View Profile
+                                                                    </button>
+                                                                </div>
+                                                            </Popup>
+                                                        </Marker>
                                                     );
                                                 })}
                                                 {events.map(event => {
@@ -2451,6 +2614,8 @@ function App() {
                                                         refreshTrigger={feedTrigger}
                                                         session={session}
                                                         activeNeighborsCount={activeNeighbors.length + 1}
+                                                        activeNeighbors={activeNeighbors}
+                                                        onVibeClick={() => setShowVibeCheck(true)}
                                                         onUserClick={async (userId, isAi, aiName) => {
                                                             const isReallyAi = !!isAi || (typeof isAi === 'string' && isAi.toLowerCase() === 'true');
                                                             if (isReallyAi) {
@@ -2474,6 +2639,12 @@ function App() {
                                                         onReplyChange={(ctx, suggestion) => {
                                                             setReplyingTo(ctx);
                                                             if (suggestion) setMessageContent(suggestion);
+                                                        }}
+                                                        onTransferPoints={(email, amount) => {
+                                                            setRecipientEmail(email || '');
+                                                            setTransferAmount(amount ? String(amount) : '');
+                                                            setActiveSettingsTab('wallet');
+                                                            setShowSettings(true);
                                                         }}
                                                     />
                                                     <div className="system-welcome-card">

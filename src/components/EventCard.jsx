@@ -22,6 +22,15 @@ export default function EventCard({ event, session, userReaction, onReactionChan
     const [flashTimerText, setFlashTimerText] = useState('')
 
     useEffect(() => {
+        if (!showReactions) return;
+        const handleOutsideClick = () => {
+            setShowReactions(false);
+        };
+        document.addEventListener('click', handleOutsideClick);
+        return () => document.removeEventListener('click', handleOutsideClick);
+    }, [showReactions]);
+
+    useEffect(() => {
         if (!event.is_flash) return;
 
         const updateTimer = () => {
@@ -56,7 +65,7 @@ export default function EventCard({ event, session, userReaction, onReactionChan
         if (diffMins < 60) return `${diffMins}m ago`
         if (diffHours < 24) return `${diffHours}h ago`
         if (diffDays < 7) return `${diffDays}d ago`
-        return posted.toLocaleDateString()
+        return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(posted)
     }
 
     const formatEventDate = (dateStr) => {
@@ -68,9 +77,15 @@ export default function EventCard({ event, session, userReaction, onReactionChan
         tomorrow.setDate(tomorrow.getDate() + 1)
         const isTomorrow = d.toDateString() === tomorrow.toDateString()
 
-        if (isToday) return `Today at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-        if (isTomorrow) return `Tomorrow at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-        return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        if (isToday) {
+            const timeStr = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(d);
+            return `Today at ${timeStr}`;
+        }
+        if (isTomorrow) {
+            const timeStr = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(d);
+            return `Tomorrow at ${timeStr}`;
+        }
+        return new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(d);
     }
 
     const formatExpiry = (dateStr) => {
@@ -88,7 +103,8 @@ export default function EventCard({ event, session, userReaction, onReactionChan
         if (diffMins < 60) return `Expires in ${diffMins}m`
         if (diffHours < 24) return `Expires in ${diffHours}h`
         if (diffDays < 7) return `Expires in ${diffDays}d`
-        return `Expires ${d.toLocaleDateString([], { month: 'short', day: 'numeric' })}`
+        const dateFormatted = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(d);
+        return `Expires ${dateFormatted}`
     }
 
     const handleReaction = async (reactionType) => {
@@ -190,12 +206,14 @@ export default function EventCard({ event, session, userReaction, onReactionChan
 
         const icsString = icsLines.join('\r\n');
         const blob = new Blob([icsString], { type: 'text/calendar;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
+        link.href = url;
         link.download = `${event.title?.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'event'}.ics`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     };
 
     const handleDelete = async () => {
@@ -235,7 +253,7 @@ export default function EventCard({ event, session, userReaction, onReactionChan
             {/* Event Image */}
             {event.image_url && (
                 <div className="event-card-image" style={{ position: 'relative' }}>
-                    <img src={event.image_url} alt={event.title} />
+                    <img src={event.image_url} alt={event.title} loading="lazy" />
                     {event.is_flash ? (
                         <div className="event-flash-badge" style={{
                             position: 'absolute',
@@ -404,13 +422,15 @@ export default function EventCard({ event, session, userReaction, onReactionChan
                 )}
 
                 {/* Actions Bar */}
-                <div className="event-actions-bar">
+                <div className="event-actions-bar" onClick={e => e.stopPropagation()}>
                     {/* Reactions Button */}
-                    <div className="event-reaction-wrapper">
+                    <div className="event-reaction-wrapper" onClick={e => e.stopPropagation()}>
                         <button
                             className={`event-react-btn ${localUserReaction && localUserReaction !== 'going' ? 'reacted' : ''}`}
-                            onClick={() => (localUserReaction && localUserReaction !== 'going') ? handleReaction(localUserReaction) : setShowReactions(!showReactions)}
-                            onMouseEnter={() => (localUserReaction === null || localUserReaction === 'going') && setShowReactions(true)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowReactions(!showReactions);
+                            }}
                             disabled={isReacting}
                         >
                             <span className="react-emoji">
@@ -423,13 +443,16 @@ export default function EventCard({ event, session, userReaction, onReactionChan
                         {showReactions && (
                             <div
                                 className="event-reaction-picker"
-                                onMouseLeave={() => setShowReactions(false)}
+                                onClick={e => e.stopPropagation()}
                             >
                                 {REACTION_TYPES.map(r => (
                                     <button
                                         key={r.type}
                                         className={`reaction-option ${localUserReaction === r.type ? 'active' : ''}`}
-                                        onClick={() => handleReaction(r.type)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleReaction(r.type);
+                                        }}
                                         title={r.label}
                                     >
                                         {r.emoji}
