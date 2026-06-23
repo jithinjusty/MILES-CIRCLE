@@ -1449,6 +1449,32 @@ body {
     .chat-input-wrapper {
         margin: 0.5rem 0.5rem 0.8rem;
     }
+
+    /* Responsive Photo Editor */
+    .photo-editor-card {
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .editor-main {
+        flex-direction: column;
+        overflow-y: auto;
+    }
+
+    .image-preview-container {
+        flex: none;
+        height: 40vh;
+        padding: 1rem;
+    }
+
+    .editor-controls {
+        flex: none;
+        height: auto;
+        padding: 1.5rem;
+        border-left: none !important;
+        border-top: 1px solid var(--glass-border);
+    }
 }
 
 /* Photo Editor Legacy Support */

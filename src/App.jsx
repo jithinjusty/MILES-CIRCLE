@@ -1631,7 +1631,7 @@ function App() {
                                     )}
                                     {scanning && (
                                         <div className="modal-overlay" style={{ zIndex: 5000 }}>
-                                            <div className="onboarding-card-premium anim-fade-in" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+                                            <div className="onboarding-card-premium anim-fade-in" style={{ maxWidth: '450px', width: '90%', maxHeight: '90vh', overflowY: 'auto', textAlign: 'center', position: 'relative' }}>
                                                 <button
                                                     type="button"
                                                     onClick={stopScanner}
@@ -1700,7 +1700,7 @@ function App() {
 
                                     {showMyQr && session && (
                                         <div className="modal-overlay" style={{ zIndex: 5000 }} onClick={() => setShowMyQr(false)}>
-                                            <div className="onboarding-card-premium anim-fade-in" style={{ maxWidth: '420px', width: '90%', textAlign: 'center', position: 'relative' }} onClick={e => e.stopPropagation()}>
+                                            <div className="onboarding-card-premium anim-fade-in" style={{ maxWidth: '420px', width: '90%', maxHeight: '90vh', overflowY: 'auto', textAlign: 'center', position: 'relative' }} onClick={e => e.stopPropagation()}>
                                                 <button
                                                     type="button"
                                                     onClick={() => setShowMyQr(false)}

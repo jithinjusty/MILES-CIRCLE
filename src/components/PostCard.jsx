@@ -90,7 +90,7 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                 setIsSpeaking(false);
             } else {
                 window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(post.content);
+                const utterance = new SpeechSynthesisUtterance(post.content || '');
                 utterance.onend = () => setIsSpeaking(false);
                 utterance.onerror = () => setIsSpeaking(false);
                 setIsSpeaking(true);
@@ -181,7 +181,7 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
         setShowMenu(false);
         try {
             // MyMemory free translation API — no key required, auto-detects language
-            const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(post.content)}&langpair=auto|en`);
+            const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(post.content || '')}&langpair=auto|en`);
             const data = await res.json();
             const translated = data?.responseData?.translatedText;
             setTranslatedText(translated || '[Translation unavailable]');
@@ -198,7 +198,7 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
         try {
             const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
             const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
-            const aiPrompt = `Generate a short, casual, friendly reply to this message as if you were a local neighbor. Only output the reply text, no explanation or formatting:\n"${post.content}"`;
+            const aiPrompt = `Generate a short, casual, friendly reply to this message as if you were a local neighbor. Only output the reply text, no explanation or formatting:\n"${post.content || ''}"`;
 
             let suggestion = '';
             if (openRouterKey) {
@@ -268,14 +268,18 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                     <button onClick={handleReply} style={menuBtnStyle}>
                         <span>↩️</span> Reply
                     </button>
-                    <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0 12px' }} />
-                    <button onClick={handleTranslate} style={menuBtnStyle}>
-                        <span>🌐</span> Translate
-                    </button>
-                    <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0 12px' }} />
-                    <button onClick={handleAIReply} style={{ ...menuBtnStyle, color: 'var(--accent-red)' }}>
-                        <span>✨</span> Generate AI Reply
-                    </button>
+                    {post.content && post.content.trim() && (
+                        <>
+                            <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0 12px' }} />
+                            <button onClick={handleTranslate} style={menuBtnStyle}>
+                                <span>🌐</span> Translate
+                            </button>
+                            <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0 12px' }} />
+                            <button onClick={handleAIReply} style={{ ...menuBtnStyle, color: 'var(--accent-red)' }}>
+                                <span>✨</span> Generate AI Reply
+                            </button>
+                        </>
+                    )}
                 </div>
             )}
 

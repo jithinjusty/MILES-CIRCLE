@@ -16,6 +16,7 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const [swiperMode, setSwiperMode] = useState(false)
     const [swiperIndex, setSwiperIndex] = useState(0)
     const feedEndRef = useRef(null)
+    const feedStartRef = useRef(null)
     const aiTimerRef = useRef(null)
     const isInitialLoad = useRef(true);
     const prevPostsLength = useRef(0);
@@ -137,24 +138,23 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
             return dateB - dateA;
         });
 
-    const scrollToBottom = (behavior = 'smooth') => {
-        feedEndRef.current?.scrollIntoView({ behavior });
+    const scrollToTop = (behavior = 'smooth') => {
+        feedStartRef.current?.scrollIntoView({ behavior });
     }
 
-    const isNearBottom = () => {
-        const container = scrollContainerRef.current || feedEndRef.current?.closest('.chat-messages-scroll');
+    const isNearTop = () => {
+        const container = scrollContainerRef.current || feedStartRef.current?.closest('.chat-messages-scroll');
         if (!container) return false;
         const threshold = 150; 
-        const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
-        return distance < threshold;
+        return container.scrollTop < threshold;
     };
 
     useEffect(() => {
-        const container = feedEndRef.current?.closest('.chat-messages-scroll');
+        const container = feedStartRef.current?.closest('.chat-messages-scroll');
         if (container) {
             scrollContainerRef.current = container;
             const handleScroll = () => {
-                if (isNearBottom()) {
+                if (isNearTop()) {
                     setUnreadCount(0);
                     setShowScrollDown(false);
                 } else {
@@ -168,17 +168,26 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
 
     useEffect(() => {
         if (posts.length > 0) {
-            const lastPost = posts[posts.length - 1];
-            const isMyPost = session?.user?.id && (lastPost.user_id === session.user.id && !lastPost.is_ai);
-            const nearBottom = isNearBottom();
+            // Find the newest post by created_at timestamp
+            let newestPost = posts[0];
+            for (let i = 1; i < posts.length; i++) {
+                const tNew = newestPost.created_at ? new Date(newestPost.created_at).getTime() : 0;
+                const tCurr = posts[i].created_at ? new Date(posts[i].created_at).getTime() : 0;
+                if (tCurr > tNew) {
+                    newestPost = posts[i];
+                }
+            }
+
+            const isMyPost = session?.user?.id && newestPost && (newestPost.user_id === session.user.id && !newestPost.is_ai);
+            const nearTop = isNearTop();
 
             if (isInitialLoad.current) {
-                // Instantly jump to bottom on first open
-                feedEndRef.current?.scrollIntoView({ behavior: 'auto' });
+                // Instantly jump to top on first open
+                feedStartRef.current?.scrollIntoView({ behavior: 'auto' });
                 isInitialLoad.current = false;
-            } else if (isMyPost || nearBottom) {
-                // Smoothly auto-scroll if it's the user's post or they are at the bottom
-                feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            } else if (isMyPost || nearTop) {
+                // Smoothly auto-scroll if it's the user's post or they are at the top
+                feedStartRef.current?.scrollIntoView({ behavior: 'smooth' });
                 setUnreadCount(0);
             } else {
                 // User is reading history, update unread count for new messages
@@ -709,7 +718,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
         const ctx = { id: post.id, content: post.content, author: replyName };
         setReplyingTo(ctx);
         onReplyChange?.(ctx);
-        scrollToBottom('smooth');
+        scrollToTop('smooth');
     };
 
     // Handle AI-generated reply text being inserted into composer
@@ -718,7 +727,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
         const ctx = { id: post.id, content: post.content, author: replyName };
         setReplyingTo(ctx);
         onReplyChange?.(ctx, suggestion);
-        scrollToBottom('smooth');
+        scrollToTop('smooth');
     };
 
     const categories = [
@@ -1074,6 +1083,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                 </div>
             ) : (
                 <div className="app-feed-container" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1.5rem', boxSizing: 'border-box' }}>
+                    <div ref={feedStartRef} style={{ height: 0, margin: 0, padding: 0 }} />
                     {/* Active Proximity Radar Stats Bar */}
                     <div className="proximity-radar-stats" style={{
                         display: 'grid',
@@ -1198,7 +1208,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
             {/* Floating New Message Notification */}
             {showScrollDown && (
                 <button 
-                    onClick={() => scrollToBottom('smooth')}
+                    onClick={() => scrollToTop('smooth')}
                     className="scroll-down-btn anim-fade-in"
                     style={{
                         position: 'fixed',
@@ -1220,7 +1230,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                     }}
                 >
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M7 13l5 5 5-5M7 6l5 5 5-5"/>
+                        <path d="M17 11l-5-5-5 5M17 18l-5-5-5 5"/>
                     </svg>
                     {unreadCount > 0 && (
                         <div style={{

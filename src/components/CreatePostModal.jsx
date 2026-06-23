@@ -82,7 +82,7 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
 
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="onboarding-card-premium anim-fade-in" onClick={(e) => e.stopPropagation()} style={{ padding: '3.5rem', maxWidth: '580px' }}>
+            <div className="onboarding-card-premium anim-fade-in" onClick={(e) => e.stopPropagation()} style={{ padding: '2rem 1.5rem', width: '95%', maxWidth: '580px', maxHeight: '90vh', overflowY: 'auto' }}>
                 <header style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div className="title-wrap">
                         <h2 className="onboarding-title" style={{ fontSize: '1.8rem', margin: 0 }}>New Post</h2>
