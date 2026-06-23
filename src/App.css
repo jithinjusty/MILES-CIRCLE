@@ -996,6 +996,7 @@ body {
     max-height: 90dvh;
     overflow-y: auto;
     background: var(--panel-bg);
+    color: var(--text-primary);
     border-radius: 32px;
     padding: 3rem 2rem 2rem;
     text-align: center;
@@ -1051,6 +1052,7 @@ body {
     font-size: 1.8rem;
     font-weight: 950;
     margin-bottom: 4px;
+    color: var(--text-primary);
 }
 
 .viewer-joined {
@@ -1079,6 +1081,7 @@ body {
 .stat-val {
     font-size: 1.4rem;
     font-weight: 900;
+    color: var(--text-primary);
 }
 
 .stat-lbl {

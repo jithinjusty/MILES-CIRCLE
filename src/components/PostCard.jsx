@@ -354,6 +354,20 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                 }
             }
 
+            // Fallback to keyless Pollinations AI model
+            if (!suggestion.trim()) {
+                try {
+                    const url = `https://text.pollinations.ai/prompt/${encodeURIComponent(aiPrompt)}?model=openai`;
+                    const pRes = await fetch(url);
+                    if (pRes.ok) {
+                        const pText = await pRes.text();
+                        suggestion = pText || '';
+                    }
+                } catch (pErr) {
+                    console.error("Pollinations failed in PostCard:", pErr);
+                }
+            }
+
             if (suggestion.trim()) {
                 onAIReply?.(post, suggestion.trim());
             } else {

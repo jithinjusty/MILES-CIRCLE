@@ -1360,6 +1360,62 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                         </button>
                     )}
 
+                    {activeCategory === 'buysell' && (
+                        <button
+                            onClick={() => setShowCreateBuySell(true)}
+                            style={{
+                                width: '100%',
+                                background: 'linear-gradient(135deg, var(--accent-red) 0%, #B2443E 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '16px',
+                                padding: '14px',
+                                fontWeight: 'bold',
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                boxShadow: '0 8px 24px rgba(210, 85, 78, 0.25)',
+                                marginBottom: '1rem',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
+                        >
+                            <span>🏷️</span> Post an Item for Sale / Buy Request
+                        </button>
+                    )}
+
+                    {activeCategory === 'lostfound' && (
+                        <button
+                            onClick={() => setShowCreateLostFound(true)}
+                            style={{
+                                width: '100%',
+                                background: 'linear-gradient(135deg, var(--accent-red) 0%, #B2443E 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '16px',
+                                padding: '14px',
+                                fontWeight: 'bold',
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                boxShadow: '0 8px 24px rgba(210, 85, 78, 0.25)',
+                                marginBottom: '1rem',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
+                        >
+                            <span>🔍</span> Report a Lost or Found Item
+                        </button>
+                    )}
+
                     {activeCategory === 'offers' ? (
                         loadingOffers ? (
                             <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
