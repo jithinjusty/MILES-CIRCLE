@@ -64,6 +64,46 @@ function MapController({ center, radius, isInteracting }) {
     return null;
 }
 
+const qaIconInstance = L.divIcon({
+    className: 'custom-qa-marker',
+    html: `
+        <div style="
+            width: 32px; height: 32px;
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 12px rgba(46, 204, 113, 0.5);
+            animation: pulse-green 2s infinite;
+        ">
+            <span style="font-size: 0.95rem; font-family: var(--font-family); font-weight: 900; color: white;">❓</span>
+        </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16]
+});
+
+const alertIconInstance = L.divIcon({
+    className: 'custom-alert-marker',
+    html: `
+        <div style="
+            width: 32px; height: 32px;
+            background: linear-gradient(135deg, #ff5252 0%, #ff0000 100%);
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 12px rgba(255, 82, 82, 0.6);
+            animation: alert-marker-glow 1.5s infinite alternate;
+        ">
+            <span style="font-size: 0.95rem; font-family: var(--font-family); font-weight: 900; color: white;">🚨</span>
+        </div>
+    `,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16]
+});
+
 function App() {
     const [showSplash, setShowSplash] = useState(true)
     const [authLoading, setAuthLoading] = useState(true);
@@ -271,49 +311,7 @@ function App() {
         });
     };
 
-    const qaIcon = () => {
-        return L.divIcon({
-            className: 'custom-qa-marker',
-            html: `
-                <div style="
-                    width: 32px; height: 32px;
-                    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
-                    border: 2px solid white;
-                    border-radius: 50%;
-                    display: flex; align-items: center; justify-content: center;
-                    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.5);
-                    animation: pulse-green 2s infinite;
-                ">
-                    <span style="font-size: 0.95rem; font-family: var(--font-family); font-weight: 900; color: white;">❓</span>
-                </div>
-            `,
-            iconSize: [32, 32],
-            iconAnchor: [16, 16],
-            popupAnchor: [0, -16]
-        });
-    };
 
-    const alertIcon = () => {
-        return L.divIcon({
-            className: 'custom-alert-marker',
-            html: `
-                <div style="
-                    width: 32px; height: 32px;
-                    background: linear-gradient(135deg, #ff5252 0%, #ff0000 100%);
-                    border: 2px solid white;
-                    border-radius: 50%;
-                    display: flex; align-items: center; justify-content: center;
-                    box-shadow: 0 4px 12px rgba(255, 82, 82, 0.6);
-                    animation: alert-marker-glow 1.5s infinite alternate;
-                ">
-                    <span style="font-size: 0.95rem; font-family: var(--font-family); font-weight: 900; color: white;">🚨</span>
-                </div>
-            `,
-            iconSize: [32, 32],
-            iconAnchor: [16, 16],
-            popupAnchor: [0, -16]
-        });
-    };
 
     const parseWKTPoint = (wktString) => {
         if (!wktString) return null;
@@ -1659,7 +1657,7 @@ function App() {
                                                             <Marker
                                                                 key={`map-qa-${post.id}`}
                                                                 position={coords}
-                                                                icon={qaIcon()}
+                                                                icon={qaIconInstance}
                                                             >
                                                                 <Popup>
                                                                     <div style={{
@@ -1713,7 +1711,7 @@ function App() {
                                                             <Marker
                                                                 key={`map-alert-${post.id}`}
                                                                 position={coords}
-                                                                icon={alertIcon()}
+                                                                icon={alertIconInstance}
                                                             >
                                                                 <Popup>
                                                                     <div style={{

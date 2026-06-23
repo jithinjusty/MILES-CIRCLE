@@ -12,7 +12,11 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
 
     const handleSubmit = async (e) => {
         if (e) e.preventDefault()
-        if (!content.trim()) return
+        
+        if (!content.trim()) {
+            setError('Post content cannot be empty')
+            return
+        }
 
         setLoading(true)
         setError(null)
@@ -32,6 +36,12 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
                 const validOptions = pollOptions.map(o => o.trim()).filter(Boolean);
                 if (validOptions.length < 2) {
                     setError('Please provide at least 2 poll choices');
+                    setLoading(false);
+                    return;
+                }
+                const uniqueOptions = [...new Set(validOptions)];
+                if (uniqueOptions.length !== validOptions.length) {
+                    setError('Poll choices must be unique');
                     setLoading(false);
                     return;
                 }
