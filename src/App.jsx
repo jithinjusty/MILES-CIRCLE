@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Circle, Popup, useMap } from 'react-leaflet'
-import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, LogOut, ShieldCheck, ChevronRight, Mail, Bug, Info, Database, CreditCard, Calendar, Sparkles } from 'lucide-react'
+import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, LogOut, ShieldCheck, ChevronRight, Mail, Bug, Info, Database, CreditCard, Calendar, Sparkles, Wallet } from 'lucide-react'
 import './App.css'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -117,6 +117,15 @@ function App() {
     const [attachedImageUrl, setAttachedImageUrl] = useState(null);
     const [showVibeCheck, setShowVibeCheck] = useState(false);
     const [weather, setWeather] = useState(null);
+
+    // Wallet States
+    const [recipientEmail, setRecipientEmail] = useState('');
+    const [transferAmount, setTransferAmount] = useState('');
+    const [transferStatus, setTransferStatus] = useState(null);
+    const [transferringPoints, setTransferringPoints] = useState(false);
+    const [transactions, setTransactions] = useState([]);
+    const [loadingTransactions, setLoadingTransactions] = useState(false);
+
     const [radius, setRadius] = useState(() => {
         const saved = localStorage.getItem('miles_preferred_radius');
         const val = saved ? parseFloat(saved) : 1;
@@ -612,6 +621,18 @@ function App() {
     }, [])
 
     useEffect(() => {
+        const handlePointsUpdate = () => {
+            if (session?.user?.id) {
+                fetchProfile(session.user.id);
+            }
+        };
+        window.addEventListener('karma-points-updated', handlePointsUpdate);
+        return () => {
+            window.removeEventListener('karma-points-updated', handlePointsUpdate);
+        };
+    }, [session?.user?.id]);
+
+    useEffect(() => {
         localStorage.setItem('miles_preferred_radius', radius.toString());
     }, [radius]);
 
@@ -882,6 +903,70 @@ function App() {
             setShowVibeCheck(false);
         } catch (err) {
             console.error("Vibe update error:", err);
+        }
+    };
+
+    const fetchTransactions = async () => {
+        if (!session?.user?.id) return;
+        setLoadingTransactions(true);
+        try {
+            const { data, error } = await supabase
+                .from('points_transactions')
+                .select(`
+                    *,
+                    sender:sender_id(full_name, avatar_url),
+                    recipient:recipient_id(full_name, avatar_url),
+                    offer:offer_id(title)
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setTransactions(data || []);
+        } catch (err) {
+            console.error("Error fetching transactions:", err);
+        } finally {
+            setLoadingTransactions(false);
+        }
+    };
+
+    const handleTransferPoints = async (e) => {
+        if (e) e.preventDefault();
+        setTransferStatus(null);
+        
+        const amount = parseInt(transferAmount);
+        if (!recipientEmail || isNaN(amount) || amount <= 0) {
+            setTransferStatus({ type: 'error', message: 'Please enter a valid recipient email and points amount.' });
+            return;
+        }
+
+        if (amount > (profile?.points || 0)) {
+            setTransferStatus({ type: 'error', message: 'Insufficient points balance.' });
+            return;
+        }
+
+        setTransferringPoints(true);
+        try {
+            const { data, error } = await supabase.rpc('transfer_points', {
+                target_email: recipientEmail.trim().toLowerCase(),
+                points_amount: amount
+            });
+
+            if (error) throw error;
+
+            if (data?.success) {
+                setTransferStatus({ type: 'success', message: `Successfully transferred ${amount} points to ${recipientEmail}!` });
+                setRecipientEmail('');
+                setTransferAmount('');
+                setProfile(prev => ({ ...prev, points: Math.max(0, (prev.points || 0) - amount) }));
+                fetchTransactions();
+            } else {
+                setTransferStatus({ type: 'error', message: data?.message || 'Failed to complete transfer.' });
+            }
+        } catch (err) {
+            console.error("Transfer error:", err);
+            setTransferStatus({ type: 'error', message: err.message || 'Points transfer failed. Please try again.' });
+        } finally {
+            setTransferringPoints(false);
         }
     };
 
@@ -2061,6 +2146,7 @@ function App() {
                                                         </div>
                                                         <nav className="settings-nav">
                                                             <button className={`nav-item ${activeSettingsTab === 'main' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('main')}><User size={20} /> <span>Profile Identity</span></button>
+                                                            <button className={`nav-item ${activeSettingsTab === 'wallet' ? 'active' : ''}`} onClick={() => { setActiveSettingsTab('wallet'); fetchTransactions(); }}><Wallet size={20} /> <span>Karma Wallet</span></button>
                                                             <button className={`nav-item ${activeSettingsTab === 'appearance' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('appearance')}><Globe size={20} /> <span>Appearance</span></button>
                                                             <button className={`nav-item ${activeSettingsTab === 'waves' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('waves')}><span>👋</span> <span>Waves Received</span></button>
                                                             {profile?.points >= 100 && (
@@ -2157,6 +2243,190 @@ function App() {
                                                              </div>
                                                         </div>
                                                     )}
+
+                                                      {activeSettingsTab === 'wallet' && (
+                                                          <div className="settings-panel anim-fade-in">
+                                                              <div className="panel-header">
+                                                                  <h2>Karma Wallet</h2>
+                                                                  <p>Manage your Karma points, transfer them to neighbors, and view transaction history.</p>
+                                                              </div>
+
+                                                              <div style={{
+                                                                  background: 'linear-gradient(135deg, rgba(255, 107, 107, 0.15) 0%, rgba(210, 85, 78, 0.05) 100%)',
+                                                                  border: '1px solid rgba(255, 107, 107, 0.3)',
+                                                                  borderRadius: '20px',
+                                                                  padding: '24px',
+                                                                  marginBottom: '2rem',
+                                                                  textAlign: 'center',
+                                                                  boxShadow: '0 8px 32px 0 rgba(255, 107, 107, 0.08)',
+                                                                  display: 'flex',
+                                                                  flexDirection: 'column',
+                                                                  alignItems: 'center',
+                                                                  gap: '8px'
+                                                              }}>
+                                                                  <span style={{ fontSize: '2.5rem' }}>🔥</span>
+                                                                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Your Karma Balance</span>
+                                                                  <span style={{ fontSize: '2.5rem', fontWeight: '900', color: 'white' }}>{profile?.points || 0} <span style={{ fontSize: '1.2rem', color: '#ff6b6b' }}>pts</span></span>
+                                                              </div>
+
+                                                              <div className="social-links-manager" style={{ marginBottom: '2rem' }}>
+                                                                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                      <span>🎁</span> Transfer Points to Neighbor
+                                                                  </h4>
+                                                                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                                                                      Send Karma points directly to another user by entering their email address.
+                                                                  </p>
+                                                                  <form onSubmit={handleTransferPoints} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                                                      <div className="field-block" style={{ margin: 0 }}>
+                                                                          <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Recipient Email</label>
+                                                                          <input
+                                                                              type="email"
+                                                                              placeholder="neighbor@example.com"
+                                                                              value={recipientEmail}
+                                                                              onChange={e => setRecipientEmail(e.target.value)}
+                                                                              required
+                                                                              style={{
+                                                                                  width: '100%',
+                                                                                  background: 'var(--glass-bg)',
+                                                                                  border: '1px solid var(--glass-border)',
+                                                                                  borderRadius: '12px',
+                                                                                  color: 'var(--text-primary)',
+                                                                                  padding: '12px',
+                                                                                  outline: 'none'
+                                                                              }}
+                                                                          />
+                                                                      </div>
+                                                                      <div className="field-block" style={{ margin: 0 }}>
+                                                                          <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Points Amount</label>
+                                                                          <input
+                                                                              type="number"
+                                                                              placeholder="e.g. 10"
+                                                                              min="1"
+                                                                              max={profile?.points || 0}
+                                                                              value={transferAmount}
+                                                                              onChange={e => setTransferAmount(e.target.value)}
+                                                                              required
+                                                                              style={{
+                                                                                  width: '100%',
+                                                                                  background: 'var(--glass-bg)',
+                                                                                  border: '1px solid var(--glass-border)',
+                                                                                  borderRadius: '12px',
+                                                                                  color: 'var(--text-primary)',
+                                                                                  padding: '12px',
+                                                                                  outline: 'none'
+                                                                              }}
+                                                                          />
+                                                                      </div>
+                                                                      {transferStatus && (
+                                                                          <div style={{
+                                                                              fontSize: '0.85rem',
+                                                                              padding: '10px 14px',
+                                                                              borderRadius: '10px',
+                                                                              border: `1px solid ${transferStatus.type === 'success' ? 'rgba(46, 204, 113, 0.3)' : 'rgba(210, 85, 78, 0.3)'}`,
+                                                                              background: transferStatus.type === 'success' ? 'rgba(46, 204, 113, 0.1)' : 'rgba(210, 85, 78, 0.1)',
+                                                                              color: transferStatus.type === 'success' ? '#2ecc71' : 'var(--accent-red)'
+                                                                          }}>
+                                                                              {transferStatus.message}
+                                                                          </div>
+                                                                      )}
+                                                                      <button
+                                                                          type="submit"
+                                                                          disabled={transferringPoints || !profile?.points || profile?.points <= 0}
+                                                                          style={{
+                                                                              background: 'var(--accent-red)',
+                                                                              color: 'white',
+                                                                              border: 'none',
+                                                                              borderRadius: '12px',
+                                                                              padding: '12px',
+                                                                              fontWeight: 'bold',
+                                                                              cursor: 'pointer',
+                                                                              transition: 'all 0.2s',
+                                                                              opacity: (transferringPoints || !profile?.points || profile?.points <= 0) ? 0.5 : 1
+                                                                          }}
+                                                                      >
+                                                                          {transferringPoints ? 'Transferring...' : 'Send Points'}
+                                                                      </button>
+                                                                  </form>
+                                                              </div>
+
+                                                              <div className="social-links-manager">
+                                                                  <h4 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                      <span>📜</span> Transaction History
+                                                                  </h4>
+                                                                  {loadingTransactions ? (
+                                                                      <div style={{ textAlign: 'center', padding: '1rem', opacity: 0.6 }}>Loading transactions...</div>
+                                                                  ) : transactions.length === 0 ? (
+                                                                      <div style={{
+                                                                          padding: '1.5rem',
+                                                                          textAlign: 'center',
+                                                                          background: 'var(--glass-bg)',
+                                                                          border: '1px solid var(--glass-border)',
+                                                                          borderRadius: '16px',
+                                                                          color: 'var(--text-secondary)',
+                                                                          fontSize: '0.85rem'
+                                                                      }}>
+                                                                          No transactions recorded yet.
+                                                                      </div>
+                                                                  ) : (
+                                                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                                                          {transactions.map(t => {
+                                                                              const isSender = t.sender_id === session?.user?.id;
+                                                                              const otherParty = isSender ? (t.recipient?.full_name || 'Neighbor') : (t.sender?.full_name || 'Neighbor');
+                                                                              const dateStr = new Date(t.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                                                              
+                                                                              return (
+                                                                                  <div key={t.id} style={{
+                                                                                      background: 'var(--glass-bg)',
+                                                                                      border: '1px solid var(--glass-border)',
+                                                                                      borderRadius: '12px',
+                                                                                      padding: '12px 16px',
+                                                                                      display: 'flex',
+                                                                                      justifyContent: 'space-between',
+                                                                                      alignItems: 'center',
+                                                                                      gap: '12px'
+                                                                                  }}>
+                                                                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                                                          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                                                                                              {t.transaction_type === 'transfer' ? (
+                                                                                                  isSender ? `Sent to ${otherParty}` : `Received from ${otherParty}`
+                                                                                              ) : (
+                                                                                                  `Redeemed "${t.offer?.title || 'Offer'}"`
+                                                                                              )}
+                                                                                          </span>
+                                                                                          <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                                                                                              {dateStr}
+                                                                                          </span>
+                                                                                          {t.redemption_code && (
+                                                                                              <span style={{
+                                                                                                  fontSize: '0.75rem',
+                                                                                                  fontWeight: 'bold',
+                                                                                                  color: '#2ecc71',
+                                                                                                  background: 'rgba(46, 204, 113, 0.1)',
+                                                                                                  border: '1px solid rgba(46, 204, 113, 0.2)',
+                                                                                                  borderRadius: '6px',
+                                                                                                  padding: '2px 6px',
+                                                                                                  marginTop: '4px',
+                                                                                                  alignSelf: 'flex-start'
+                                                                                              }}>
+                                                                                                  Code: {t.redemption_code}
+                                                                                              </span>
+                                                                                          )}
+                                                                                      </div>
+                                                                                      <span style={{
+                                                                                          fontSize: '0.95rem',
+                                                                                          fontWeight: 'bold',
+                                                                                          color: isSender ? 'var(--accent-red)' : '#2ecc71'
+                                                                                      }}>
+                                                                                          {isSender ? `-${t.amount}` : `+${t.amount}`} pts
+                                                                                      </span>
+                                                                                  </div>
+                                                                              );
+                                                                          })}
+                                                                      </div>
+                                                                  )}
+                                                              </div>
+                                                          </div>
+                                                      )}
 
                                                      {activeSettingsTab === 'waves' && (
                                                          <div className="settings-panel anim-fade-in">

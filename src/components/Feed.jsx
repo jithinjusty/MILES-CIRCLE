@@ -24,6 +24,68 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const [announcements, setAnnouncements] = useState([])
     const [currentAnnounceIdx, setCurrentAnnounceIdx] = useState(0)
 
+    // Offers States
+    const [offers, setOffers] = useState([])
+    const [loadingOffers, setLoadingOffers] = useState(false)
+    const [showCreateOffer, setShowCreateOffer] = useState(false);
+    const [offerTitle, setOfferTitle] = useState('');
+    const [offerDesc, setOfferDesc] = useState('');
+    const [offerPoints, setOfferPoints] = useState('');
+    const [offerInrPerPoint, setOfferInrPerPoint] = useState('1.0');
+    const [offerFreeAccess, setOfferFreeAccess] = useState('');
+    const [postingOffer, setPostingOffer] = useState(false);
+
+    const fetchOffers = async () => {
+        setLoadingOffers(true);
+        try {
+            const { data, error } = await supabase
+                .from('shop_offers')
+                .select('*, profiles(full_name, avatar_url, points)')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setOffers(data || []);
+        } catch (err) {
+            console.error("Error fetching offers:", err);
+        } finally {
+            setLoadingOffers(false);
+        }
+    };
+
+    const handleCreateOffer = async (e) => {
+        if (e) e.preventDefault();
+        if (!session?.user?.id) return;
+
+        setPostingOffer(true);
+        try {
+            const { error } = await supabase
+                .from('shop_offers')
+                .insert([{
+                    user_id: session.user.id,
+                    title: offerTitle.trim(),
+                    description: offerDesc.trim(),
+                    points_required: parseInt(offerPoints) || 0,
+                    inr_value_per_point: parseFloat(offerInrPerPoint) || 1.0,
+                    free_access_desc: offerFreeAccess.trim() || null
+                }]);
+
+            if (error) throw error;
+            
+            setOfferTitle('');
+            setOfferDesc('');
+            setOfferPoints('');
+            setOfferInrPerPoint('1.0');
+            setOfferFreeAccess('');
+            setShowCreateOffer(false);
+            fetchOffers();
+        } catch (err) {
+            console.error("Error creating shop offer:", err);
+            alert("Failed to create offer: " + err.message);
+        } finally {
+            setPostingOffer(false);
+        }
+    };
+
     const fetchAnnouncements = async () => {
         try {
             const { data, error } = await supabase
@@ -297,6 +359,29 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
             supabase.removeChannel(announceChannel);
         };
     }, []);
+
+    useEffect(() => {
+        if (activeCategory === 'offers') {
+            fetchOffers();
+        }
+
+        const offersChannel = supabase
+            .channel('public:shop_offers')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'shop_offers'
+            }, () => {
+                if (activeCategory === 'offers') {
+                    fetchOffers();
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(offersChannel);
+        };
+    }, [activeCategory, refreshTrigger]);
 
     useEffect(() => {
         if (announcements.length <= 1) return;
@@ -640,6 +725,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
         { id: 'all', label: 'All sphere', icon: '🌍' },
         { id: 'general', label: 'General', icon: '💬' },
         { id: 'buysell', label: 'Buy & Sell', icon: '🏷️' },
+        { id: 'offers', label: 'Local Offers', icon: '🎁' },
         { id: 'lostfound', label: 'Lost & Found', icon: '🔍' },
         { id: 'recommendations', label: 'Recommendations', icon: '🌟' }
     ];
@@ -1023,20 +1109,88 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                         </div>
                     </div>
 
-                    {filteredPosts.map((post) => (
-                        <PostCard
-                            key={post.id}
-                            post={post}
-                            posts={posts}
-                            isMine={post.user_id === session?.user?.id && !post.is_ai}
-                            onUserClick={onUserClick}
-                            onReply={handleReply}
-                            onAIReply={handleAIReply}
-                            isHelpful={!!helpfulPosts[post.id]}
-                            onHelpfulToggle={handleHelpfulToggle}
-                            session={session}
-                        />
-                    ))}
+                    {activeCategory === 'offers' && (
+                        <button
+                            onClick={() => setShowCreateOffer(true)}
+                            style={{
+                                width: '100%',
+                                background: 'linear-gradient(135deg, var(--accent-red) 0%, #B2443E 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '16px',
+                                padding: '14px',
+                                fontWeight: 'bold',
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                boxShadow: '0 8px 24px rgba(210, 85, 78, 0.25)',
+                                marginBottom: '1rem',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
+                        >
+                            <span>📢</span> Post a Special Offer / Advertisement
+                        </button>
+                    )}
+
+                    {activeCategory === 'offers' ? (
+                        loadingOffers ? (
+                            <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
+                                <div className="pulse-circle">
+                                    <div className="spinner"></div>
+                                </div>
+                            </div>
+                        ) : offers.length === 0 ? (
+                            <div style={{
+                                padding: '3rem 2rem',
+                                textAlign: 'center',
+                                background: 'var(--panel-bg)',
+                                border: '1px solid var(--glass-border)',
+                                borderRadius: '16px',
+                                color: 'var(--text-secondary)',
+                                width: '100%',
+                                boxSizing: 'border-box'
+                            }}>
+                                <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '10px' }}>🛍️</span>
+                                No special offers posted in your area yet.
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', width: '100%' }}>
+                                {offers.map(offer => (
+                                    <ShopOfferCard
+                                        key={offer.id}
+                                        offer={offer}
+                                        session={session}
+                                        onUserClick={onUserClick}
+                                        onRedeemSuccess={() => {
+                                            fetchOffers();
+                                            const event = new CustomEvent('karma-points-updated');
+                                            window.dispatchEvent(event);
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        )
+                    ) : (
+                        filteredPosts.map((post) => (
+                            <PostCard
+                                key={post.id}
+                                post={post}
+                                posts={posts}
+                                isMine={post.user_id === session?.user?.id && !post.is_ai}
+                                onUserClick={onUserClick}
+                                onReply={handleReply}
+                                onAIReply={handleAIReply}
+                                isHelpful={!!helpfulPosts[post.id]}
+                                onHelpfulToggle={handleHelpfulToggle}
+                                session={session}
+                            />
+                        ))
+                    )}
                     <div ref={feedEndRef} />
                 </div>
             )}
@@ -1089,6 +1243,321 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                     )}
                 </button>
             )}
+
+            {/* Create Shop Offer Modal */}
+            {showCreateOffer && (
+                <div className="modal-overlay" style={{ zIndex: 4000 }} onClick={() => setShowCreateOffer(false)}>
+                    <div className="onboarding-card-premium anim-fade-in" style={{ maxWidth: '480px', width: '90%' }} onClick={e => e.stopPropagation()}>
+                        <header style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h2 className="onboarding-title" style={{ fontSize: '1.5rem', margin: 0 }}>Create Special Offer</h2>
+                            <button onClick={() => setShowCreateOffer(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+                        </header>
+                        
+                        <form onSubmit={handleCreateOffer} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Offer Title</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. 20% off on all bakery items!"
+                                    value={offerTitle}
+                                    onChange={e => setOfferTitle(e.target.value)}
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        color: 'var(--text-primary)',
+                                        padding: '12px',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Description</label>
+                                <textarea
+                                    placeholder="Describe the offer, access rules, or requirements..."
+                                    value={offerDesc}
+                                    onChange={e => setOfferDesc(e.target.value)}
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        height: '100px',
+                                        background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        color: 'var(--text-primary)',
+                                        padding: '12px',
+                                        outline: 'none',
+                                        resize: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Points Required</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="e.g. 10"
+                                    value={offerPoints}
+                                    onChange={e => setOfferPoints(e.target.value)}
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        color: 'var(--text-primary)',
+                                        padding: '12px',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>INR Value per Point (e.g. 1 pt = ? INR discount)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    placeholder="e.g. 2.5"
+                                    value={offerInrPerPoint}
+                                    onChange={e => setOfferInrPerPoint(e.target.value)}
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        color: 'var(--text-primary)',
+                                        padding: '12px',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Free Access / Other Benefit (Optional)</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Free entry for 1 person"
+                                    value={offerFreeAccess}
+                                    onChange={e => setOfferFreeAccess(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        color: 'var(--text-primary)',
+                                        padding: '12px',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={postingOffer}
+                                style={{
+                                    background: 'var(--accent-red)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    padding: '14px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    marginTop: '10px',
+                                    transition: 'all 0.2s',
+                                    opacity: postingOffer ? 0.6 : 1
+                                }}
+                            >
+                                {postingOffer ? 'Creating Advertisement...' : 'Create Advertisement'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     )
+}
+
+function ShopOfferCard({ offer, session, onUserClick, onRedeemSuccess }) {
+    const [redeeming, setRedeeming] = useState(false);
+    const [redeemedCode, setRedeemedCode] = useState(null);
+    const isMine = offer.user_id === session?.user?.id;
+
+    const handleRedeem = async () => {
+        if (!session?.user?.id) {
+            alert("Please sign in to redeem offers!");
+            return;
+        }
+        if (confirm(`Redeem this offer for ${offer.points_required} points?`)) {
+            setRedeeming(true);
+            try {
+                const { data, error } = await supabase.rpc('redeem_shop_offer', {
+                    p_offer_id: offer.id
+                });
+                if (error) throw error;
+                if (data?.success) {
+                    setRedeemedCode(data.code);
+                    onRedeemSuccess();
+                } else {
+                    alert(data?.message || "Failed to redeem offer.");
+                }
+            } catch (err) {
+                console.error("Redemption error:", err);
+                alert("Redemption failed: " + err.message);
+            } finally {
+                setRedeeming(false);
+            }
+        }
+    };
+
+    const handleDeleteOffer = async (e) => {
+        e.stopPropagation();
+        if (confirm("Delete this advertisement?")) {
+            const { error } = await supabase.from('shop_offers').delete().eq('id', offer.id);
+            if (error) alert("Failed to delete offer: " + error.message);
+            else onRedeemSuccess();
+        }
+    };
+
+    return (
+        <div style={{
+            background: 'var(--panel-bg)',
+            border: '1px solid var(--glass-border)',
+            borderRadius: '20px',
+            padding: '20px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            width: '100%',
+            boxSizing: 'border-box'
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="user-avatar-btn mini" style={{ width: '30px', height: '30px', borderRadius: '10px', fontSize: '0.75rem', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', flexShrink: 0 }}>
+                        {offer.profiles?.avatar_url ? (
+                            <img src={offer.profiles.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            (offer.profiles?.full_name || 'Shop')[0].toUpperCase()
+                        )}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span 
+                            style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--accent-red)', cursor: 'pointer' }}
+                            onClick={() => onUserClick?.(offer.user_id)}
+                        >
+                            {offer.profiles?.full_name || 'Local Shop'}
+                        </span>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
+                            {new Date(offer.created_at).toLocaleDateString()}
+                        </span>
+                    </div>
+                </div>
+                {isMine && (
+                    <button
+                        onClick={handleDeleteOffer}
+                        style={{
+                            background: 'rgba(210, 85, 78, 0.1)',
+                            border: '1px solid rgba(210, 85, 78, 0.3)',
+                            borderRadius: '8px',
+                            color: 'var(--accent-red)',
+                            padding: '6px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        🗑️
+                    </button>
+                )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: 'white' }}>{offer.title}</h4>
+                <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>{offer.description}</p>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '4px' }}>
+                <span style={{
+                    background: 'rgba(46, 204, 113, 0.1)',
+                    border: '1px solid rgba(46, 204, 113, 0.3)',
+                    borderRadius: '12px',
+                    padding: '4px 10px',
+                    fontSize: '0.75rem',
+                    color: '#2ecc71',
+                    fontWeight: 'bold'
+                }}>
+                    🏷️ 1 Point = ₹{offer.inr_value_per_point || '1'} INR
+                </span>
+                {offer.free_access_desc && (
+                    <span style={{
+                        background: 'rgba(155, 89, 182, 0.1)',
+                        border: '1px solid rgba(155, 89, 182, 0.3)',
+                        borderRadius: '12px',
+                        padding: '4px 10px',
+                        fontSize: '0.75rem',
+                        color: '#9b59b6',
+                        fontWeight: 'bold'
+                    }}>
+                        🎁 Free Access: {offer.free_access_desc}
+                    </span>
+                )}
+            </div>
+
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+                marginTop: '8px',
+                paddingTop: '12px',
+                borderTop: '1px solid var(--glass-border)'
+            }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                    Cost: <strong style={{ color: 'white' }}>{offer.points_required}</strong> Karma Points
+                </span>
+
+                {redeemedCode ? (
+                    <div style={{
+                        background: 'rgba(46, 204, 113, 0.15)',
+                        border: '1px solid #2ecc71',
+                        borderRadius: '10px',
+                        padding: '6px 12px',
+                        color: '#2ecc71',
+                        fontWeight: 'bold',
+                        fontSize: '0.85rem',
+                        textAlign: 'center'
+                    }}>
+                        Coupon: {redeemedCode}
+                    </div>
+                ) : isMine ? (
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Your Advertisement</span>
+                ) : (
+                    <button
+                        onClick={handleRedeem}
+                        disabled={redeeming}
+                        style={{
+                            background: 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '10px',
+                            padding: '8px 16px',
+                            fontWeight: 'bold',
+                            fontSize: '0.85rem',
+                            cursor: 'pointer',
+                            boxShadow: '0 4px 12px rgba(46,204,113,0.2)',
+                            transition: 'all 0.2s',
+                            opacity: redeeming ? 0.6 : 1
+                        }}
+                    >
+                        {redeeming ? 'Redeeming...' : 'Redeem Offer'}
+                    </button>
+                )}
+            </div>
+        </div>
+    );
 }
