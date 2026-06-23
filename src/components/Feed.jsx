@@ -11,6 +11,7 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const [unreadCount, setUnreadCount] = useState(0)
     const [showScrollDown, setShowScrollDown] = useState(false)
     const [activeCategory, setActiveCategory] = useState('all')
+    const [sortBy, setSortBy] = useState('latest')
     const [helpfulPosts, setHelpfulPosts] = useState({})
     const [swiperMode, setSwiperMode] = useState(false)
     const [swiperIndex, setSwiperIndex] = useState(0)
@@ -56,10 +57,23 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
         return 'general';
     };
 
-    const filteredPosts = posts.filter(post => {
-        if (activeCategory === 'all') return true;
-        return getPostCategory(post.content) === activeCategory;
-    });
+    const filteredPosts = posts
+        .filter(post => {
+            if (activeCategory === 'all') return true;
+            return getPostCategory(post.content) === activeCategory;
+        })
+        .sort((a, b) => {
+            if (sortBy === 'closest') {
+                return (a.distance_miles || 0) - (b.distance_miles || 0);
+            }
+            if (sortBy === 'helpful') {
+                return (b.helpful_count || 0) - (a.helpful_count || 0);
+            }
+            // default latest
+            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+            return dateB - dateA;
+        });
 
     const scrollToBottom = (behavior = 'smooth') => {
         feedEndRef.current?.scrollIntoView({ behavior });
@@ -677,32 +691,53 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                         </button>
                     ))}
                 </div>
-                {activeCategory === 'buysell' && (
-                    <button
-                        type="button"
-                        onClick={() => setSwiperMode(!swiperMode)}
+                <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', alignItems: 'center' }}>
+                    {activeCategory === 'buysell' && (
+                        <button
+                            type="button"
+                            onClick={() => setSwiperMode(!swiperMode)}
+                            style={{
+                                background: swiperMode ? '#2ecc71' : 'var(--glass-bg)',
+                                color: swiperMode ? 'white' : 'var(--text-primary)',
+                                border: '1px solid var(--glass-border)',
+                                borderRadius: '20px',
+                                padding: '8px 16px',
+                                fontSize: '0.8rem',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                whiteSpace: 'nowrap',
+                                transition: 'all 0.2s ease',
+                                boxShadow: swiperMode ? '0 4px 12px rgba(46,204,113,0.3)' : 'none'
+                            }}
+                        >
+                            <span>🛍️</span>
+                            <span>{swiperMode ? 'List View' : 'Swiper'}</span>
+                        </button>
+                    )}
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
                         style={{
-                            background: swiperMode ? '#2ecc71' : 'var(--glass-bg)',
-                            color: swiperMode ? 'white' : 'var(--text-primary)',
+                            background: 'var(--glass-bg)',
+                            color: 'var(--text-primary)',
                             border: '1px solid var(--glass-border)',
                             borderRadius: '20px',
-                            padding: '8px 16px',
+                            padding: '8px 12px',
                             fontSize: '0.8rem',
                             fontWeight: '700',
                             cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            whiteSpace: 'nowrap',
+                            outline: 'none',
                             transition: 'all 0.2s ease',
-                            boxShadow: swiperMode ? '0 4px 12px rgba(46,204,113,0.3)' : 'none',
-                            marginLeft: 'auto'
                         }}
                     >
-                        <span>🛍️</span>
-                        <span>{swiperMode ? 'List View' : 'Swiper Mode'}</span>
-                    </button>
-                )}
+                        <option value="latest" style={{ background: '#1c1c1e', color: 'var(--text-primary)' }}>🕒 Latest</option>
+                        <option value="closest" style={{ background: '#1c1c1e', color: 'var(--text-primary)' }}>📍 Closest</option>
+                        <option value="helpful" style={{ background: '#1c1c1e', color: 'var(--text-primary)' }}>⭐ Helpful</option>
+                    </select>
+                </div>
             </div>
 
             {/* Karma Announcement Board */}

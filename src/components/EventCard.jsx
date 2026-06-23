@@ -169,6 +169,41 @@ export default function EventCard({ event, session, userReaction, onReactionChan
         }
     }
 
+    const handleExportCalendar = () => {
+        const formatICSDate = (d) => {
+            return d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+        };
+
+        const eventDate = event.event_date ? new Date(event.event_date) : new Date();
+        const endDate = event.expires_at ? new Date(event.expires_at) : new Date(eventDate.getTime() + 2 * 60 * 60 * 1000);
+
+        const icsLines = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//Miles Circle//NONSGML Event//EN',
+            'BEGIN:VEVENT',
+            `UID:${event.id}@milescircle.com`,
+            `DTSTAMP:${formatICSDate(new Date())}`,
+            `DTSTART:${formatICSDate(eventDate)}`,
+            `DTEND:${formatICSDate(endDate)}`,
+            `SUMMARY:${event.title?.replace(/[,;]/g, '\\$&') || 'Event'}`,
+            `DESCRIPTION:${event.description?.replace(/[,;]/g, '\\$&') || ''}`,
+            `GEO:${parseFloat(event.location_lat).toFixed(6)};${parseFloat(event.location_lng).toFixed(6)}`,
+            `LOCATION:${parseFloat(event.location_lat).toFixed(6)}\\, ${parseFloat(event.location_lng).toFixed(6)}`,
+            'END:VEVENT',
+            'END:VCALENDAR'
+        ];
+
+        const icsString = icsLines.join('\r\n');
+        const blob = new Blob([icsString], { type: 'text/calendar;charset=utf-8' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${event.title?.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'event'}.ics`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const handleDelete = async () => {
         setIsDeleting(true)
         try {
@@ -443,6 +478,12 @@ export default function EventCard({ event, session, userReaction, onReactionChan
                     <button className="event-directions-btn" onClick={handleDirections}>
                         <Navigation size={16} />
                         <span>Directions</span>
+                    </button>
+
+                    {/* Export Calendar Sync Button */}
+                    <button className="event-directions-btn" onClick={handleExportCalendar}>
+                        <Calendar size={16} />
+                        <span>Sync</span>
                     </button>
                 </div>
             </div>

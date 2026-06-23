@@ -116,6 +116,7 @@ function App() {
     const [selectedPostFile, setSelectedPostFile] = useState(null);
     const [attachedImageUrl, setAttachedImageUrl] = useState(null);
     const [showVibeCheck, setShowVibeCheck] = useState(false);
+    const [weather, setWeather] = useState(null);
     const [radius, setRadius] = useState(() => {
         const saved = localStorage.getItem('miles_preferred_radius');
         const val = saved ? parseFloat(saved) : 1;
@@ -189,6 +190,42 @@ function App() {
 
     // Keep ref in sync with state so location callbacks can read the current value
     useEffect(() => { offlineModeRef.current = offlineMode; }, [offlineMode]);
+
+    const getWeatherDescription = (code) => {
+        if (code === 0) return { emoji: '☀️', text: 'Clear' };
+        if (code >= 1 && code <= 3) return { emoji: '⛅', text: 'Partly Cloudy' };
+        if (code === 45 || code === 48) return { emoji: '🌫️', text: 'Foggy' };
+        if (code >= 51 && code <= 55) return { emoji: '🌧️', text: 'Drizzle' };
+        if (code >= 61 && code <= 65) return { emoji: '🌧️', text: 'Rainy' };
+        if (code >= 71 && code <= 75) return { emoji: '❄️', text: 'Snowy' };
+        if (code >= 80 && code <= 82) return { emoji: '🌦️', text: 'Showers' };
+        if (code >= 95) return { emoji: '⛈️', text: 'Thunderstorm' };
+        return { emoji: '🌡️', text: 'Weather' };
+    };
+
+    useEffect(() => {
+        if (!position || isNaN(position[0]) || isNaN(position[1])) return;
+        let isMounted = true;
+        const fetchWeather = async () => {
+            try {
+                const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${position[0]}&longitude=${position[1]}&current_weather=true`);
+                if (!res.ok) throw new Error("Weather fetch failed");
+                const data = await res.json();
+                if (data?.current_weather && isMounted) {
+                    setWeather({
+                        temp: Math.round(data.current_weather.temperature),
+                        code: data.current_weather.weathercode
+                    });
+                }
+            } catch (err) {
+                console.error("Error fetching weather:", err);
+            }
+        };
+        fetchWeather();
+        return () => {
+            isMounted = false;
+        };
+    }, [position]);
 
     // Deterministic offset based on user ID hash to keep presence dot stable but offset
     const getFuzzyCoords = (userId, lat, lng) => {
@@ -807,9 +844,39 @@ function App() {
 
     const handleSelectVibe = async (vibe) => {
         try {
+            const calculateNewStreak = (prof) => {
+                if (!prof) return 1;
+                const lastUpdatedAt = prof.vibe_updated_at;
+                if (!lastUpdatedAt) return 1;
+
+                const lastDate = new Date(lastUpdatedAt);
+                const today = new Date();
+
+                const isSameDay = (d1, d2) => 
+                    d1.getFullYear() === d2.getFullYear() &&
+                    d1.getMonth() === d2.getMonth() &&
+                    d1.getDate() === d2.getDate();
+
+                const isYesterday = (d1, d2) => {
+                    const temp = new Date(d2);
+                    temp.setDate(temp.getDate() - 1);
+                    return isSameDay(d1, temp);
+                };
+
+                if (isSameDay(lastDate, today)) {
+                    return prof.vibe_streak || 1;
+                } else if (isYesterday(lastDate, today)) {
+                    return (prof.vibe_streak || 0) + 1;
+                } else {
+                    return 1;
+                }
+            };
+
+            const newStreak = calculateNewStreak(profile);
             const updates = {
                 daily_vibe: vibe,
-                vibe_updated_at: new Date().toISOString()
+                vibe_updated_at: new Date().toISOString(),
+                vibe_streak: newStreak
             };
             await handleUpdateProfile(updates);
             setShowVibeCheck(false);
@@ -1556,7 +1623,39 @@ function App() {
                                     )}
 
                                     {/* MAP LAYER */}
-                                    <div className="map-wrapper" style={{ opacity: locationAvailable ? 1 : 0.3, filter: locationAvailable ? 'none' : 'blur(5px)' }}>
+                                    <div className="map-wrapper" style={{ position: 'relative', opacity: locationAvailable ? 1 : 0.3, filter: locationAvailable ? 'none' : 'blur(5px)' }}>
+                                        {locationAvailable && weather && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '20px',
+                                                left: '20px',
+                                                zIndex: 1000,
+                                                background: 'var(--glass-bg)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '16px',
+                                                padding: '10px 14px',
+                                                backdropFilter: 'blur(20px)',
+                                                WebkitBackdropFilter: 'blur(20px)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '10px',
+                                                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+                                                pointerEvents: 'auto',
+                                                transition: 'all 0.3s ease'
+                                            }}>
+                                                <span style={{ fontSize: '1.6rem' }}>
+                                                    {getWeatherDescription(weather.code).emoji}
+                                                </span>
+                                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                    <span style={{ fontSize: '0.9rem', fontWeight: '800', color: 'var(--text-primary)', lineHeight: '1.2' }}>
+                                                        {weather.temp}°C
+                                                    </span>
+                                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                                                        {getWeatherDescription(weather.code).text}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
                                         {locationAvailable && (
                                             <MapContainer center={position} zoom={13} zoomControl={false} className="map-view">
                                                 <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
@@ -1988,7 +2087,26 @@ function App() {
                                                                     <div className="avatar-edit-icon"><Camera size={20} /></div>
                                                                 </div>
                                                                 <input type="file" id="avatar-upload" hidden accept="image/*" onChange={handleUploadAvatar} />
-                                                                <div className="avatar-hero-info"><h3>{profile?.full_name || 'Anonymous User'}</h3><p>{session.user.email}</p></div>
+                                                                <div className="avatar-hero-info">
+                                                                    <h3>{profile?.full_name || 'Anonymous User'}</h3>
+                                                                    <p>{session?.user?.email}</p>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                                                                        <span style={{ 
+                                                                            background: 'rgba(255, 107, 107, 0.1)', 
+                                                                            border: '1px solid rgba(255, 107, 107, 0.3)', 
+                                                                            borderRadius: '12px', 
+                                                                            padding: '3px 8px', 
+                                                                            fontSize: '0.8rem', 
+                                                                            color: '#ff6b6b', 
+                                                                            fontWeight: 'bold',
+                                                                            display: 'inline-flex',
+                                                                            alignItems: 'center',
+                                                                            gap: '4px'
+                                                                        }}>
+                                                                            🔥 {profile?.vibe_streak || 0} Day Streak
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                             <div className="settings-form-grid">
                                                                 <div className="field-block"><label>Full Name</label><input type="text" value={profile?.full_name || ''} onChange={e => setProfile({ ...profile, full_name: e.target.value })} /></div>
@@ -2540,7 +2658,12 @@ function App() {
                                                 <header style={{ marginBottom: '1.5rem' }}>
                                                     <span style={{ fontSize: '2.5rem' }}>✨</span>
                                                     <h2 className="onboarding-title" style={{ fontSize: '1.6rem', marginTop: '10px' }}>Daily Vibe Check</h2>
-                                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '6px' }}>Let neighbors know what your vibe is today.</p>
+                                                    {profile?.vibe_streak > 0 && (
+                                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(255, 107, 107, 0.1)', border: '1px solid rgba(255, 107, 107, 0.2)', borderRadius: '12px', padding: '4px 10px', fontSize: '0.85rem', color: '#ff6b6b', fontWeight: 'bold', marginTop: '8px' }}>
+                                                            🔥 {profile.vibe_streak} Day Streak
+                                                        </div>
+                                                    )}
+                                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '8px' }}>Let neighbors know what your vibe is today.</p>
                                                 </header>
                                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', margin: '2rem 0' }}>
                                                     {[

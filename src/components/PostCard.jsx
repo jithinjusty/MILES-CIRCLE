@@ -11,6 +11,47 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
     const longPressTimer = useRef(null);
     const menuRef = useRef(null);
     const [localVotes, setLocalVotes] = useState(post?.poll_votes || {});
+    const [listingStatus, setListingStatus] = useState(post?.listing_status || 'available');
+
+    useEffect(() => {
+        if (post?.listing_status) {
+            setListingStatus(post.listing_status);
+        }
+    }, [post?.listing_status]);
+
+    const handleUpdateStatus = async (newStatus) => {
+        setListingStatus(newStatus);
+        try {
+            const { error } = await supabase
+                .from('posts')
+                .update({ listing_status: newStatus })
+                .eq('id', post.id);
+            if (error) throw error;
+        } catch (err) {
+            console.error("Failed to update status:", err);
+            setListingStatus(post?.listing_status || 'available');
+            alert("Failed to update status. Please try again.");
+        }
+    };
+
+    const getPostCategory = (content) => {
+        if (!content) return 'general';
+        const lower = content.toLowerCase();
+        
+        if (lower.includes('#buysell') || lower.includes('#buy') || lower.includes('#sell') || lower.includes('#forsale') ||
+            (/\b(selling|buying|for sale|price|price:)\b/.test(lower))) {
+            return 'buysell';
+        }
+        if (lower.includes('#lostfound') || lower.includes('#lost') || lower.includes('#found') ||
+            (/\b(lost|found|missing|lost my|found a)\b/.test(lower))) {
+            return 'lostfound';
+        }
+        if (lower.includes('#recommend') || lower.includes('#review') || lower.includes('#places') ||
+            (/\b(recommend|recommendation|best place|where can i find|good doctor|good cafe)\b/.test(lower))) {
+            return 'recommendations';
+        }
+        return 'general';
+    };
 
     useEffect(() => {
         setLocalVotes(post?.poll_votes || {});
@@ -311,30 +352,101 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                             </span>
                         </div>
                     </div>
-                    {!post.image_url && post.content && (
-                        <button 
-                            type="button"
-                            onClick={handleSpeak}
-                            title={isSpeaking ? "Stop listening" : "Listen to post"}
-                            style={{
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontSize: '1rem',
-                                padding: '4px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                opacity: 0.6,
-                                transition: 'opacity 0.2s',
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
-                            onMouseLeave={(e) => e.currentTarget.style.opacity = 0.6}
-                        >
-                            {isSpeaking ? '🔇' : '🔊'}
-                        </button>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {post.content && (
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleTranslate(); }}
+                                title="Translate post"
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '1rem',
+                                    padding: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    opacity: 0.6,
+                                    transition: 'opacity 0.2s',
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                                onMouseLeave={(e) => e.currentTarget.style.opacity = 0.6}
+                            >
+                                🌐
+                            </button>
+                        )}
+                        {!post.image_url && post.content && (
+                            <button 
+                                type="button"
+                                onClick={handleSpeak}
+                                title={isSpeaking ? "Stop listening" : "Listen to post"}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '1rem',
+                                    padding: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    opacity: 0.6,
+                                    transition: 'opacity 0.2s',
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                                onMouseLeave={(e) => e.currentTarget.style.opacity = 0.6}
+                            >
+                                {isSpeaking ? '🔇' : '🔊'}
+                            </button>
+                        )}
+                    </div>
                 </div>
+
+                {/* Buy/Sell Listing Status */}
+                {getPostCategory(post.content) === 'buysell' && (
+                    <div style={{ 
+                        marginBottom: '10px', 
+                        display: 'flex', 
+                        justifyContent: isMine ? 'flex-end' : 'flex-start',
+                        marginTop: '4px'
+                    }}>
+                        {isMine ? (
+                            <select
+                                value={listingStatus}
+                                onChange={(e) => handleUpdateStatus(e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                    background: 'rgba(255, 255, 255, 0.08)',
+                                    color: listingStatus === 'available' ? '#2ecc71' : listingStatus === 'pending' ? '#e67e22' : '#95a5a6',
+                                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                                    borderRadius: '12px',
+                                    padding: '4px 8px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    outline: 'none',
+                                    transition: 'all 0.2s',
+                                }}
+                            >
+                                <option value="available" style={{ background: '#1c1c1e', color: '#2ecc71' }}>🟢 Available</option>
+                                <option value="pending" style={{ background: '#1c1c1e', color: '#e67e22' }}>🟡 Pending</option>
+                                <option value="sold" style={{ background: '#1c1c1e', color: '#95a5a6' }}>⚫ Sold</option>
+                            </select>
+                        ) : (
+                            <span style={{
+                                background: 'rgba(255, 255, 255, 0.04)',
+                                color: listingStatus === 'available' ? '#2ecc71' : listingStatus === 'pending' ? '#e67e22' : '#95a5a6',
+                                border: `1px solid ${listingStatus === 'available' ? 'rgba(46, 204, 113, 0.25)' : listingStatus === 'pending' ? 'rgba(230, 126, 34, 0.25)' : 'rgba(149, 165, 166, 0.25)'}`,
+                                borderRadius: '12px',
+                                padding: '3px 8px',
+                                fontSize: '0.75rem',
+                                fontWeight: 'bold',
+                            }}>
+                                {listingStatus === 'available' ? '🟢 Available' : listingStatus === 'pending' ? '🟡 Pending' : '⚫ Sold'}
+                            </span>
+                        )}
+                    </div>
+                )}
 
                 {/* Quoted Reply Preview */}
                 {repliedToContent && (
