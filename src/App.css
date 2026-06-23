@@ -3158,3 +3158,37 @@ body {
         box-shadow: 0 0 0 0 rgba(155, 89, 182, 0);
     }
 }
+
+@keyframes pulse-green {
+    0% {
+        box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.6);
+    }
+    70% {
+        box-shadow: 0 0 0 10px rgba(46, 204, 113, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(46, 204, 113, 0);
+    }
+}
+
+@keyframes alert-marker-glow {
+    0% {
+        box-shadow: 0 4px 12px rgba(255, 82, 82, 0.4);
+        border-color: #ff5252;
+    }
+    100% {
+        box-shadow: 0 4px 20px rgba(255, 0, 0, 0.8), 0 0 15px rgba(255, 0, 0, 0.4);
+        border-color: #ffffff;
+    }
+}
+
+@keyframes slide-down {
+    0% {
+        transform: translate(-50%, -100px);
+        opacity: 0;
+    }
+    100% {
+        transform: translate(-50%, 0);
+        opacity: 1;
+    }
+}

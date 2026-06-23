@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase'
 export default function CreatePostModal({ position, radius, onClose, onPostCreated }) {
     const [content, setContent] = useState('')
     const [isAlert, setIsAlert] = useState(false)
+    const [isPoll, setIsPoll] = useState(false)
+    const [pollOptions, setPollOptions] = useState(['', ''])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
 
@@ -24,6 +26,19 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
                 return
             }
 
+            let finalPollOptions = null;
+            let finalPollVotes = null;
+            if (isPoll) {
+                const validOptions = pollOptions.map(o => o.trim()).filter(Boolean);
+                if (validOptions.length < 2) {
+                    setError('Please provide at least 2 poll choices');
+                    setLoading(false);
+                    return;
+                }
+                finalPollOptions = validOptions;
+                finalPollVotes = {};
+            }
+
             const locationWKT = `POINT(${position[1]} ${position[0]})`
 
             const { error: insertError } = await supabase
@@ -33,7 +48,9 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
                         user_id: user.id,
                         content: content.trim(),
                         location: locationWKT,
-                        is_alert: isAlert
+                        is_alert: isAlert,
+                        poll_options: finalPollOptions,
+                        poll_votes: finalPollVotes
                     }
                 ])
 
@@ -41,6 +58,8 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
 
             setContent('')
             setIsAlert(false)
+            setIsPoll(false)
+            setPollOptions(['', ''])
             onPostCreated?.()
             onClose()
         } catch (err) {
@@ -143,7 +162,105 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
                             <span>🚨</span>
                             <span>Broadcast Alert</span>
                         </button>
+                        <button
+                            type="button"
+                            onClick={() => setIsPoll(!isPoll)}
+                            style={{
+                                background: isPoll ? 'rgba(76, 175, 80, 0.2)' : 'var(--glass-bg)',
+                                border: `1px solid ${isPoll ? '#4CAF50' : 'var(--glass-border)'}`,
+                                borderRadius: '12px',
+                                padding: '12px 16px',
+                                color: isPoll ? '#4CAF50' : 'var(--text-primary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                cursor: 'pointer',
+                                fontSize: '0.9rem',
+                                transition: 'all 0.2s',
+                                fontWeight: isPoll ? '800' : '400'
+                            }}
+                        >
+                            <span>📊</span>
+                            <span>Create Poll</span>
+                        </button>
                     </div>
+
+                    {isPoll && (
+                        <div className="poll-options-builder" style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px',
+                            background: 'rgba(0,0,0,0.15)',
+                            padding: '1.25rem',
+                            borderRadius: '16px',
+                            border: '1px solid var(--glass-border)',
+                            marginBottom: '1.5rem'
+                        }}>
+                            <h4 style={{ margin: '0 0 5px', fontSize: '0.9rem', fontWeight: '800', color: 'var(--text-primary)' }}>Poll Options</h4>
+                            {pollOptions.map((opt, idx) => (
+                                <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input
+                                        type="text"
+                                        placeholder={`Choice ${idx + 1}`}
+                                        value={opt}
+                                        onChange={(e) => {
+                                            const updated = [...pollOptions];
+                                            updated[idx] = e.target.value;
+                                            setPollOptions(updated);
+                                        }}
+                                        maxLength={40}
+                                        style={{
+                                            flex: 1,
+                                            background: 'var(--glass-bg)',
+                                            border: '1px solid var(--glass-border)',
+                                            borderRadius: '10px',
+                                            padding: '10px 14px',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '0.9rem',
+                                            outline: 'none'
+                                        }}
+                                    />
+                                    {pollOptions.length > 2 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setPollOptions(pollOptions.filter((_, i) => i !== idx))}
+                                            style={{
+                                                background: 'transparent',
+                                                border: 'none',
+                                                color: 'var(--accent-red)',
+                                                cursor: 'pointer',
+                                                fontSize: '1rem',
+                                                padding: '4px'
+                                            }}
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                            {pollOptions.length < 4 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setPollOptions([...pollOptions, ''])}
+                                    style={{
+                                        alignSelf: 'flex-start',
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'var(--text-secondary)',
+                                        cursor: 'pointer',
+                                        fontSize: '0.8rem',
+                                        fontWeight: '800',
+                                        marginTop: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                    }}
+                                >
+                                    ＋ Add Option
+                                </button>
+                            )}
+                        </div>
+                    )}
 
                     {error && (
                         <div className="error-message" style={{ background: 'rgba(210, 85, 78, 0.1)', color: 'var(--accent-red)', padding: '12px', borderRadius: '12px', fontSize: '0.9rem', marginBottom: '1.5rem', textAlign: 'center' }}>{error}</div>

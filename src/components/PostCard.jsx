@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
-export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply, posts, isHelpful, onHelpfulToggle }) {
+export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply, posts, isHelpful, onHelpfulToggle, session }) {
     const [showMenu, setShowMenu] = useState(false);
     const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
     const [translatedText, setTranslatedText] = useState(null);
@@ -9,6 +10,36 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
     const [isSpeaking, setIsSpeaking] = useState(false);
     const longPressTimer = useRef(null);
     const menuRef = useRef(null);
+    const [localVotes, setLocalVotes] = useState(post?.poll_votes || {});
+
+    useEffect(() => {
+        setLocalVotes(post?.poll_votes || {});
+    }, [post?.poll_votes]);
+
+    const handleVote = async (optionIdx) => {
+        const currentUserId = session?.user?.id;
+        if (!currentUserId) {
+            alert("Please sign in to vote in polls.");
+            return;
+        }
+        
+        // Optimistic Update
+        const updatedVotes = { ...localVotes, [currentUserId]: optionIdx };
+        setLocalVotes(updatedVotes);
+        
+        // Call Supabase RPC
+        const { error } = await supabase.rpc('cast_poll_vote', {
+            p_post_id: post.id,
+            p_option_index: optionIdx
+        });
+        
+        if (error) {
+            console.error("Failed to cast vote:", error);
+            // Rollback on error
+            setLocalVotes(post.poll_votes || {});
+            alert("Failed to record vote. Please try again.");
+        }
+    };
 
     const handleSpeak = (e) => {
         e.stopPropagation();
@@ -368,6 +399,115 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                         />
                     </div>
                 )}
+
+                {/* Neighbor Poll */}
+                {Array.isArray(post?.poll_options) && post.poll_options.length > 0 && (() => {
+                    const currentUserId = session?.user?.id;
+                    const userVote = localVotes && currentUserId ? localVotes[currentUserId] : undefined;
+                    const hasVoted = userVote !== undefined;
+                    const totalVotes = localVotes ? Object.keys(localVotes).length : 0;
+
+                    return (
+                        <div 
+                            className="poll-card-container" 
+                            style={{
+                                marginTop: '12px',
+                                padding: '12px 14px',
+                                background: 'rgba(0,0,0,0.15)',
+                                border: '1px solid var(--glass-border)',
+                                borderRadius: '16px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px'
+                            }} 
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {post.poll_options.map((option, idx) => {
+                                const optionVoteCount = localVotes ? Object.values(localVotes).filter(v => v === idx).length : 0;
+                                const percentage = totalVotes > 0 ? Math.round((optionVoteCount / totalVotes) * 100) : 0;
+
+                                if (hasVoted) {
+                                    const isUserChoice = userVote === idx;
+                                    return (
+                                        <div 
+                                            key={idx} 
+                                            style={{
+                                                position: 'relative',
+                                                background: 'var(--glass-bg)',
+                                                border: `1px solid ${isUserChoice ? 'var(--accent-red)' : 'var(--glass-border)'}`,
+                                                borderRadius: '12px',
+                                                padding: '10px 14px',
+                                                overflow: 'hidden',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                fontSize: '0.88rem',
+                                                color: 'var(--text-primary)'
+                                            }}
+                                        >
+                                            {/* Animated Progress Bar */}
+                                            <div style={{
+                                                position: 'absolute',
+                                                left: 0,
+                                                top: 0,
+                                                bottom: 0,
+                                                width: `${percentage}%`,
+                                                background: isUserChoice ? 'rgba(210, 85, 78, 0.2)' : 'rgba(255,255,255,0.06)',
+                                                zIndex: 0,
+                                                transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)'
+                                            }} />
+                                            
+                                            <span style={{ zIndex: 1, fontWeight: isUserChoice ? '800' : '400', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                {option} {isUserChoice && <span style={{ fontSize: '0.8rem', color: 'var(--accent-red)' }}>✓</span>}
+                                            </span>
+                                            <span style={{ zIndex: 1, fontWeight: '800', opacity: 0.8 }}>
+                                                {percentage}% ({optionVoteCount})
+                                            </span>
+                                        </div>
+                                    );
+                                } else {
+                                    return (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => handleVote(idx)}
+                                            style={{
+                                                background: 'var(--glass-bg)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '12px',
+                                                padding: '10px 14px',
+                                                color: 'var(--text-primary)',
+                                                fontSize: '0.88rem',
+                                                textAlign: 'left',
+                                                cursor: 'pointer',
+                                                width: '100%',
+                                                transition: 'all 0.2s',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                outline: 'none'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+                                                e.currentTarget.style.borderColor = 'var(--text-secondary)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = 'var(--glass-bg)';
+                                                e.currentTarget.style.borderColor = 'var(--glass-border)';
+                                            }}
+                                        >
+                                            <span>{option}</span>
+                                            <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>◯</span>
+                                        </button>
+                                    );
+                                }
+                            })}
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textAlign: 'right', marginTop: '2px', fontWeight: '700' }}>
+                                {totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}
+                            </div>
+                        </div>
+                    );
+                })()}
 
                 {/* AI generating indicator */}
                 {aiGenerating && (

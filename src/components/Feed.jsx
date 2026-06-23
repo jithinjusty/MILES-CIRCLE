@@ -20,6 +20,23 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const prevPostsLength = useRef(0);
     const scrollContainerRef = useRef(null);
 
+    const [announcements, setAnnouncements] = useState([])
+    const [currentAnnounceIdx, setCurrentAnnounceIdx] = useState(0)
+
+    const fetchAnnouncements = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('announcements')
+                .select('*, profiles(full_name, avatar_url, points)')
+                .order('created_at', { ascending: false });
+            if (!error && data) {
+                setAnnouncements(data);
+            }
+        } catch (err) {
+            console.error("Error fetching announcements:", err);
+        }
+    };
+
     const getPostCategory = (content) => {
         if (!content) return 'general';
         const lower = content.toLowerCase();
@@ -228,15 +245,15 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     useEffect(() => {
         fetchPosts()
 
-        // Subscribe to real-time changes
+        // Subscribe to real-time posts changes (INSERT, UPDATE, DELETE)
         const channel = supabase
             .channel('public:posts')
             .on('postgres_changes', {
-                event: 'INSERT',
+                event: '*',
                 schema: 'public',
                 table: 'posts'
             }, () => {
-                console.log("New post detected, refreshing...");
+                console.log("Post change detected, refreshing...");
                 fetchPosts();
             })
             .subscribe();
@@ -245,6 +262,35 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
             supabase.removeChannel(channel);
         }
     }, [position?.[0], position?.[1], radius, refreshTrigger])
+
+    useEffect(() => {
+        fetchAnnouncements();
+
+        // Subscribe to real-time announcements changes
+        const announceChannel = supabase
+            .channel('public:announcements')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'announcements'
+            }, () => {
+                console.log("Announcement change detected, refreshing...");
+                fetchAnnouncements();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(announceChannel);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (announcements.length <= 1) return;
+        const interval = setInterval(() => {
+            setCurrentAnnounceIdx(prev => (prev + 1) % announcements.length);
+        }, 6000);
+        return () => clearInterval(interval);
+    }, [announcements.length]);
 
     const aiProcessingRef = useRef({});
 
@@ -659,6 +705,117 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                 )}
             </div>
 
+            {/* Karma Announcement Board */}
+            {announcements.length > 0 && (
+                <div 
+                    className="karma-announcement-ticker" 
+                    style={{
+                        background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 87, 34, 0.1) 100%)',
+                        borderBottom: '1px solid rgba(255, 193, 7, 0.2)',
+                        padding: '10px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
+                        overflow: 'hidden',
+                        position: 'relative',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                        zIndex: 5
+                    }}
+                >
+                    <div style={{
+                        background: 'linear-gradient(135deg, #FFC107 0%, #FF5722 100%)',
+                        color: 'black',
+                        padding: '4px 8px',
+                        borderRadius: '8px',
+                        fontSize: '0.65rem',
+                        fontWeight: '900',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        boxShadow: '0 4px 10px rgba(255, 193, 7, 0.3)',
+                        flexShrink: 0
+                    }}>
+                        <span>👑</span> Karma Broadcast
+                    </div>
+                    
+                    <div style={{ flex: 1, overflow: 'hidden', position: 'relative', height: '24px' }}>
+                        {announcements.map((announce, idx) => {
+                            const isCurrent = idx === currentAnnounceIdx;
+                            const author = announce.profiles;
+                            const authorName = author?.full_name || 'Active Neighbor';
+                            const points = author?.points || 0;
+                            const avatar = author?.avatar_url;
+                            const initials = (authorName || '?')[0].toUpperCase();
+                            
+                            return (
+                                <div
+                                    key={announce.id}
+                                    style={{
+                                        position: 'absolute',
+                                        left: 0,
+                                        top: 0,
+                                        width: '100%',
+                                        height: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        transform: isCurrent ? 'translateY(0)' : 'translateY(30px)',
+                                        opacity: isCurrent ? 1 : 0,
+                                        transition: 'all 0.5s ease-in-out',
+                                        pointerEvents: isCurrent ? 'auto' : 'none'
+                                    }}
+                                >
+                                    {/* Small Avatar */}
+                                    <div style={{
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '6px',
+                                        background: 'rgba(255,255,255,0.1)',
+                                        border: '1px solid rgba(255,255,255,0.2)',
+                                        fontSize: '0.6rem',
+                                        fontWeight: '800',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        overflow: 'hidden',
+                                        color: '#FFC107',
+                                        flexShrink: 0
+                                    }}>
+                                        {avatar ? <img src={avatar} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : initials}
+                                    </div>
+                                    <span style={{ fontSize: '0.78rem', fontWeight: '800', color: '#FFC107', whiteSpace: 'nowrap' }}>
+                                        {authorName} ({points} pts):
+                                    </span>
+                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: '500' }}>
+                                        {announce.content}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    {announcements.length > 1 && (
+                        <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                            {announcements.map((_, idx) => (
+                                <div
+                                    key={idx}
+                                    style={{
+                                        width: '6px',
+                                        height: '6px',
+                                        borderRadius: '50%',
+                                        background: idx === currentAnnounceIdx ? '#FFC107' : 'rgba(255,255,255,0.2)',
+                                        transition: 'background 0.3s'
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {swiperMode ? (
                 <div className="swiper-container" style={{
                     padding: '2rem 1.5rem',
@@ -713,6 +870,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                     onAIReply={handleAIReply}
                                     isHelpful={!!helpfulPosts[filteredPosts[swiperIndex].id]}
                                     onHelpfulToggle={handleHelpfulToggle}
+                                    session={session}
                                 />
                             </div>
 
@@ -841,6 +999,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                             onAIReply={handleAIReply}
                             isHelpful={!!helpfulPosts[post.id]}
                             onHelpfulToggle={handleHelpfulToggle}
+                            session={session}
                         />
                     ))}
                     <div ref={feedEndRef} />

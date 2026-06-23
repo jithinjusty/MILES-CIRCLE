@@ -118,6 +118,12 @@ function App() {
     const [newEventsCount, setNewEventsCount] = useState(0);
     const lastEventCheckRef = useRef(null);
     const [newPassword, setNewPassword] = useState('');
+    const [waves, setWaves] = useState([]);
+    const [incomingWave, setIncomingWave] = useState(null);
+    const [mapPosts, setMapPosts] = useState([]);
+    const [announcementContent, setAnnouncementContent] = useState('');
+    const [isBroadcasting, setIsBroadcasting] = useState(false);
+    const lastWaveTimeRef = useRef(null);
     const [confirmNewPassword, setConfirmNewPassword] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
     const sliderTimer = useRef(null);
@@ -263,6 +269,61 @@ function App() {
             iconAnchor: [16, 16],
             popupAnchor: [0, -16]
         });
+    };
+
+    const qaIcon = () => {
+        return L.divIcon({
+            className: 'custom-qa-marker',
+            html: `
+                <div style="
+                    width: 32px; height: 32px;
+                    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+                    border: 2px solid white;
+                    border-radius: 50%;
+                    display: flex; align-items: center; justify-content: center;
+                    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.5);
+                    animation: pulse-green 2s infinite;
+                ">
+                    <span style="font-size: 0.95rem; font-family: var(--font-family); font-weight: 900; color: white;">❓</span>
+                </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -16]
+        });
+    };
+
+    const alertIcon = () => {
+        return L.divIcon({
+            className: 'custom-alert-marker',
+            html: `
+                <div style="
+                    width: 32px; height: 32px;
+                    background: linear-gradient(135deg, #ff5252 0%, #ff0000 100%);
+                    border: 2px solid white;
+                    border-radius: 50%;
+                    display: flex; align-items: center; justify-content: center;
+                    box-shadow: 0 4px 12px rgba(255, 82, 82, 0.6);
+                    animation: alert-marker-glow 1.5s infinite alternate;
+                ">
+                    <span style="font-size: 0.95rem; font-family: var(--font-family); font-weight: 900; color: white;">🚨</span>
+                </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -16]
+        });
+    };
+
+    const parseWKTPoint = (wktString) => {
+        if (!wktString) return null;
+        const match = wktString.match(/POINT\(([-\d.]+) ([\d.-]+)\)/i);
+        if (match) {
+            const lng = parseFloat(match[1]);
+            const lat = parseFloat(match[2]);
+            return [lat, lng];
+        }
+        return null;
     };
 
     // Update presence in DB whenever position changes
@@ -566,6 +627,86 @@ function App() {
             supabase.removeChannel(channel);
         };
     }, [session?.user?.id, locationAvailable]);
+
+    // Load and listen to local posts for map tracking (Q&A/Alert Pins)
+    useEffect(() => {
+        if (!position || isNaN(position[0]) || isNaN(position[1])) return;
+        
+        const fetchMapPosts = async () => {
+            try {
+                const { data, error } = await supabase.rpc('get_posts_within_radius', {
+                    user_lat: parseFloat(position[0]),
+                    user_lng: parseFloat(position[1]),
+                    radius_miles: parseFloat(radius) || 1
+                });
+                if (!error && data) {
+                    setMapPosts(data);
+                }
+            } catch (err) {
+                console.error("Error fetching map posts:", err);
+            }
+        };
+
+        fetchMapPosts();
+
+        const channel = supabase
+            .channel('map-posts-tracker')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'posts'
+            }, () => {
+                fetchMapPosts();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [position?.[0], position?.[1], radius, feedTrigger]);
+
+    // Realtime waves listener
+    useEffect(() => {
+        if (!session?.user?.id) return;
+        
+        // Initial fetch of waves
+        supabase.from('profiles').select('received_waves').eq('id', session.user.id).single()
+            .then(({ data }) => {
+                if (data && Array.isArray(data.received_waves)) {
+                    setWaves(data.received_waves);
+                }
+            });
+
+        const profileChannel = supabase
+            .channel(`profile-waves-${session.user.id}`)
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'profiles',
+                filter: `id=eq.${session.user.id}`
+            }, (payload) => {
+                const newProfile = payload.new;
+                if (newProfile && Array.isArray(newProfile.received_waves)) {
+                    const newWaves = newProfile.received_waves;
+                    setWaves(newWaves);
+                    if (newWaves.length > 0) {
+                        const latestWave = newWaves[0];
+                        if (latestWave.timestamp !== lastWaveTimeRef.current) {
+                            lastWaveTimeRef.current = latestWave.timestamp;
+                            setIncomingWave(latestWave);
+                            setTimeout(() => {
+                                setIncomingWave(null);
+                            }, 5000);
+                        }
+                    }
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(profileChannel);
+        };
+    }, [session?.user?.id]);
 
     const fetchProfile = async (userId) => {
         try {
@@ -938,6 +1079,49 @@ function App() {
         }
     }
 
+    const handleSendWave = async () => {
+        if (!session || !viewingProfile) return;
+        try {
+            const { error } = await supabase.rpc('send_proximity_wave', {
+                p_recipient_id: viewingProfile.id
+            });
+            if (error) throw error;
+            alert(`You sent a wave to ${viewingProfile.full_name || 'your neighbor'}! 👋`);
+        } catch (err) {
+            console.error("Error sending wave:", err);
+            alert("Failed to send wave: " + err.message);
+        }
+    };
+
+    const handleCreateAnnouncement = async () => {
+        if (!session || !announcementContent.trim()) return;
+        setIsBroadcasting(true);
+        try {
+            const { error } = await supabase.rpc('create_announcement', {
+                p_content: announcementContent.trim()
+            });
+            if (error) throw error;
+            alert("Your announcement has been broadcasted successfully! 📢");
+            setAnnouncementContent('');
+            setShowSettings(false);
+        } catch (err) {
+            console.error("Error creating announcement:", err);
+            alert("Failed to broadcast announcement: " + err.message);
+        } finally {
+            setIsBroadcasting(false);
+        }
+    };
+
+    const handleAnswerQuestion = (post) => {
+        setIsMapInteracting(false);
+        const replyName = post.is_ai ? post.ai_name : (post.full_name || post.user_email?.split('@')[0] || 'Someone');
+        setReplyingTo({
+            id: post.id,
+            content: post.content,
+            author: replyName
+        });
+    };
+
     const handleBugReport = async () => {
         if (!bugDescription.trim()) return;
         try {
@@ -979,6 +1163,58 @@ function App() {
 
     return (
         <div className={`app-container ${isMapInteracting ? 'map-mode' : 'chat-mode'} ${profile?.theme_mode === 'light' ? 'light-mode' : ''}`}>
+            {incomingWave && (
+                <div style={{
+                    position: 'fixed',
+                    top: '20px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 10000,
+                    background: 'linear-gradient(135deg, rgba(255,152,0,0.95) 0%, rgba(255,87,34,0.95) 100%)',
+                    color: 'white',
+                    padding: '12px 24px',
+                    borderRadius: '16px',
+                    boxShadow: '0 8px 32px rgba(255,87,34,0.4)',
+                    backdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    animation: 'slide-down 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                    fontFamily: 'var(--font-family)'
+                }}>
+                    <span style={{ fontSize: '1.5rem', animation: 'pulse 1s infinite' }}>👋</span>
+                    <div>
+                        <div style={{ fontWeight: '900', fontSize: '0.9rem' }}>Incoming Wave!</div>
+                        <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>{incomingWave.from_name} is waving at you!</div>
+                    </div>
+                    <button
+                        onClick={async () => {
+                            try {
+                                await supabase.rpc('send_proximity_wave', { p_recipient_id: incomingWave.from_id });
+                                alert(`Waved back at ${incomingWave.from_name}! 👋`);
+                                setIncomingWave(null);
+                            } catch (err) {
+                                console.error(err);
+                            }
+                        }}
+                        style={{
+                            background: 'white',
+                            color: '#FF5722',
+                            border: 'none',
+                            borderRadius: '8px',
+                            padding: '6px 12px',
+                            fontSize: '0.75rem',
+                            fontWeight: '900',
+                            cursor: 'pointer',
+                            marginLeft: '8px',
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+                        }}
+                    >
+                        Wave Back
+                    </button>
+                </div>
+            )}
             {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
 
             {/* Fallback Loader if Splash is gone but Auth is still checking */}
@@ -1409,6 +1645,127 @@ function App() {
                                                         </Marker>
                                                     );
                                                 })}
+
+                                                {/* Q&A / Alert Map Pins */}
+                                                {mapPosts.map(post => {
+                                                    const coords = parseWKTPoint(post.location);
+                                                    if (!coords) return null;
+
+                                                    const isQuestion = post.content && post.content.includes('?') && !post.reply_to_id;
+                                                    const isAlert = post.is_alert && !post.reply_to_id;
+
+                                                    if (isQuestion) {
+                                                        return (
+                                                            <Marker
+                                                                key={`map-qa-${post.id}`}
+                                                                position={coords}
+                                                                icon={qaIcon()}
+                                                            >
+                                                                <Popup>
+                                                                    <div style={{
+                                                                        background: 'rgba(30, 30, 30, 0.9)',
+                                                                        color: '#fff',
+                                                                        padding: '12px',
+                                                                        borderRadius: '16px',
+                                                                        fontFamily: 'var(--font-family)',
+                                                                        fontSize: '0.85rem',
+                                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                                        minWidth: '200px',
+                                                                        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                                                                        backdropFilter: 'blur(20px)',
+                                                                        WebkitBackdropFilter: 'blur(20px)'
+                                                                    }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                                                            <span style={{ fontSize: '1.1rem' }}>❓</span>
+                                                                            <span style={{ fontWeight: '900', color: '#2ecc71', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>
+                                                                                Neighbor Question
+                                                                            </span>
+                                                                        </div>
+                                                                        <p style={{ margin: '0 0 10px', color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', lineHeight: '1.4' }}>
+                                                                            "{post.content.length > 80 ? post.content.substring(0, 80) + '...' : post.content}"
+                                                                        </p>
+                                                                        <button
+                                                                            onClick={() => handleAnswerQuestion(post)}
+                                                                            style={{
+                                                                                background: '#2ecc71',
+                                                                                color: 'white',
+                                                                                border: 'none',
+                                                                                borderRadius: '8px',
+                                                                                padding: '6px 12px',
+                                                                                fontSize: '0.75rem',
+                                                                                fontWeight: '800',
+                                                                                cursor: 'pointer',
+                                                                                width: '100%',
+                                                                                textAlign: 'center',
+                                                                                boxShadow: '0 4px 12px rgba(46,204,113,0.25)'
+                                                                            }}
+                                                                        >
+                                                                            Help & Answer
+                                                                        </button>
+                                                                    </div>
+                                                                </Popup>
+                                                            </Marker>
+                                                        );
+                                                    }
+
+                                                    if (isAlert) {
+                                                        return (
+                                                            <Marker
+                                                                key={`map-alert-${post.id}`}
+                                                                position={coords}
+                                                                icon={alertIcon()}
+                                                            >
+                                                                <Popup>
+                                                                    <div style={{
+                                                                        background: 'rgba(30, 30, 30, 0.9)',
+                                                                        color: '#fff',
+                                                                        padding: '12px',
+                                                                        borderRadius: '16px',
+                                                                        fontFamily: 'var(--font-family)',
+                                                                        fontSize: '0.85rem',
+                                                                        border: '1px solid rgba(255,255,255,0.1)',
+                                                                        minWidth: '200px',
+                                                                        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+                                                                        backdropFilter: 'blur(20px)',
+                                                                        WebkitBackdropFilter: 'blur(20px)'
+                                                                    }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                                                            <span style={{ fontSize: '1.1rem' }}>🚨</span>
+                                                                            <span style={{ fontWeight: '900', color: '#e74c3c', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>
+                                                                                Broadcast Alert
+                                                                            </span>
+                                                                        </div>
+                                                                        <p style={{ margin: '0 0 10px', color: 'rgba(255,255,255,0.7)', fontSize: '0.8rem', lineHeight: '1.4' }}>
+                                                                            "{post.content.length > 80 ? post.content.substring(0, 80) + '...' : post.content}"
+                                                                        </p>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setIsMapInteracting(false);
+                                                                            }}
+                                                                            style={{
+                                                                                background: '#e74c3c',
+                                                                                color: 'white',
+                                                                                border: 'none',
+                                                                                borderRadius: '8px',
+                                                                                padding: '6px 12px',
+                                                                                fontSize: '0.75rem',
+                                                                                fontWeight: '800',
+                                                                                cursor: 'pointer',
+                                                                                width: '100%',
+                                                                                textAlign: 'center',
+                                                                                boxShadow: '0 4px 12px rgba(231,76,60,0.25)'
+                                                                            }}
+                                                                        >
+                                                                            View Alert in Feed
+                                                                        </button>
+                                                                    </div>
+                                                                </Popup>
+                                                            </Marker>
+                                                        );
+                                                    }
+
+                                                    return null;
+                                                })}
                                                 <MapController center={position} radius={radius} isInteracting={isMapInteracting} />
                                             </MapContainer>
                                         )}
@@ -1608,6 +1965,10 @@ function App() {
                                                         <nav className="settings-nav">
                                                             <button className={`nav-item ${activeSettingsTab === 'main' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('main')}><User size={20} /> <span>Profile Identity</span></button>
                                                             <button className={`nav-item ${activeSettingsTab === 'appearance' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('appearance')}><Globe size={20} /> <span>Appearance</span></button>
+                                                            <button className={`nav-item ${activeSettingsTab === 'waves' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('waves')}><span>👋</span> <span>Waves Received</span></button>
+                                                            {profile?.points >= 100 && (
+                                                                <button className={`nav-item ${activeSettingsTab === 'broadcasts' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('broadcasts')}><span>📢</span> <span>Broadcast Announcement</span></button>
+                                                            )}
                                                             <button className={`nav-item ${activeSettingsTab === 'security' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('security')}><ShieldCheck size={20} /> <span>Security</span></button>
                                                             <button className={`nav-item ${activeSettingsTab === 'data' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('data')}><Database size={20} /> <span>Data Control</span></button>
                                                             <button className={`nav-item ${activeSettingsTab === 'subscription' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('subscription')}><CreditCard size={20} /> <span>Subscription</span></button>
@@ -1681,12 +2042,165 @@ function App() {
                                                         </div>
                                                     )}
 
-                                                    {activeSettingsTab === 'appearance' && (
+                                                     {activeSettingsTab === 'waves' && (
+                                                         <div className="settings-panel anim-fade-in">
+                                                             <div className="panel-header">
+                                                                 <h2>Waves Received</h2>
+                                                                 <p>See neighbors who waved at you in the circle.</p>
+                                                             </div>
+                                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '1.5rem' }}>
+                                                                 {waves.length === 0 ? (
+                                                                     <div style={{
+                                                                         padding: '2rem',
+                                                                         textAlign: 'center',
+                                                                         background: 'var(--glass-bg)',
+                                                                         border: '1px solid var(--glass-border)',
+                                                                         borderRadius: '16px',
+                                                                         color: 'var(--text-secondary)'
+                                                                     }}>
+                                                                         <span style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}>🏖️</span>
+                                                                         No waves received yet. Go wave at your neighbors on the map!
+                                                                     </div>
+                                                                 ) : (
+                                                                     waves.map((wave, idx) => (
+                                                                         <div key={idx} style={{
+                                                                             display: 'flex',
+                                                                             alignItems: 'center',
+                                                                             justifyContent: 'space-between',
+                                                                             padding: '12px 16px',
+                                                                             background: 'var(--glass-bg)',
+                                                                             border: '1px solid var(--glass-border)',
+                                                                             borderRadius: '16px'
+                                                                         }}>
+                                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                                 <div style={{
+                                                                                     width: '32px',
+                                                                                     height: '32px',
+                                                                                     borderRadius: '10px',
+                                                                                     background: 'var(--panel-bg)',
+                                                                                     border: '1px solid var(--glass-border)',
+                                                                                     display: 'flex',
+                                                                                     alignItems: 'center',
+                                                                                     justifyContent: 'center',
+                                                                                     fontSize: '0.9rem',
+                                                                                     fontWeight: '800',
+                                                                                     color: 'var(--accent-red)'
+                                                                                 }}>
+                                                                                     {(wave.from_name || '?')[0].toUpperCase()}
+                                                                                 </div>
+                                                                                 <div>
+                                                                                     <div style={{ fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                                                                                         {wave.from_name}
+                                                                                     </div>
+                                                                                     <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                                                                                         {new Date(wave.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(wave.timestamp).toLocaleDateString()}
+                                                                                     </div>
+                                                                                 </div>
+                                                                             </div>
+                                                                             <button
+                                                                                 onClick={async () => {
+                                                                                     try {
+                                                                                         await supabase.rpc('send_proximity_wave', { p_recipient_id: wave.from_id });
+                                                                                         alert(`Waved back at ${wave.from_name}! 👋`);
+                                                                                     } catch (err) {
+                                                                                         console.error(err);
+                                                                                         alert("Failed to wave back: " + err.message);
+                                                                                     }
+                                                                                 }}
+                                                                                 style={{
+                                                                                     background: 'linear-gradient(135deg, #FF9800 0%, #FF5722 100%)',
+                                                                                     color: 'white',
+                                                                                     border: 'none',
+                                                                                     borderRadius: '10px',
+                                                                                     padding: '8px 16px',
+                                                                                     fontSize: '0.8rem',
+                                                                                     fontWeight: '800',
+                                                                                     cursor: 'pointer',
+                                                                                     boxShadow: '0 4px 10px rgba(255, 87, 34, 0.2)'
+                                                                                 }}
+                                                                             >
+                                                                                 👋 Wave Back
+                                                                             </button>
+                                                                         </div>
+                                                                     ))
+                                                                 )}
+                                                             </div>
+                                                         </div>
+                                                     )}
+
+                                                     {activeSettingsTab === 'broadcasts' && profile?.points >= 100 && (
+                                                         <div className="settings-panel anim-fade-in">
+                                                             <div className="panel-header">
+                                                                 <h2>Broadcast Announcement</h2>
+                                                                 <p>Pin a 24-hour announcement to the top of everyone's feed.</p>
+                                                             </div>
+                                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '1.5rem' }}>
+                                                                 <div style={{
+                                                                     background: 'rgba(255, 193, 7, 0.05)',
+                                                                     border: '1px solid rgba(255, 193, 7, 0.2)',
+                                                                     padding: '12px 16px',
+                                                                     borderRadius: '16px',
+                                                                     color: '#FFC107',
+                                                                     fontSize: '0.82rem',
+                                                                     lineHeight: '1.5'
+                                                                 }}>
+                                                                     👑 <strong>Karma Privilege Active</strong>: You have {profile?.points || 0} Karma points, which unlocks the ability to broadcast local notifications visible to all neighbors.
+                                                                 </div>
+                                                                 
+                                                                 <div className="field-block full-width" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                                     <label style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontWeight: '700' }}>Announcement Message (max 150 chars)</label>
+                                                                     <textarea
+                                                                         placeholder="E.g., Neighborhood block party this Saturday at 5 PM! Bring your own snacks. 🥳"
+                                                                         value={announcementContent}
+                                                                         onChange={(e) => setAnnouncementContent(e.target.value.substring(0, 150))}
+                                                                         style={{
+                                                                             width: '100%',
+                                                                             height: '100px',
+                                                                             background: 'var(--glass-bg)',
+                                                                             border: '1px solid var(--glass-border)',
+                                                                             borderRadius: '14px',
+                                                                             color: 'var(--text-primary)',
+                                                                             padding: '14px',
+                                                                             outline: 'none',
+                                                                             resize: 'none',
+                                                                             fontSize: '0.9rem',
+                                                                             fontFamily: 'var(--font-family)'
+                                                                         }}
+                                                                     />
+                                                                     <div style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '700' }}>
+                                                                         {announcementContent.length} / 150 characters
+                                                                     </div>
+                                                                 </div>
+                                                                 
+                                                                 <button
+                                                                     onClick={handleCreateAnnouncement}
+                                                                     disabled={isBroadcasting || !announcementContent.trim()}
+                                                                     style={{
+                                                                         background: 'linear-gradient(135deg, #FFC107 0%, #FF5722 100%)',
+                                                                         color: 'black',
+                                                                         border: 'none',
+                                                                         borderRadius: '12px',
+                                                                         padding: '12px 20px',
+                                                                         fontSize: '0.9rem',
+                                                                         fontWeight: '900',
+                                                                         cursor: (!announcementContent.trim() || isBroadcasting) ? 'default' : 'pointer',
+                                                                         opacity: (!announcementContent.trim() || isBroadcasting) ? 0.5 : 1,
+                                                                         textAlign: 'center',
+                                                                         boxShadow: '0 4px 15px rgba(255, 193, 7, 0.25)',
+                                                                         transition: 'all 0.2s'
+                                                                     }}
+                                                                 >
+                                                                     {isBroadcasting ? 'Broadcasting...' : '📢 Broadcast for 24h'}
+                                                                 </button>
+                                                             </div>
+                                                         </div>
+                                                     )}
+
+                                                     {activeSettingsTab === 'appearance' && (
                                                         <div className="settings-panel anim-fade-in">
                                                             <div className="panel-header"><h2>Visual Experience</h2><p>Tailor the miles interface to your preference.</p></div>
                                                             <div className="appearance-grid">
                                                                 <div className="appearance-card">
-                                                                    <div className="card-info"><h4>Theme Mode</h4><p>Switch between light and dark aesthetics.</p></div>
                                                                     <div className="theme-toggle-strip">
                                                                         <button className={`theme-tab ${profile?.theme_mode !== 'light' ? 'active' : ''}`} onClick={() => handleUpdateProfile({ theme_mode: 'dark' })}><Lock size={16} /> Dark</button>
                                                                         <button className={`theme-tab ${profile?.theme_mode === 'light' ? 'active' : ''}`} onClick={() => handleUpdateProfile({ theme_mode: 'light' })}><Globe size={16} /> Light</button>
@@ -1846,6 +2360,29 @@ function App() {
                                                                 );
                                                             })}
                                                         </div>
+                                                        <button 
+                                                            className="btn-wave-primary" 
+                                                            onClick={handleSendWave} 
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '12px',
+                                                                borderRadius: '14px',
+                                                                background: 'linear-gradient(135deg, #FF9800 0%, #FF5722 100%)',
+                                                                color: 'white',
+                                                                border: 'none',
+                                                                fontWeight: '800',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                gap: '8px',
+                                                                marginBottom: '10px',
+                                                                boxShadow: '0 4px 15px rgba(255, 87, 34, 0.25)',
+                                                                transition: 'transform 0.2s'
+                                                            }}
+                                                        >
+                                                            👋 Wave at {viewingProfile.full_name || 'Neighbor'}
+                                                        </button>
                                                         <div className="viewer-actions-row">
                                                             <button className="btn-rate up" onClick={() => handleRate(1)}><ShieldCheck size={20} /> Like</button>
                                                             <button className="btn-rate down" onClick={() => handleRate(-1)}><X size={20} /> Dislike</button>
