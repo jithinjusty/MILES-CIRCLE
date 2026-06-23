@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PostCard from './PostCard'
 
-export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick }) {
+export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick, aiResponderEnabled }) {
     const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(true)
     const [toast, setToast] = useState(null)
@@ -551,12 +551,24 @@ Details: ${lostFoundDesc.trim()}${contactText}`;
     // AI Assistant Timer
     useEffect(() => {
         if (!posts || posts.length === 0) return;
+        if (aiResponderEnabled === false) {
+            if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+            return;
+        }
 
         // Oldest is first, so latest is last
         const latestPost = posts[posts.length - 1];
 
         // Is it mine? Avoid AI triggering on others' posts or AI's own posts
         if (latestPost.user_id !== session?.user?.id || latestPost.is_ai) {
+            if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+            return;
+        }
+
+        const isAudio = latestPost.content && latestPost.content.startsWith('[Audio Note:');
+        const isPhoto = !!latestPost.image_url;
+
+        if (isAudio || isPhoto) {
             if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
             return;
         }
@@ -598,8 +610,9 @@ Details: ${lostFoundDesc.trim()}${contactText}`;
                 const revRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position[0]}&lon=${position[1]}&zoom=3&email=hello@milescircle.com`);
                 const revData = await revRes.json();
                 const cc = (revData?.address?.country_code || '').toUpperCase();
+                const ccKey = cc;
                 const state = (revData?.address?.state || '').toLowerCase();
-                let pool = NAMES_BY_COUNTRY[cc] || NAMES_BY_COUNTRY.default;
+                let pool = NAMES_BY_COUNTRY[ccKey] || NAMES_BY_COUNTRY.default;
                 
                 // Specific names for Kerala
                 if (cc === 'IN' && (state.includes('kerala') || state.includes('kl'))) {
@@ -636,7 +649,6 @@ Details: ${lostFoundDesc.trim()}${contactText}`;
                 if (msgLower.includes("restaurant") || msgLower.includes("food") || msgLower.includes("eat") || msgLower.includes("cafe") || msgLower.includes("coffee")) {
                     try {
                         const viewbox = `${position[1]-0.1},${position[0]+0.1},${position[1]+0.1},${position[0]-0.1}`;
-                        // Added email to prevent 403 Forbidden
                         const pRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=restaurant&lat=${position[0]}&lon=${position[1]}&bounded=1&viewbox=${viewbox}&limit=3&email=hello@milescircle.com`);
                         const pData = await pRes.json();
                         const placeNames = pData.map(p => p.name).filter(Boolean).join(" and ");
@@ -744,7 +756,6 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                 if (resText.startsWith('"') && resText.endsWith('"')) {
                     resText = resText.substring(1, resText.length - 1);
                 }
-                // Strip any accidental name prefix (NAME: or NAME|) the model might add
                 resText = resText.replace(/^[A-Za-z]{1,20}[:|]\s*/,'');
                 resText = resText.replace(/As an AI|I am an AI|artificial intelligence|language model|how can I assist/gi, '');
                 aiReply = resText.substring(0, 300).trim() || aiReply;
@@ -754,7 +765,6 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                 const localNames = ["Alex", "Sam", "Jordan", "Casey", "Taylor", "Morgan", "Avery", "Jamie"];
                 aiName = localNames[Math.floor(Math.random() * localNames.length)];
                 
-                // Extremely intelligent fallback checking local context string
                 if (contextStr.includes("Nearby places")) {
                     const placesList = contextStr.split("Nearby places: ")[1]?.split(".")[0];
                     if (msgLower.includes("best") || msgLower.includes("rating") || msgLower.includes("google")) {
@@ -804,7 +814,6 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                     location: locationWKT,
                     is_ai: true,
                     ai_name: aiName,
-                    // Link the AI reply to the original post so quoted preview shows
                     reply_to_id: latestPost.id,
                     reply_to_content: latestPost.content?.substring(0, 200),
                     reply_to_author: latestPost.full_name || latestPost.user_email?.split('@')[0] || 'You'
@@ -819,7 +828,6 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
 
         const ageMs = new Date() - new Date(latestPost.created_at);
         if (ageMs > 60000) {
-            // Already older than 1 minute, trigger instantly
             triggerAI();
         } else {
             const timeToWait = 60000 - ageMs;
@@ -830,7 +838,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
         return () => {
             if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
         }
-    }, [posts, position, session?.user?.id]);
+    }, [posts, position, session?.user?.id, aiResponderEnabled]);
 
     if (loading && posts.length === 0) {
         return (

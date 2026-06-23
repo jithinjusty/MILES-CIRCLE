@@ -229,6 +229,17 @@ function App() {
     const [directTransferAmount, setDirectTransferAmount] = useState('');
     const [isDirectTransferring, setIsDirectTransferring] = useState(false);
 
+    const [aiResponderEnabled, setAiResponderEnabled] = useState(() => {
+        const saved = localStorage.getItem('miles_ai_responder_enabled');
+        return saved !== 'false';
+    });
+
+    const handleToggleAIResponder = (enabled) => {
+        setAiResponderEnabled(enabled);
+        localStorage.setItem('miles_ai_responder_enabled', enabled ? 'true' : 'false');
+        showToast(`AI auto-replies ${enabled ? 'enabled' : 'disabled'}.`, "success");
+    };
+
     // Audio recording states
     const [isRecording, setIsRecording] = useState(false);
     const [mediaRecorder, setMediaRecorder] = useState(null);
@@ -2814,6 +2825,7 @@ function App() {
                                                         activeNeighborsCount={activeNeighbors.length + 1}
                                                         activeNeighbors={activeNeighbors}
                                                         onVibeClick={() => setShowVibeCheck(true)}
+                                                        aiResponderEnabled={aiResponderEnabled}
                                                         onUserClick={async (userId, isAi, aiName) => {
                                                             const isReallyAi = !!isAi || (typeof isAi === 'string' && isAi.toLowerCase() === 'true');
                                                             if (isReallyAi) {
@@ -3618,6 +3630,7 @@ function App() {
                                                             <div className="panel-header"><h2>Visual Experience</h2><p>Tailor the miles interface to your preference.</p></div>
                                                             <div className="appearance-grid">
                                                                 <div className="appearance-card">
+                                                                    <div className="card-info"><h4>Theme Mode</h4><p>Set dark mode or light mode appearance.</p></div>
                                                                     <div className="theme-toggle-strip">
                                                                         <button className={`theme-tab ${profile?.theme_mode !== 'light' ? 'active' : ''}`} onClick={() => handleUpdateProfile({ theme_mode: 'dark' })}><Lock size={16} /> Dark</button>
                                                                         <button className={`theme-tab ${profile?.theme_mode === 'light' ? 'active' : ''}`} onClick={() => handleUpdateProfile({ theme_mode: 'light' })}><Globe size={16} /> Light</button>
@@ -3630,9 +3643,16 @@ function App() {
                                                                         <button className={`theme-tab ${distanceUnit === 'km' ? 'active' : ''}`} onClick={() => { setDistanceUnit('km'); localStorage.setItem('miles_distance_unit', 'km'); }}>🌍 Kilometers</button>
                                                                     </div>
                                                                 </div>
+                                                                <div className="appearance-card">
+                                                                    <div className="card-info"><h4>AI Neighbor Auto-Replies</h4><p>Let local AI assistants respond to your text posts when you share updates.</p></div>
+                                                                    <div className="theme-toggle-strip">
+                                                                        <button className={`theme-tab ${aiResponderEnabled ? 'active' : ''}`} onClick={() => handleToggleAIResponder(true)}>🟢 Enabled</button>
+                                                                        <button className={`theme-tab ${!aiResponderEnabled ? 'active' : ''}`} onClick={() => handleToggleAIResponder(false)}>🔴 Disabled</button>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    )}
+                                                     )}
 
                                                     {activeSettingsTab === 'security' && (
                                                         <div className="settings-panel anim-fade-in">
