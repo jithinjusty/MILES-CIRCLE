@@ -2044,7 +2044,7 @@ function App() {
                                                 <>
                                                     {/* Clickable weather pill — sits below logo */}
                                                     <button
-                                                        onClick={() => setShowWeatherPanel(p => !p)}
+                                                        onClick={e => { e.stopPropagation(); setShowWeatherPanel(p => !p); }}
                                                         style={{
                                                             position: 'absolute',
                                                             top: '115px',
