@@ -1390,23 +1390,28 @@ function App() {
                 reader.readAsDataURL(audioBlob);
                 reader.onloadend = async () => {
                     const base64Audio = reader.result;
-                    const locationWKT = `POINT(${position[1]} ${position[0]})`;
-                    const insertPayload = {
-                        user_id: session?.user?.id,
-                        content: `[Audio Note: ${base64Audio}]`,
-                        location: locationWKT
-                    };
-
-                    if (replyingTo) {
-                        insertPayload.reply_to_id = replyingTo.id;
-                        insertPayload.reply_to_content = replyingTo.content?.substring(0, 200);
-                        insertPayload.reply_to_author = replyingTo.author;
-                    }
-
+                    
                     setIsSending(true);
                     try {
-                        const { error } = await supabase.from('posts').insert([insertPayload]);
-                        if (error) throw error;
+                        const { data: { user } } = await supabase.auth.getUser();
+                        if (!user) throw new Error("Not logged in");
+
+                        const locationWKT = `POINT(${position[1]} ${position[0]})`;
+                        const insertPayload = {
+                            user_id: user.id,
+                            content: `[Audio Note: ${base64Audio}]`,
+                            location: locationWKT
+                        };
+
+                        if (replyingTo) {
+                            insertPayload.reply_to_id = replyingTo.id;
+                            insertPayload.reply_to_content = replyingTo.content?.substring(0, 200);
+                            insertPayload.reply_to_author = replyingTo.author;
+                        }
+
+                        const { error: insertError } = await supabase.from('posts').insert([insertPayload]);
+                        if (insertError) throw insertError;
+                        
                         setReplyingTo(null);
                         setFeedTrigger(prev => prev + 1);
                         showToast("Voice message sent!", "success");
