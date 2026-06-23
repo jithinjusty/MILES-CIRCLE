@@ -49,6 +49,76 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
         }
     }, [post?.listing_status]);
 
+    const isAudioNote = post?.content && post.content.startsWith('[Audio Note:');
+    
+    const getAudioSource = () => {
+        if (!post?.content) return null;
+        const matches = post.content.match(/\[Audio Note:\s*([^\]]+)\]/);
+        return matches ? matches[1] : null;
+    };
+    const audioSrc = isAudioNote ? getAudioSource() : null;
+
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [duration, setDuration] = useState(0);
+    const [currentTime, setCurrentTime] = useState(0);
+    const audioRef = useRef(null);
+
+    useEffect(() => {
+        if (!audioSrc) return;
+        audioRef.current = new Audio(audioSrc);
+        const audio = audioRef.current;
+
+        const onLoadedMetadata = () => setDuration(audio.duration || 0);
+        const onTimeUpdate = () => setCurrentTime(audio.currentTime || 0);
+        const onEnded = () => {
+            setIsPlaying(false);
+            setCurrentTime(0);
+        };
+
+        audio.addEventListener('loadedmetadata', onLoadedMetadata);
+        audio.addEventListener('timeupdate', onTimeUpdate);
+        audio.addEventListener('ended', onEnded);
+
+        // Preload metadata
+        audio.load();
+
+        return () => {
+            if (audio) {
+                audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+                audio.removeEventListener('timeupdate', onTimeUpdate);
+                audio.removeEventListener('ended', onEnded);
+                audio.pause();
+            }
+        };
+    }, [audioSrc]);
+
+    const togglePlayPause = (e) => {
+        e.stopPropagation();
+        if (!audioRef.current) return;
+        if (isPlaying) {
+            audioRef.current.pause();
+            setIsPlaying(false);
+        } else {
+            audioRef.current.play().catch(err => console.error("Error playing audio:", err));
+            setIsPlaying(true);
+        }
+    };
+
+    const handleSeek = (e) => {
+        e.stopPropagation();
+        if (!audioRef.current) return;
+        const seekTime = parseFloat(e.target.value);
+        audioRef.current.currentTime = seekTime;
+        setCurrentTime(seekTime);
+    };
+
+    const formatAudioTime = (secs) => {
+        if (isNaN(secs)) return '0:00';
+        const m = Math.floor(secs / 60);
+        const s = Math.floor(secs % 60);
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
+    };
+
     const handleUpdateStatus = async (newStatus) => {
         setListingStatus(newStatus);
         try {
@@ -601,9 +671,93 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                 {/* Message Content */}
                 <div style={{
                     fontSize: '0.97rem', lineHeight: '1.6', fontWeight: '400',
-                    wordBreak: 'break-word', color: isMine ? 'rgba(255,255,255,0.95)' : 'var(--text-primary)'
+                    wordBreak: 'break-word', color: isMine ? 'rgba(255,255,255,0.95)' : 'var(--text-primary)',
+                    width: '100%'
                 }}>
-                    {translating ? (
+                    {isAudioNote && audioSrc ? (
+                        <div className="audio-player-container" style={{
+                            background: isMine ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.06)',
+                            border: '1px solid var(--glass-border)',
+                            borderRadius: '16px',
+                            padding: '12px 16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '12px',
+                            marginTop: '4px',
+                            marginBottom: '4px',
+                            width: '100%',
+                            maxWidth: '300px',
+                            boxShadow: '0 4px 15px rgba(0,0,0,0.15)'
+                        }} onClick={e => e.stopPropagation()}>
+                            {/* Play/Pause Button */}
+                            <button
+                                type="button"
+                                onClick={togglePlayPause}
+                                style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '50%',
+                                    background: isMine ? 'white' : 'var(--accent-red)',
+                                    color: isMine ? 'black' : 'white',
+                                    border: 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    flexShrink: 0
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                            >
+                                {isPlaying ? (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="4" height="16" /><rect x="16" y="4" width="4" height="16" /></svg>
+                                ) : (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style={{ marginLeft: '2px' }}><polygon points="5,3 19,12 5,21" /></svg>
+                                )}
+                            </button>
+
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
+                                {/* Seek slider */}
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max={duration || 100}
+                                    value={currentTime}
+                                    onChange={handleSeek}
+                                    style={{
+                                        width: '100%',
+                                        accentColor: isMine ? 'white' : 'var(--accent-red)',
+                                        height: '4px',
+                                        borderRadius: '2px',
+                                        cursor: 'pointer',
+                                        background: 'rgba(255,255,255,0.2)',
+                                        margin: 0
+                                    }}
+                                />
+                                {/* Time details */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: isMine ? 'rgba(255,255,255,0.7)' : 'var(--text-secondary)' }}>
+                                    <span>{formatAudioTime(currentTime)}</span>
+                                    <span>{formatAudioTime(duration)}</span>
+                                </div>
+                            </div>
+
+                            {/* Bouncing visualizer bars */}
+                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '2px', height: '16px', width: '20px', flexShrink: 0 }}>
+                                {[1, 2, 3, 4].map(bar => (
+                                    <div key={bar} style={{
+                                        width: '2px',
+                                        background: isMine ? 'white' : 'var(--accent-red)',
+                                        borderRadius: '1px',
+                                        height: isPlaying ? '100%' : '20%',
+                                        animation: isPlaying ? `bouncing-bar 0.6s ease-in-out infinite alternate` : 'none',
+                                        animationDelay: `${bar * 0.1}s`,
+                                        transition: 'height 0.2s'
+                                    }} />
+                                ))}
+                            </div>
+                        </div>
+                    ) : translating ? (
                         <span style={{ opacity: 0.6, fontStyle: 'italic' }}>Translating...</span>
                     ) : translatedText ? (
                         <>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Circle, Popup, useMap, ZoomControl } from 'react-leaflet'
-import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, LogOut, ShieldCheck, ChevronRight, Mail, Bug, Info, Database, CreditCard, Calendar, Sparkles, Wallet } from 'lucide-react'
+import { Plus, List, Send, User, Map as MapIcon, X, Image, Camera, Paperclip, Globe, Eye, EyeOff, Edit2, Facebook, Linkedin, Instagram, Youtube, MessageCircle, Phone, MapPin, Share2, ToggleLeft, ToggleRight, ExternalLink, Lock, LogOut, ShieldCheck, ChevronRight, Mail, Bug, Info, Database, CreditCard, Calendar, Sparkles, Wallet, Mic, Trash2 } from 'lucide-react'
 import './App.css'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -228,6 +228,13 @@ function App() {
     const [showDirectTransfer, setShowDirectTransfer] = useState(false);
     const [directTransferAmount, setDirectTransferAmount] = useState('');
     const [isDirectTransferring, setIsDirectTransferring] = useState(false);
+
+    // Audio recording states
+    const [isRecording, setIsRecording] = useState(false);
+    const [mediaRecorder, setMediaRecorder] = useState(null);
+    const [recordingDuration, setRecordingDuration] = useState(0);
+    const recordingIntervalRef = useRef(null);
+    const audioChunksRef = useRef([]);
 
     useEffect(() => {
         if (!viewingProfile) {
@@ -1341,6 +1348,126 @@ function App() {
     const handleChatScroll = (e) => {
         // Keep header statically visible at all times to prevent layout shifts and scroll jumping
         lastChatScroll.current = e.currentTarget.scrollTop;
+    };
+
+    useEffect(() => {
+        return () => {
+            if (recordingIntervalRef.current) {
+                clearInterval(recordingIntervalRef.current);
+            }
+        };
+    }, []);
+
+    const startRecording = async (e) => {
+        if (e) e.preventDefault();
+        
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showToast("Microphone recording is not supported in this browser.", "error");
+            return;
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const recorder = new MediaRecorder(stream);
+            audioChunksRef.current = [];
+
+            recorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    audioChunksRef.current.push(event.data);
+                }
+            };
+
+            recorder.onstop = async () => {
+                stream.getTracks().forEach(track => track.stop());
+
+                if (audioChunksRef.current.length === 0) {
+                    return;
+                }
+
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = async () => {
+                    const base64Audio = reader.result;
+                    const locationWKT = `POINT(${position[1]} ${position[0]})`;
+                    const insertPayload = {
+                        user_id: session?.user?.id,
+                        content: `[Audio Note: ${base64Audio}]`,
+                        location: locationWKT
+                    };
+
+                    if (replyingTo) {
+                        insertPayload.reply_to_id = replyingTo.id;
+                        insertPayload.reply_to_content = replyingTo.content?.substring(0, 200);
+                        insertPayload.reply_to_author = replyingTo.author;
+                    }
+
+                    setIsSending(true);
+                    try {
+                        const { error } = await supabase.from('posts').insert([insertPayload]);
+                        if (error) throw error;
+                        setReplyingTo(null);
+                        setFeedTrigger(prev => prev + 1);
+                        showToast("Voice message sent!", "success");
+                    } catch (err) {
+                        console.error("Failed to send voice message:", err);
+                        showToast("Failed to send voice message: " + err.message, "error");
+                    } finally {
+                        setIsSending(false);
+                    }
+                };
+            };
+
+            recorder.start();
+            setMediaRecorder(recorder);
+            setIsRecording(true);
+            setRecordingDuration(0);
+
+            recordingIntervalRef.current = setInterval(() => {
+                setRecordingDuration(prev => prev + 1);
+            }, 1000);
+
+        } catch (err) {
+            console.error("Error accessing microphone:", err);
+            showToast("Could not access microphone. Please check permissions.", "error");
+        }
+    };
+
+    const cancelRecording = (e) => {
+        if (e) e.preventDefault();
+        if (recordingIntervalRef.current) {
+            clearInterval(recordingIntervalRef.current);
+            recordingIntervalRef.current = null;
+        }
+        audioChunksRef.current = [];
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+        setMediaRecorder(null);
+        setIsRecording(false);
+        setRecordingDuration(0);
+        showToast("Recording cancelled", "info");
+    };
+
+    const stopAndSendRecording = (e) => {
+        if (e) e.preventDefault();
+        if (recordingIntervalRef.current) {
+            clearInterval(recordingIntervalRef.current);
+            recordingIntervalRef.current = null;
+        }
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
+        }
+        setMediaRecorder(null);
+        setIsRecording(false);
+        setRecordingDuration(0);
+    };
+
+    const formatDuration = (secs) => {
+        const m = Math.floor(secs / 60);
+        const s = secs % 60;
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
 
     const handleSendMessage = async (e) => {
@@ -2771,13 +2898,88 @@ function App() {
                                                                 <button type="button" className="menu-item" onClick={() => handleAttachmentAction('location')}><div className="menu-icon-circle"><MapIcon size={20} /></div><span>Location</span></button>
                                                             </div>
                                                         )}
-                                                        <button type="button" className={`chat-plus-btn ${showAttachmentMenu ? 'active' : ''}`} onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}>
+                                                        <button 
+                                                            type="button" 
+                                                            className={`chat-plus-btn ${showAttachmentMenu ? 'active' : ''}`} 
+                                                            onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                                                            disabled={isRecording}
+                                                            style={{ opacity: isRecording ? 0.3 : 1, pointerEvents: isRecording ? 'none' : 'auto' }}
+                                                        >
                                                             <Plus size={24} style={{ transform: showAttachmentMenu ? 'rotate(45deg)' : 'none' }} />
                                                         </button>
-                                                        <input type="text" className="chat-input-main" placeholder={attachedImageUrl ? "Add a caption..." : "Message Circle..."} value={messageContent} onChange={e => setMessageContent(e.target.value)} disabled={isSending} />
-                                                        <button type="submit" className="chat-send-btn-new" disabled={(!messageContent.trim() && !attachedImageUrl) || isSending}>
-                                                            {isSending ? <div className="spinner-tiny"></div> : <Send size={18} />}
-                                                        </button>
+                                                        
+                                                        {isRecording ? (
+                                                            <>
+                                                                <div style={{
+                                                                    flex: 1,
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '10px',
+                                                                    background: 'rgba(210, 85, 78, 0.1)',
+                                                                    border: '1px solid rgba(210, 85, 78, 0.3)',
+                                                                    borderRadius: '20px',
+                                                                    padding: '10px 16px',
+                                                                    color: 'var(--accent-red)',
+                                                                    fontWeight: 'bold',
+                                                                    fontSize: '0.9rem'
+                                                                }}>
+                                                                    <span className="recording-dot" style={{
+                                                                        display: 'inline-block',
+                                                                        width: '10px',
+                                                                        height: '10px',
+                                                                        borderRadius: '50%',
+                                                                        background: 'var(--accent-red)',
+                                                                        animation: 'pulse-orange-border 1s infinite alternate'
+                                                                    }}></span>
+                                                                    <span>Recording {formatDuration(recordingDuration)}</span>
+                                                                </div>
+                                                                <button 
+                                                                    type="button" 
+                                                                    onClick={cancelRecording} 
+                                                                    style={{ 
+                                                                        background: 'none', 
+                                                                        border: 'none', 
+                                                                        color: 'var(--text-secondary)', 
+                                                                        cursor: 'pointer', 
+                                                                        padding: '8px', 
+                                                                        display: 'flex', 
+                                                                        alignItems: 'center', 
+                                                                        justifyContent: 'center',
+                                                                        transition: 'transform 0.1s'
+                                                                    }}
+                                                                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                                                                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                                                >
+                                                                    <Trash2 size={22} />
+                                                                </button>
+                                                                <button 
+                                                                    type="button" 
+                                                                    onClick={stopAndSendRecording} 
+                                                                    className="chat-send-btn-new"
+                                                                    style={{ background: 'var(--accent-red)', color: 'white' }}
+                                                                >
+                                                                    <Send size={18} />
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <input type="text" className="chat-input-main" placeholder={attachedImageUrl ? "Add a caption..." : "Message Circle..."} value={messageContent} onChange={e => setMessageContent(e.target.value)} disabled={isSending} />
+                                                                {(!messageContent.trim() && !attachedImageUrl) ? (
+                                                                    <button 
+                                                                        type="button" 
+                                                                        onClick={startRecording} 
+                                                                        className="chat-send-btn-new"
+                                                                        style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-primary)' }}
+                                                                    >
+                                                                        <Mic size={18} />
+                                                                    </button>
+                                                                ) : (
+                                                                    <button type="submit" className="chat-send-btn-new" disabled={isSending}>
+                                                                        {isSending ? <div className="spinner-tiny"></div> : <Send size={18} />}
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </form>
                                             </div>

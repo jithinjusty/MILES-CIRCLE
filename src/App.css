@@ -3553,3 +3553,8 @@ body {
         transition-delay: 0s !important;
     }
 }
+
+@keyframes bouncing-bar {
+    0% { height: 20%; }
+    100% { height: 100%; }
+}
