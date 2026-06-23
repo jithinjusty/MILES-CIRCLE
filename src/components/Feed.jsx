@@ -251,10 +251,6 @@ Details: ${lostFoundDesc.trim()}${contactText}`;
         if (!content) return 'general';
         const lower = content.toLowerCase();
         
-        if (lower.includes('#bounty') || lower.includes('bounty:') || 
-            (/\b(bounty|reward|karma bounty|karma reward|help bounty)\b/.test(lower))) {
-            return 'bounty';
-        }
         if (lower.includes('#buysell') || lower.includes('#buy') || lower.includes('#sell') || lower.includes('#forsale') ||
             (/\b(selling|buying|for sale|price|price:)\b/.test(lower))) {
             return 'buysell';
@@ -895,7 +891,6 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
     const categories = [
         { id: 'all', label: 'All sphere', icon: '🌍' },
         { id: 'general', label: 'General', icon: '💬' },
-        { id: 'bounty', label: 'Bounties', icon: '💰' },
         { id: 'buysell', label: 'Buy & Sell', icon: '🏷️' },
         { id: 'offers', label: 'Local Offers', icon: '🎁' },
         { id: 'lostfound', label: 'Lost & Found', icon: '🔍' },

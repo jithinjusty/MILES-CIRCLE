@@ -6,13 +6,12 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
     const [content, setContent] = useState('')
     const [isAlert, setIsAlert] = useState(false)
     const [isPoll, setIsPoll] = useState(false)
+    const [postCategory, setPostCategory] = useState('general')
     const [pollOptions, setPollOptions] = useState(['', ''])
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
     const [showLinkInput, setShowLinkInput] = useState(false)
     const [linkText, setLinkText] = useState('')
-
-
 
     const handleSubmit = async (e) => {
         if (e) e.preventDefault()
@@ -57,12 +56,25 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
             const lng = position && position[1] !== undefined ? position[1] : 0;
             const locationWKT = `POINT(${lng} ${lat})`
 
+            let finalContent = content.trim();
+            if (postCategory === 'buysell') {
+                const lower = finalContent.toLowerCase();
+                if (!lower.includes('#buysell') && !lower.includes('#buy') && !lower.includes('#sell') && !lower.includes('#forsale')) {
+                    finalContent += ' #buysell';
+                }
+            } else if (postCategory === 'lostfound') {
+                const lower = finalContent.toLowerCase();
+                if (!lower.includes('#lostfound') && !lower.includes('#lost') && !lower.includes('#found')) {
+                    finalContent += ' #lostfound';
+                }
+            }
+
             const { error: insertError } = await supabase
                 .from('posts')
                 .insert([
                     {
                         user_id: user.id,
-                        content: content.trim(),
+                        content: finalContent,
                         location: locationWKT,
                         is_alert: isAlert,
                         poll_options: finalPollOptions,
@@ -75,6 +87,7 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
             setContent('')
             setIsAlert(false)
             setIsPoll(false)
+            setPostCategory('general')
             setPollOptions(['', ''])
             onPostCreated?.()
             onClose()
@@ -100,10 +113,51 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
                 </header>
 
                 <form onSubmit={handleSubmit} className="post-form">
+                    <div className="category-select-wrapper" style={{ marginBottom: '1.2rem' }}>
+                        <label style={{ fontSize: '0.8rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: '8px', letterSpacing: '0.5px' }}>Post Category</label>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {[
+                                { id: 'general', label: 'General', icon: '💬' },
+                                { id: 'buysell', label: 'Buy & Sell', icon: '🏷️' },
+                                { id: 'lostfound', label: 'Lost & Found', icon: '🔍' }
+                            ].map(cat => (
+                                <button
+                                    key={cat.id}
+                                    type="button"
+                                    onClick={() => setPostCategory(cat.id)}
+                                    style={{
+                                        background: postCategory === cat.id ? 'rgba(210, 85, 78, 0.2)' : 'var(--glass-bg)',
+                                        border: `1px solid ${postCategory === cat.id ? 'var(--accent-red)' : 'var(--glass-border)'}`,
+                                        borderRadius: '12px',
+                                        padding: '10px 16px',
+                                        color: postCategory === cat.id ? 'var(--accent-red)' : 'var(--text-primary)',
+                                        cursor: 'pointer',
+                                        fontSize: '0.85rem',
+                                        fontWeight: postCategory === cat.id ? '800' : '400',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        transition: 'all 0.2s',
+                                        outline: 'none'
+                                    }}
+                                >
+                                    <span>{cat.icon}</span>
+                                    <span>{cat.label}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     <div className="input-block" style={{ position: 'relative', marginBottom: '1.5rem' }}>
                         <textarea
                             className="post-textarea"
-                            placeholder="What's happening in your neighborhood?"
+                            placeholder={
+                                postCategory === 'buysell' 
+                                    ? "What are you buying or selling? (e.g. Selling my bike for $100...)" 
+                                    : postCategory === 'lostfound' 
+                                        ? "Describe the lost or found item (e.g. Lost a black dog near Central Park...)" 
+                                        : "What's happening in your neighborhood?"
+                            }
                             style={{
                                 width: '100%',
                                 background: 'var(--glass-bg)',

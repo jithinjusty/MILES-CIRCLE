@@ -225,6 +225,18 @@ function App() {
     const [uploading, setUploading] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [viewingProfile, setViewingProfile] = useState(null);
+    const [showDirectTransfer, setShowDirectTransfer] = useState(false);
+    const [directTransferAmount, setDirectTransferAmount] = useState('');
+    const [isDirectTransferring, setIsDirectTransferring] = useState(false);
+
+    useEffect(() => {
+        if (!viewingProfile) {
+            setShowDirectTransfer(false);
+            setDirectTransferAmount('');
+            setIsDirectTransferring(false);
+        }
+    }, [viewingProfile]);
+
     const [isSavingChanges, setIsSavingChanges] = useState(false);
     const [deferredPrompt, setDeferredPrompt] = useState(null);
     const [showInstallBanner, setShowInstallBanner] = useState(false);
@@ -1194,7 +1206,61 @@ function App() {
         } finally {
             setTransferringPoints(false);
         }
-    };;
+    };
+
+    const handleDirectTransferPoints = async (e) => {
+        if (e) e.preventDefault();
+        if (!session) {
+            showToast("You must be logged in to transfer points.", "error");
+            return;
+        }
+        if (!viewingProfile || viewingProfile.is_ai) return;
+
+        const amount = parseInt(directTransferAmount);
+        if (isNaN(amount) || amount <= 0) {
+            showToast("Please enter a valid points amount.", "error");
+            return;
+        }
+
+        if (amount > (profile?.points || 0)) {
+            showToast("Insufficient points balance.", "error");
+            return;
+        }
+
+        setIsDirectTransferring(true);
+        try {
+            const { data, error } = await supabase.rpc('transfer_points_by_id', {
+                target_user_id: viewingProfile.id,
+                points_amount: amount
+            });
+
+            if (error) throw error;
+
+            if (data?.success) {
+                showToast(`Successfully transferred ${amount} points to ${viewingProfile.full_name || 'Neighbor'}!`, "success");
+                
+                // Update local user's balance
+                setProfile(prev => ({ ...prev, points: Math.max(0, (prev.points || 0) - amount) }));
+                
+                // Update viewing profile points (adds the points visually)
+                setViewingProfile(prev => prev ? { ...prev, points: (prev.points || 0) + amount } : null);
+                
+                // Reset direct transfer states
+                setShowDirectTransfer(false);
+                setDirectTransferAmount('');
+                
+                // Refresh transactions list
+                fetchTransactions();
+            } else {
+                showToast(data?.message || 'Failed to complete transfer.', "error");
+            }
+        } catch (err) {
+            console.error("Direct transfer error:", err);
+            showToast(err.message || 'Points transfer failed. Please try again.', "error");
+        } finally {
+            setIsDirectTransferring(false);
+        }
+    };
 
     const handleRecoverySubmit = async (e) => {
         if (e) e.preventDefault();
@@ -3527,6 +3593,85 @@ function App() {
                                                         >
                                                             👋 Wave at {viewingProfile.full_name || 'Neighbor'}
                                                         </button>
+                                                        <button 
+                                                            className="btn-wave-primary" 
+                                                            onClick={() => setShowDirectTransfer(!showDirectTransfer)} 
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '12px',
+                                                                borderRadius: '14px',
+                                                                background: 'linear-gradient(135deg, #FFD700 0%, #FF8C00 100%)',
+                                                                color: 'black',
+                                                                border: 'none',
+                                                                fontWeight: '800',
+                                                                cursor: 'pointer',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                gap: '8px',
+                                                                marginBottom: '10px',
+                                                                boxShadow: '0 4px 15px rgba(255, 215, 0, 0.25)',
+                                                                transition: 'transform 0.2s'
+                                                            }}
+                                                        >
+                                                            💰 Transfer Points
+                                                        </button>
+                                                        {showDirectTransfer && (
+                                                            <form onSubmit={handleDirectTransferPoints} style={{
+                                                                background: 'rgba(0, 0, 0, 0.3)',
+                                                                border: '1px solid var(--glass-border)',
+                                                                borderRadius: '16px',
+                                                                padding: '16px',
+                                                                marginBottom: '10px',
+                                                                display: 'flex',
+                                                                flexDirection: 'column',
+                                                                gap: '10px',
+                                                                textAlign: 'left'
+                                                            }} onClick={e => e.stopPropagation()}>
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-secondary)' }}>
+                                                                        Your Balance: {profile?.points || 0} pts
+                                                                    </span>
+                                                                </div>
+                                                                <div style={{ display: 'flex', gap: '8px' }}>
+                                                                    <input 
+                                                                        type="number" 
+                                                                        placeholder="Amount (e.g. 50)" 
+                                                                        value={directTransferAmount}
+                                                                        onChange={e => setDirectTransferAmount(e.target.value)}
+                                                                        min="1"
+                                                                        max={profile?.points || 0}
+                                                                        required
+                                                                        style={{
+                                                                            flex: 1,
+                                                                            background: 'var(--glass-bg)',
+                                                                            border: '1px solid var(--glass-border)',
+                                                                            borderRadius: '10px',
+                                                                            padding: '10px 14px',
+                                                                            color: 'var(--text-primary)',
+                                                                            fontSize: '0.9rem',
+                                                                            outline: 'none'
+                                                                        }}
+                                                                    />
+                                                                    <button 
+                                                                        type="submit" 
+                                                                        disabled={isDirectTransferring}
+                                                                        style={{
+                                                                            background: 'var(--accent-red)',
+                                                                            color: 'white',
+                                                                            border: 'none',
+                                                                            borderRadius: '10px',
+                                                                            padding: '0 18px',
+                                                                            fontWeight: 'bold',
+                                                                            cursor: 'pointer',
+                                                                            fontSize: '0.9rem'
+                                                                        }}
+                                                                    >
+                                                                        {isDirectTransferring ? 'Sending...' : 'Send'}
+                                                                    </button>
+                                                                </div>
+                                                            </form>
+                                                        )}
                                                         <div className="viewer-actions-row">
                                                             <button className="btn-rate up" onClick={() => handleRate(1)}><ShieldCheck size={20} /> Like</button>
                                                             <button className="btn-rate down" onClick={() => handleRate(-1)}><X size={20} /> Dislike</button>
