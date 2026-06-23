@@ -26,15 +26,9 @@ export default function EventCard({ event, session, userReaction, onReactionChan
 
         const updateTimer = () => {
             const now = new Date();
-            const start = new Date(event.event_date);
             const end = new Date(event.expires_at);
 
-            if (now < start) {
-                const diffMs = start - now;
-                const diffMins = Math.floor(diffMs / 60000);
-                const diffSecs = Math.floor((diffMs % 60000) / 1000);
-                setFlashTimerText(`Starts in ${diffMins}m ${diffSecs}s`);
-            } else if (now >= start && now < end) {
+            if (now < end) {
                 const diffMs = end - now;
                 const diffMins = Math.floor(diffMs / 60000);
                 const diffSecs = Math.floor((diffMs % 60000) / 1000);

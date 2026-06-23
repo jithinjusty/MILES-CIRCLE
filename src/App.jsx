@@ -2246,7 +2246,6 @@ function App() {
                                                 <MapController center={position} radius={radius} isInteracting={isMapInteracting} />
                                             </MapContainer>
                                         )}
-                                    </div>
 
                                     {/* CHAT LAYER */}
                                     {locationAvailable && (

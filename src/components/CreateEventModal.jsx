@@ -13,6 +13,15 @@ function MapUpdater({ center }) {
     return null
 }
 
+const parseLocalDateTime = (str) => {
+    if (!str) return null
+    const [datePart, timePart] = str.split('T')
+    if (!datePart || !timePart) return new Date(str)
+    const [year, month, day] = datePart.split('-').map(Number)
+    const [hour, minute] = timePart.split(':').map(Number)
+    return new Date(year, month - 1, day, hour, minute)
+}
+
 export default function CreateEventModal({ position, session, onClose, onEventCreated }) {
     const [title, setTitle] = useState('')
     const [description, setDescription] = useState('')
@@ -140,8 +149,8 @@ export default function CreateEventModal({ position, session, onClose, onEventCr
                     title: title.trim(),
                     description: description.trim() || null,
                     image_url: imageUrl,
-                    event_date: eventDate || null,
-                    expires_at: expiresAt || null,
+                    event_date: isFlash ? new Date().toISOString() : (eventDate ? parseLocalDateTime(eventDate).toISOString() : null),
+                    expires_at: isFlash ? new Date(Date.now() + 60 * 60 * 1000).toISOString() : (expiresAt ? parseLocalDateTime(expiresAt).toISOString() : null),
                     location_lat: eventLocation.lat,
                     location_lng: eventLocation.lng,
                     location_name: `${eventLocation.lat.toFixed(6)}, ${eventLocation.lng.toFixed(6)}`,
