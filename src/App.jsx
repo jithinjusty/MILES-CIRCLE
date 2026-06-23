@@ -8,6 +8,7 @@ import { supabase } from './lib/supabase'
 import SplashScreen from './components/SplashScreen'
 import AuthOverlay from './components/AuthOverlay'
 import CreatePostModal from './components/CreatePostModal'
+import { Html5Qrcode } from 'html5-qrcode'
 
 const WhatsAppIcon = ({ size = 16, color = "currentColor", className = "" }) => (
     <svg
@@ -125,6 +126,13 @@ function App() {
     const [transferringPoints, setTransferringPoints] = useState(false);
     const [transactions, setTransactions] = useState([]);
     const [loadingTransactions, setLoadingTransactions] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [selectedRecipient, setSelectedRecipient] = useState(null);
+    const [showMyQr, setShowMyQr] = useState(false);
+    const [scanning, setScanning] = useState(false);
+    const [copiedId, setCopiedId] = useState(false);
+    const qrScannerRef = useRef(null);
 
     const [radius, setRadius] = useState(() => {
         const saved = localStorage.getItem('miles_preferred_radius');
@@ -929,13 +937,118 @@ function App() {
         }
     };
 
+    const handleSearchProfiles = async (query) => {
+        setSearchQuery(query);
+        if (!query.trim()) {
+            setSearchResults([]);
+            return;
+        }
+        try {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            let dbQuery = supabase.from('profiles');
+            
+            if (uuidRegex.test(query.trim())) {
+                dbQuery = dbQuery.select('id, full_name, avatar_url').eq('id', query.trim());
+            } else {
+                dbQuery = dbQuery.select('id, full_name, avatar_url').ilike('full_name', `%${query.trim()}%`).limit(10);
+            }
+            
+            const { data, error } = await dbQuery;
+            if (error) throw error;
+            setSearchResults(data || []);
+        } catch (err) {
+            console.error("Error searching profiles:", err);
+        }
+    };
+
+    const fetchAndSelectRecipient = async (userId) => {
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, full_name, avatar_url')
+                .eq('id', userId)
+                .single();
+            if (error) throw error;
+            if (data) {
+                setSelectedRecipient(data);
+                setRecipientEmail('');
+                setSearchQuery('');
+                setSearchResults([]);
+                setTransferStatus({ type: 'success', message: `Recipient neighbor selected: ${data.full_name}` });
+            } else {
+                setTransferStatus({ type: 'error', message: 'No neighbor profile matches that ID.' });
+            }
+        } catch (err) {
+            console.error("Error fetching scanned user profile:", err);
+            setTransferStatus({ type: 'error', message: 'Could not find profile for the scanned User ID.' });
+        }
+    };
+
+    const startScanner = async () => {
+        setScanning(true);
+        setTransferStatus(null);
+        setTimeout(async () => {
+            try {
+                const html5QrCode = new Html5Qrcode("qr-reader");
+                qrScannerRef.current = html5QrCode;
+                
+                const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+                    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                    if (uuidRegex.test(decodedText.trim())) {
+                        fetchAndSelectRecipient(decodedText.trim());
+                        stopScanner();
+                    } else {
+                        setTransferStatus({ type: 'error', message: 'Scanned code is not a valid User ID.' });
+                    }
+                };
+                
+                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    config,
+                    qrCodeSuccessCallback,
+                    (errorMessage) => {
+                        // Silent during active search scanning
+                    }
+                );
+            } catch (err) {
+                console.error("Failed to start QR scanner:", err);
+                setTransferStatus({ type: 'error', message: 'Failed to access camera: ' + err.message });
+                setScanning(false);
+            }
+        }, 100);
+    };
+
+    const stopScanner = async () => {
+        if (qrScannerRef.current) {
+            try {
+                if (qrScannerRef.current.isScanning) {
+                    await qrScannerRef.current.stop();
+                }
+            } catch (err) {
+                console.error("Error stopping scanner:", err);
+            }
+            qrScannerRef.current = null;
+        }
+        setScanning(false);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (qrScannerRef.current) {
+                qrScannerRef.current.stop().catch(err => console.error("Unmount scanner cleanup error:", err));
+            }
+        };
+    }, []);
+
     const handleTransferPoints = async (e) => {
         if (e) e.preventDefault();
         setTransferStatus(null);
         
         const amount = parseInt(transferAmount);
-        if (!recipientEmail || isNaN(amount) || amount <= 0) {
-            setTransferStatus({ type: 'error', message: 'Please enter a valid recipient email and points amount.' });
+        if (isNaN(amount) || amount <= 0) {
+            setTransferStatus({ type: 'error', message: 'Please enter a valid points amount.' });
             return;
         }
 
@@ -946,16 +1059,37 @@ function App() {
 
         setTransferringPoints(true);
         try {
-            const { data, error } = await supabase.rpc('transfer_points', {
-                target_email: recipientEmail.trim().toLowerCase(),
-                points_amount: amount
-            });
+            let data, error;
+            if (selectedRecipient) {
+                const res = await supabase.rpc('transfer_points_by_id', {
+                    target_user_id: selectedRecipient.id,
+                    points_amount: amount
+                });
+                data = res.data;
+                error = res.error;
+            } else {
+                if (!recipientEmail || !recipientEmail.trim()) {
+                    setTransferStatus({ type: 'error', message: 'Please select a recipient neighbor or enter a valid email.' });
+                    setTransferringPoints(false);
+                    return;
+                }
+                const res = await supabase.rpc('transfer_points', {
+                    target_email: recipientEmail.trim().toLowerCase(),
+                    points_amount: amount
+                });
+                data = res.data;
+                error = res.error;
+            }
 
             if (error) throw error;
 
             if (data?.success) {
-                setTransferStatus({ type: 'success', message: `Successfully transferred ${amount} points to ${recipientEmail}!` });
+                const targetName = selectedRecipient ? selectedRecipient.full_name : recipientEmail;
+                setTransferStatus({ type: 'success', message: `Successfully transferred ${amount} points to ${targetName}!` });
                 setRecipientEmail('');
+                setSelectedRecipient(null);
+                setSearchQuery('');
+                setSearchResults([]);
                 setTransferAmount('');
                 setProfile(prev => ({ ...prev, points: Math.max(0, (prev.points || 0) - amount) }));
                 fetchTransactions();
@@ -968,7 +1102,7 @@ function App() {
         } finally {
             setTransferringPoints(false);
         }
-    };
+    };;
 
     const handleRecoverySubmit = async (e) => {
         if (e) e.preventDefault();
@@ -1491,6 +1625,169 @@ function App() {
                                                     onClick={() => handleUpdateProfile({ onboarding_completed: true })}
                                                 >
                                                     Skip all and enter Circle
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {scanning && (
+                                        <div className="modal-overlay" style={{ zIndex: 5000 }}>
+                                            <div className="onboarding-card-premium anim-fade-in" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+                                                <button
+                                                    type="button"
+                                                    onClick={stopScanner}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '16px',
+                                                        right: '16px',
+                                                        background: 'rgba(255, 255, 255, 0.1)',
+                                                        border: 'none',
+                                                        borderRadius: '50%',
+                                                        width: '32px',
+                                                        height: '32px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        color: 'white',
+                                                        transition: 'background 0.2s'
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                                
+                                                <header style={{ marginBottom: '1.5rem' }}>
+                                                    <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'white' }}>Scan Neighbor QR Code</h3>
+                                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '6px' }}>Align the neighbor's User ID QR code within the frame.</p>
+                                                </header>
+                                                
+                                                <div 
+                                                    id="qr-reader" 
+                                                    style={{ 
+                                                        width: '100%', 
+                                                        background: 'black', 
+                                                        borderRadius: '16px', 
+                                                        overflow: 'hidden', 
+                                                        border: '1px solid var(--glass-border)',
+                                                        aspectRatio: '1',
+                                                        marginBottom: '1.5rem'
+                                                    }}
+                                                ></div>
+                                                
+                                                <button
+                                                    type="button"
+                                                    onClick={stopScanner}
+                                                    style={{
+                                                        width: '100%',
+                                                        background: 'rgba(255, 255, 255, 0.1)',
+                                                        color: 'white',
+                                                        border: '1px solid var(--glass-border)',
+                                                        borderRadius: '12px',
+                                                        padding: '12px',
+                                                        fontWeight: 'bold',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                                                >
+                                                    Cancel Scan
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {showMyQr && session && (
+                                        <div className="modal-overlay" style={{ zIndex: 5000 }} onClick={() => setShowMyQr(false)}>
+                                            <div className="onboarding-card-premium anim-fade-in" style={{ maxWidth: '420px', width: '90%', textAlign: 'center', position: 'relative' }} onClick={e => e.stopPropagation()}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowMyQr(false)}
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '16px',
+                                                        right: '16px',
+                                                        background: 'rgba(255, 255, 255, 0.1)',
+                                                        border: 'none',
+                                                        borderRadius: '50%',
+                                                        width: '32px',
+                                                        height: '32px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        color: 'white',
+                                                        transition: 'background 0.2s'
+                                                    }}
+                                                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
+                                                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                                
+                                                <header style={{ marginBottom: '1.5rem' }}>
+                                                    <h3 style={{ fontSize: '1.4rem', fontWeight: 'bold', color: 'white' }}>My User QR Code</h3>
+                                                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '6px' }}>Let another neighbor scan this to transfer points to you.</p>
+                                                </header>
+                                                
+                                                <div style={{
+                                                    background: 'white',
+                                                    padding: '16px',
+                                                    borderRadius: '20px',
+                                                    display: 'inline-block',
+                                                    marginBottom: '1.5rem',
+                                                    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.3)'
+                                                }}>
+                                                    <img 
+                                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${session.user.id}`} 
+                                                        alt="User ID QR Code" 
+                                                        style={{ display: 'block', width: '200px', height: '200px' }}
+                                                    />
+                                                </div>
+                                                
+                                                <div style={{
+                                                    background: 'rgba(0,0,0,0.2)',
+                                                    border: '1px solid var(--glass-border)',
+                                                    borderRadius: '12px',
+                                                    padding: '12px',
+                                                    marginBottom: '1.5rem',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '6px'
+                                                }}>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>MY USER ID</span>
+                                                    <code style={{ fontSize: '0.85rem', color: 'white', wordBreak: 'break-all', fontFamily: 'monospace' }}>${session.user.id}</code>
+                                                </div>
+                                                
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(session.user.id);
+                                                        setCopiedId(true);
+                                                        setTimeout(() => setCopiedId(false), 2000);
+                                                    }}
+                                                    style={{
+                                                        width: '100%',
+                                                        background: copiedId ? '#2ecc71' : 'var(--accent-red)',
+                                                        color: 'white',
+                                                        border: 'none',
+                                                        borderRadius: '12px',
+                                                        padding: '12px',
+                                                        fontWeight: 'bold',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '8px'
+                                                    }}
+                                                >
+                                                    {copiedId ? (
+                                                        <>✔️ Copied User ID!</>
+                                                    ) : (
+                                                        <>Copy ID to Clipboard</>
+                                                    )}
                                                 </button>
                                             </div>
                                         </div>
@@ -2274,27 +2571,172 @@ function App() {
                                                                       <span>🎁</span> Transfer Points to Neighbor
                                                                   </h4>
                                                                   <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-                                                                      Send Karma points directly to another user by entering their email address.
+                                                                      Send Karma points directly to another user by username, email, ID number, or QR scan.
                                                                   </p>
                                                                   <form onSubmit={handleTransferPoints} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                                                      <div className="field-block" style={{ margin: 0 }}>
-                                                                          <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Recipient Email</label>
-                                                                          <input
-                                                                              type="email"
-                                                                              placeholder="neighbor@example.com"
-                                                                              value={recipientEmail}
-                                                                              onChange={e => setRecipientEmail(e.target.value)}
-                                                                              required
-                                                                              style={{
-                                                                                  width: '100%',
-                                                                                  background: 'var(--glass-bg)',
-                                                                                  border: '1px solid var(--glass-border)',
+                                                                      <div className="field-block" style={{ margin: 0, position: 'relative' }}>
+                                                                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                                                              <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Recipient Neighbor</label>
+                                                                              <div style={{ display: 'flex', gap: '8px' }}>
+                                                                                  <button
+                                                                                      type="button"
+                                                                                      onClick={startScanner}
+                                                                                      style={{
+                                                                                          background: 'rgba(255, 107, 107, 0.1)',
+                                                                                          border: '1px solid rgba(255, 107, 107, 0.2)',
+                                                                                          borderRadius: '8px',
+                                                                                          color: 'white',
+                                                                                          fontSize: '0.7rem',
+                                                                                          cursor: 'pointer',
+                                                                                          display: 'flex',
+                                                                                          alignItems: 'center',
+                                                                                          gap: '4px',
+                                                                                          padding: '4px 8px',
+                                                                                          fontWeight: 'bold',
+                                                                                          transition: 'all 0.2s'
+                                                                                      }}
+                                                                                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 107, 107, 0.2)'}
+                                                                                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 107, 107, 0.1)'}
+                                                                                  >
+                                                                                      <Camera size={12} /> Scan QR
+                                                                                  </button>
+                                                                                  <button
+                                                                                      type="button"
+                                                                                      onClick={() => setShowMyQr(true)}
+                                                                                      style={{
+                                                                                          background: 'rgba(255, 107, 107, 0.1)',
+                                                                                          border: '1px solid rgba(255, 107, 107, 0.2)',
+                                                                                          borderRadius: '8px',
+                                                                                          color: 'white',
+                                                                                          fontSize: '0.7rem',
+                                                                                          cursor: 'pointer',
+                                                                                          display: 'flex',
+                                                                                          alignItems: 'center',
+                                                                                          gap: '4px',
+                                                                                          padding: '4px 8px',
+                                                                                          fontWeight: 'bold',
+                                                                                          transition: 'all 0.2s'
+                                                                                      }}
+                                                                                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 107, 107, 0.2)'}
+                                                                                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 107, 107, 0.1)'}
+                                                                                  >
+                                                                                      <Sparkles size={12} /> My QR
+                                                                                  </button>
+                                                                              </div>
+                                                                          </div>
+                                                                          
+                                                                          {selectedRecipient ? (
+                                                                              <div style={{
+                                                                                  display: 'flex',
+                                                                                  alignItems: 'center',
+                                                                                  justifyContent: 'space-between',
+                                                                                  background: 'rgba(255, 107, 107, 0.1)',
+                                                                                  border: '1px solid rgba(255, 107, 107, 0.3)',
                                                                                   borderRadius: '12px',
-                                                                                  color: 'var(--text-primary)',
-                                                                                  padding: '12px',
-                                                                                  outline: 'none'
-                                                                              }}
-                                                                          />
+                                                                                  padding: '10px 14px',
+                                                                                  marginTop: '6px'
+                                                                              }}>
+                                                                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                                                      {selectedRecipient.avatar_url ? (
+                                                                                          <img src={selectedRecipient.avatar_url} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                                                      ) : (
+                                                                                          <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>👤</div>
+                                                                                      )}
+                                                                                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                                                          <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'white' }}>{selectedRecipient.full_name}</span>
+                                                                                          <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>ID: {selectedRecipient.id}</span>
+                                                                                      </div>
+                                                                                  </div>
+                                                                                  <button
+                                                                                      type="button"
+                                                                                      onClick={() => setSelectedRecipient(null)}
+                                                                                      style={{
+                                                                                          background: 'none',
+                                                                                          border: 'none',
+                                                                                          color: 'var(--text-secondary)',
+                                                                                          cursor: 'pointer',
+                                                                                          padding: '4px'
+                                                                                      }}
+                                                                                  >
+                                                                                      <X size={16} />
+                                                                                  </button>
+                                                                              </div>
+                                                                          ) : (
+                                                                              <>
+                                                                                  <input
+                                                                                      type="text"
+                                                                                      placeholder="Type username, user ID, or email..."
+                                                                                      value={searchQuery || recipientEmail}
+                                                                                      onChange={e => {
+                                                                                          const val = e.target.value;
+                                                                                          setRecipientEmail(val);
+                                                                                          handleSearchProfiles(val);
+                                                                                      }}
+                                                                                      required={!selectedRecipient}
+                                                                                      style={{
+                                                                                          width: '100%',
+                                                                                          background: 'var(--glass-bg)',
+                                                                                          border: '1px solid var(--glass-border)',
+                                                                                          borderRadius: '12px',
+                                                                                          color: 'var(--text-primary)',
+                                                                                          padding: '12px',
+                                                                                          outline: 'none',
+                                                                                          marginTop: '2px'
+                                                                                      }}
+                                                                                  />
+                                                                                  
+                                                                                  {searchResults.length > 0 && (
+                                                                                      <div style={{
+                                                                                          position: 'absolute',
+                                                                                          top: '100%',
+                                                                                          left: 0,
+                                                                                          right: 0,
+                                                                                          background: 'rgba(20, 20, 20, 0.95)',
+                                                                                          backdropFilter: 'blur(20px)',
+                                                                                          border: '1px solid var(--glass-border)',
+                                                                                          borderRadius: '12px',
+                                                                                          zIndex: 1000,
+                                                                                          maxHeight: '200px',
+                                                                                          overflowY: 'auto',
+                                                                                          marginTop: '4px',
+                                                                                          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.4)'
+                                                                                      }}>
+                                                                                          {searchResults.map(user => (
+                                                                                              <div
+                                                                                                  key={user.id}
+                                                                                                  onClick={() => {
+                                                                                                      setSelectedRecipient(user);
+                                                                                                      setRecipientEmail('');
+                                                                                                      setSearchQuery('');
+                                                                                                      setSearchResults([]);
+                                                                                                  }}
+                                                                                                  style={{
+                                                                                                      display: 'flex',
+                                                                                                      alignItems: 'center',
+                                                                                                      gap: '10px',
+                                                                                                      padding: '10px 14px',
+                                                                                                      cursor: 'pointer',
+                                                                                                      borderBottom: '1px solid rgba(255,255,255,0.05)',
+                                                                                                      transition: 'background 0.2s'
+                                                                                                  }}
+                                                                                                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 107, 107, 0.1)'}
+                                                                                                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                                                              >
+                                                                                                  {user.avatar_url ? (
+                                                                                                      <img src={user.avatar_url} alt="" style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }} />
+                                                                                                  ) : (
+                                                                                                      <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>👤</div>
+                                                                                                  )}
+                                                                                                  <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                                                                                                      <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'white' }}>{user.full_name}</span>
+                                                                                                      <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>ID: {user.id}</span>
+                                                                                                  </div>
+                                                                                              </div>
+                                                                                          ))}
+                                                                                      </div>
+                                                                                  )}
+                                                                              </>
+                                                                          )}
                                                                       </div>
                                                                       <div className="field-block" style={{ margin: 0 }}>
                                                                           <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Points Amount</label>
