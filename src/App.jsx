@@ -2260,9 +2260,6 @@ function App() {
                                         <div className="chat-interface">
                                             <header className={`app-header-new ${isHeaderHidden ? 'hidden' : ''}`} style={{ position: 'relative' }}>
                                                 <div className="brand-wrap">
-                                                    <div className="pulse-circle-mini" style={{ width: '40px', height: '40px', marginRight: '12px' }}>
-                                                        <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                                    </div>
                                                     <h1 className="logo-text">MILES <span className="logo-accent">CIRCLE</span></h1>
                                                     {offlineMode && (
                                                         <span style={{
