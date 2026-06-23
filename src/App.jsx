@@ -2042,12 +2042,12 @@ function App() {
                                             const feelsLike = weather.temp != null ? Math.round(weather.temp - (weather.windspeed || 0) * 0.05) : null;
                                             return (
                                                 <>
-                                                    {/* Clickable weather pill — sits below logo */}
+                                                    {/* Clickable weather pill — bottom-left, above chat input */}
                                                     <button
                                                         onClick={e => { e.stopPropagation(); setShowWeatherPanel(p => !p); }}
                                                         style={{
                                                             position: 'absolute',
-                                                            top: '115px',
+                                                            bottom: '90px',
                                                             left: '16px',
                                                             zIndex: 1000,
                                                             background: showWeatherPanel
@@ -2090,7 +2090,7 @@ function App() {
                                                         <div
                                                             style={{
                                                                 position: 'absolute',
-                                                                top: '160px',
+                                                                bottom: '150px',
                                                                 left: '16px',
                                                                 zIndex: 1000,
                                                                 width: 'min(320px, calc(100vw - 80px))',
