@@ -27,53 +27,7 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
     };
     const bountyAmount = getBountyAmount();
 
-    const audioRegex = /🎙️\[ECHO:(data:audio\/[a-zA-Z0-9+=;/,:-]+)\]/;
-    const audioMatch = post.content ? post.content.match(audioRegex) : null;
-    const audioData = audioMatch ? audioMatch[1] : null;
-    const cleanContent = post.content ? post.content.replace(audioRegex, '').trim() : '';
 
-    const [playingAudio, setPlayingAudio] = useState(false);
-    const [playbackProgress, setPlaybackProgress] = useState(0);
-    const audioRef = useRef(null);
-
-    const toggleAudio = (e) => {
-        if (e) {
-            e.stopPropagation();
-            e.preventDefault();
-        }
-        if (!audioData) return;
-
-        if (!audioRef.current) {
-            audioRef.current = new Audio(audioData);
-            audioRef.current.onended = () => {
-                setPlayingAudio(false);
-                setPlaybackProgress(0);
-            };
-            audioRef.current.ontimeupdate = () => {
-                if (audioRef.current) {
-                    const progress = (audioRef.current.currentTime / audioRef.current.duration) * 100;
-                    setPlaybackProgress(progress || 0);
-                }
-            };
-        }
-
-        if (playingAudio) {
-            audioRef.current.pause();
-            setPlayingAudio(false);
-        } else {
-            audioRef.current.play().catch(err => console.error("Playback failed:", err));
-            setPlayingAudio(true);
-        }
-    };
-
-    useEffect(() => {
-        return () => {
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current = null;
-            }
-        };
-    }, []);
 
     const showWarning = (msg) => {
         if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
@@ -256,7 +210,7 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
         setShowMenu(false);
         try {
             // Google Translate free endpoint (gtx) — auto-detects language, translates to English
-            const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(cleanContent || '')}`);
+            const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(post.content || '')}`);
             const data = await res.json();
             if (data && data[0]) {
                 const translated = data[0].map(x => x[0]).join('');
@@ -644,100 +598,33 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                     </div>
                 )}
 
-                {audioData && (
-                    <div 
-                        onClick={toggleAudio}
-                        style={{
-                            background: isMine ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.06)',
-                            border: '1px solid var(--glass-border)',
-                            borderRadius: '16px',
-                            padding: '10px 14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            marginTop: '4px',
-                            marginBottom: '10px',
-                            cursor: 'pointer',
-                            boxSizing: 'border-box'
-                        }}
-                    >
-                        <button
-                            type="button"
-                            style={{
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '50%',
-                                background: 'var(--accent-red)',
-                                border: 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'white',
-                                cursor: 'pointer',
-                                fontSize: '1rem',
-                                flexShrink: 0
-                            }}
-                        >
-                            {playingAudio ? '⏸️' : '▶️'}
-                        </button>
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', opacity: 0.8, color: isMine ? 'white' : 'var(--text-primary)' }}>
-                                {playingAudio ? 'Playing Neighbor Voice...' : 'Voice Echo Memo'}
-                            </span>
-                            {/* Animated soundwaves when playing */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '3px', height: '14px' }}>
-                                {[...Array(12)].map((_, i) => {
-                                    const heights = [6, 12, 8, 14, 10, 5, 12, 7, 14, 9, 12, 6];
-                                    const animDuration = 0.5 + (i % 3) * 0.2;
-                                    return (
-                                        <div
-                                            key={i}
-                                            style={{
-                                                width: '3px',
-                                                height: playingAudio ? `${heights[i % heights.length]}px` : '4px',
-                                                background: isMine ? 'white' : 'var(--accent-red)',
-                                                borderRadius: '2px',
-                                                transition: 'height 0.2s',
-                                                animation: playingAudio ? `soundwave-bounce ${animDuration}s infinite alternate ease-in-out` : 'none'
-                                            }}
-                                        />
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 {/* Message Content */}
-                {cleanContent && (
-                    <div style={{
-                        fontSize: '0.97rem', lineHeight: '1.6', fontWeight: '400',
-                        wordBreak: 'break-word', color: isMine ? 'rgba(255,255,255,0.95)' : 'var(--text-primary)',
-                        marginBottom: '4px'
-                    }}>
-                        {translating ? (
-                            <span style={{ opacity: 0.6, fontStyle: 'italic' }}>Translating...</span>
-                        ) : translatedText ? (
-                            <>
-                                <div style={{ opacity: 0.6, fontSize: '0.8rem', marginBottom: '4px', fontStyle: 'italic' }}>{cleanContent}</div>
-                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '4px' }}>🌐 {translatedText}</div>
-                            </>
-                        ) : (
-                            cleanContent.split(/(\s+)/).map((part, i) => {
-                                if (part.match(/^https?:\/\//)) {
-                                    return (
-                                        <a key={i} href={part} target="_blank" rel="noopener noreferrer"
-                                            onClick={e => e.stopPropagation()}
-                                            style={{ color: isMine ? 'white' : 'var(--accent-red)', textDecoration: 'underline', fontWeight: '600' }}>
-                                            {part}
-                                        </a>
-                                    );
-                                }
-                                return part;
-                            })
-                        )}
-                    </div>
-                )}
+                <div style={{
+                    fontSize: '0.97rem', lineHeight: '1.6', fontWeight: '400',
+                    wordBreak: 'break-word', color: isMine ? 'rgba(255,255,255,0.95)' : 'var(--text-primary)'
+                }}>
+                    {translating ? (
+                        <span style={{ opacity: 0.6, fontStyle: 'italic' }}>Translating...</span>
+                    ) : translatedText ? (
+                        <>
+                            <div style={{ opacity: 0.6, fontSize: '0.8rem', marginBottom: '4px', fontStyle: 'italic' }}>{post.content}</div>
+                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '4px' }}>🌐 {translatedText}</div>
+                        </>
+                    ) : (
+                        post?.content?.split(/(\s+)/).map((part, i) => {
+                            if (part.match(/^https?:\/\//)) {
+                                return (
+                                    <a key={i} href={part} target="_blank" rel="noopener noreferrer"
+                                        onClick={e => e.stopPropagation()}
+                                        style={{ color: isMine ? 'white' : 'var(--accent-red)', textDecoration: 'underline', fontWeight: '600' }}>
+                                        {part}
+                                    </a>
+                                );
+                            }
+                            return part;
+                        })
+                    )}
+                </div>
 
                 {/* Image Attachment */}
                 {post?.image_url && (

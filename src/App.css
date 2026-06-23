@@ -3541,15 +3541,6 @@ body {
     transition: transform 0.1s ease, opacity 0.1s ease !important;
 }
 
-@keyframes soundwave-bounce {
-    0% {
-        height: 4px;
-    }
-    100% {
-        height: 14px;
-    }
-}
-
 /* Reduced Motion Preferences support */
 @media (prefers-reduced-motion: reduce) {
     *, ::before, ::after {

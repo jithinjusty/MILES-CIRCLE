@@ -12,81 +12,13 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
     const [showLinkInput, setShowLinkInput] = useState(false)
     const [linkText, setLinkText] = useState('')
 
-    const [recording, setRecording] = useState(false)
-    const [audioBase64, setAudioBase64] = useState(null)
-    const [audioDuration, setAudioDuration] = useState(0)
-    const mediaRecorderRef = useRef(null)
-    const audioChunksRef = useRef([])
-    const timerIntervalRef = useRef(null)
 
-    useEffect(() => {
-        return () => {
-            if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-                mediaRecorderRef.current.stop();
-            }
-        };
-    }, []);
-
-    const startRecording = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            audioChunksRef.current = [];
-            const mediaRecorder = new MediaRecorder(stream);
-            mediaRecorderRef.current = mediaRecorder;
-
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) {
-                    audioChunksRef.current.push(e.data);
-                }
-            };
-
-            mediaRecorder.onstop = async () => {
-                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                const reader = new FileReader();
-                reader.readAsDataURL(audioBlob);
-                reader.onloadend = () => {
-                    setAudioBase64(reader.result);
-                };
-                stream.getTracks().forEach(track => track.stop());
-            };
-
-            setAudioBase64(null);
-            setAudioDuration(0);
-            setRecording(true);
-            mediaRecorder.start();
-
-            let seconds = 0;
-            timerIntervalRef.current = setInterval(() => {
-                seconds += 1;
-                setAudioDuration(seconds);
-                if (seconds >= 6) {
-                    stopRecording();
-                }
-            }, 1000);
-
-        } catch (err) {
-            console.error("Microphone access error:", err);
-            setError("Could not access microphone: " + err.message);
-        }
-    };
-
-    const stopRecording = () => {
-        if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-            timerIntervalRef.current = null;
-        }
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-            mediaRecorderRef.current.stop();
-        }
-        setRecording(false);
-    };
 
     const handleSubmit = async (e) => {
         if (e) e.preventDefault()
         
-        if (!content.trim() && !audioBase64) {
-            setError('Post content or voice memo cannot be empty')
+        if (!content.trim()) {
+            setError('Post content cannot be empty')
             return
         }
 
@@ -125,17 +57,12 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
             const lng = position && position[1] !== undefined ? position[1] : 0;
             const locationWKT = `POINT(${lng} ${lat})`
 
-            let finalContent = content.trim();
-            if (audioBase64) {
-                finalContent += ` 🎙️[ECHO:${audioBase64}]`;
-            }
-
             const { error: insertError } = await supabase
                 .from('posts')
                 .insert([
                     {
                         user_id: user.id,
-                        content: finalContent,
+                        content: content.trim(),
                         location: locationWKT,
                         is_alert: isAlert,
                         poll_options: finalPollOptions,
@@ -270,27 +197,6 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
                             <span>📊</span>
                             <span>Create Poll</span>
                         </button>
-                        <button
-                            type="button"
-                            onClick={recording ? stopRecording : startRecording}
-                            style={{
-                                background: recording ? 'rgba(210, 85, 78, 0.25)' : (audioBase64 ? 'rgba(46, 204, 113, 0.2)' : 'var(--glass-bg)'),
-                                border: `1px solid ${recording ? 'var(--accent-red)' : (audioBase64 ? '#2ecc71' : 'var(--glass-border)')}`,
-                                borderRadius: '12px',
-                                padding: '12px 16px',
-                                color: recording ? 'var(--accent-red)' : (audioBase64 ? '#2ecc71' : 'var(--text-primary)'),
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                cursor: 'pointer',
-                                fontSize: '0.9rem',
-                                transition: 'all 0.2s',
-                                fontWeight: (recording || audioBase64) ? '800' : '400'
-                            }}
-                        >
-                            <span>{recording ? '🛑' : '🎙️'}</span>
-                            <span>{recording ? `Recording ${audioDuration}s` : (audioBase64 ? 'Echo Recorded' : 'Voice Memo')}</span>
-                        </button>
                     </div>
 
                     {showLinkInput && (
@@ -407,34 +313,7 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
                         </div>
                     )}
 
-                    {audioBase64 && (
-                        <div style={{ 
-                            display: 'flex', 
-                            gap: '12px', 
-                            marginBottom: '1.5rem', 
-                            background: 'rgba(46, 204, 113, 0.1)', 
-                            border: '1px solid rgba(46, 204, 113, 0.2)', 
-                            borderRadius: '16px', 
-                            padding: '12px 16px', 
-                            alignItems: 'center', 
-                            justifyContent: 'space-between',
-                            boxSizing: 'border-box'
-                        }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#2ecc71', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                                <span>🎙️</span> Voice Memo Preview
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <audio src={audioBase64} controls style={{ height: '32px', maxWidth: '160px' }} />
-                                <button
-                                    type="button"
-                                    onClick={() => setAudioBase64(null)}
-                                    style={{ background: 'transparent', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold', padding: '4px 8px' }}
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                        </div>
-                    )}
+
 
                     {error && (
                         <div className="error-message" style={{ background: 'rgba(210, 85, 78, 0.1)', color: 'var(--accent-red)', padding: '12px', borderRadius: '12px', fontSize: '0.9rem', marginBottom: '1.5rem', textAlign: 'center' }}>{error}</div>
@@ -452,7 +331,7 @@ export default function CreatePostModal({ position, radius, onClose, onPostCreat
                         <button
                             type="submit"
                             className="btn-onboarding-next"
-                            disabled={loading || (!content.trim() && !audioBase64)}
+                            disabled={loading || !content.trim()}
                             style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                         >
                             {loading ? 'Posting...' : <><Send size={18} /> Send Post</>}
