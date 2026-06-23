@@ -33,35 +33,51 @@ const INITIAL_POSITION = null; // No default location, must be detected
 
 function MapController({ center, radius, isInteracting }) {
     const map = useMap();
+    const isInteractingRef = useRef(isInteracting);
+    const fitBoundsTimerRef = useRef(null);
+
+    // Keep the ref in sync without triggering re-renders or re-effects
+    useEffect(() => {
+        isInteractingRef.current = isInteracting;
+    }, [isInteracting]);
+
     useEffect(() => {
         if (!map || !center || isNaN(center[0]) || isNaN(center[1])) return;
 
-        // Ensure north-up: disable touch rotation if any plugin enabled it
-        if (map.touchRotate) map.touchRotate.disable();
-        if (map.compassBearing) map.compassBearing.disable();
-        // Force the map pane to have no rotation transform
-        const mapPane = map.getPane('mapPane');
-        if (mapPane) mapPane.style.transform = mapPane.style.transform?.replace(/rotate\([^)]+\)/g, '') || '';
-        const metersPerDegree = 111320;
-        const latDelta = (radius * 1609.34) / metersPerDegree;
-        // Lon delta depends on latitude
-        const lngDelta = (radius * 1609.34) / (metersPerDegree * Math.cos(center[0] * Math.PI / 180));
+        // Debounce: wait 150ms after the last radius/center change before fitting
+        if (fitBoundsTimerRef.current) clearTimeout(fitBoundsTimerRef.current);
 
-        const bounds = [
-            [center[0] - latDelta, center[1] - lngDelta],
-            [center[0] + latDelta, center[1] + lngDelta]
-        ];
+        fitBoundsTimerRef.current = setTimeout(() => {
+            if (!map || !center) return;
 
-        try {
-            map.fitBounds(bounds, {
-                padding: [50, 50],
-                animate: true,
-                duration: isInteracting ? 0.5 : 1.2
-            });
-        } catch (e) {
-            console.warn("Map fitBounds failed gently:", e);
-        }
-    }, [center, radius, map, isInteracting]);
+            // Ensure north-up
+            if (map.touchRotate) map.touchRotate.disable();
+            if (map.compassBearing) map.compassBearing.disable();
+            const mapPane = map.getPane('mapPane');
+            if (mapPane) mapPane.style.transform = mapPane.style.transform?.replace(/rotate\([^)]+\)/g, '') || '';
+
+            const metersPerDegree = 111320;
+            const latDelta = (radius * 1609.34) / metersPerDegree;
+            const lngDelta = (radius * 1609.34) / (metersPerDegree * Math.cos(center[0] * Math.PI / 180));
+
+            const bounds = [
+                [center[0] - latDelta, center[1] - lngDelta],
+                [center[0] + latDelta, center[1] + lngDelta]
+            ];
+
+            try {
+                map.fitBounds(bounds, {
+                    padding: [50, 50],
+                    animate: true,
+                    duration: isInteractingRef.current ? 0.3 : 1.2
+                });
+            } catch (e) {
+                console.warn("Map fitBounds failed gently:", e);
+            }
+        }, 150);
+
+        return () => { if (fitBoundsTimerRef.current) clearTimeout(fitBoundsTimerRef.current); };
+    }, [center, radius, map]);
     return null;
 }
 
@@ -2408,7 +2424,7 @@ function App() {
                                                 </button>
                                                 {!isSliderHidden && (
                                                     <div className="slider-controls-wrap">
-                                                        <span className="radius-badge">{distanceUnit === 'km' ? (radius * 1.60934).toFixed(1) + 'km' : radius + 'm'}</span>
+                                                        <span className="radius-badge">{distanceUnit === 'km' ? (radius * 1.60934).toFixed(1) + ' km' : radius + ' mi'}</span>
                                                         <input
                                                             type="range"
                                                             className="range-vertical"
@@ -2416,6 +2432,7 @@ function App() {
                                                             max="20"
                                                             step="0.5"
                                                             value={radius}
+                                                            onInput={e => setRadius(parseFloat(e.target.value))}
                                                             onChange={e => setRadius(parseFloat(e.target.value))}
                                                             onMouseDown={() => handleSliderInteract(true)}
                                                             onMouseUp={() => handleSliderInteract(false)}
@@ -2423,7 +2440,7 @@ function App() {
                                                             onTouchEnd={() => handleSliderInteract(false)}
                                                             style={{ '--range-percent': `${((radius - 0.5) / 19.5) * 100}%` }}
                                                         />
-                                                        <span className="slider-label-vertical">{distanceUnit === 'km' ? 'Distance (km)' : 'Distance'}</span>
+                                                        <span className="slider-label-vertical">{distanceUnit === 'km' ? 'Distance (km)' : 'Distance (mi)'}</span>
                                                         <MapIcon size={20} color="var(--text-secondary)" style={{ marginTop: '10px', opacity: 0.5 }} />
                                                     </div>
                                                 )}
