@@ -1268,8 +1268,8 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
 
             {/* Create Shop Offer Modal */}
             {showCreateOffer && (
-                <div className="modal-overlay" style={{ zIndex: 4000, display: 'flex', alignItems: 'flex-start', overflowY: 'auto', padding: '40px 10px' }} onClick={() => setShowCreateOffer(false)}>
-                    <div className="onboarding-card-premium anim-fade-in" style={{ maxWidth: '480px', width: '90%', margin: 'auto' }} onClick={e => e.stopPropagation()}>
+                <div className="modal-overlay" style={{ zIndex: 4000, display: 'block', overflowY: 'scroll', WebkitOverflowScrolling: 'touch', padding: '20px 10px' }} onClick={() => setShowCreateOffer(false)}>
+                    <div className="onboarding-card-premium anim-fade-in" style={{ maxWidth: '480px', width: '90%', margin: '20px auto 40px', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                         <header style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h2 className="onboarding-title" style={{ fontSize: '1.5rem', margin: 0 }}>Create Special Offer</h2>
                             <button onClick={() => setShowCreateOffer(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
