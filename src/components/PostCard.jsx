@@ -180,12 +180,17 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
         setTranslating(true);
         setShowMenu(false);
         try {
-            // MyMemory free translation API — no key required, auto-detects language
-            const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(post.content || '')}&langpair=auto|en`);
+            // Google Translate free endpoint (gtx) — auto-detects language, translates to English
+            const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=en&dt=t&q=${encodeURIComponent(post.content || '')}`);
             const data = await res.json();
-            const translated = data?.responseData?.translatedText;
-            setTranslatedText(translated || '[Translation unavailable]');
+            if (data && data[0]) {
+                const translated = data[0].map(x => x[0]).join('');
+                setTranslatedText(translated || '[Translation unavailable]');
+            } else {
+                setTranslatedText('[Translation unavailable]');
+            }
         } catch (e) {
+            console.error('Translation error:', e);
             setTranslatedText('[Translation failed — please try again]');
         }
         setTranslating(false);
