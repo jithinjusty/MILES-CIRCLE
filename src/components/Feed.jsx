@@ -549,7 +549,13 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                 "Content-Type": "application/json"
                             },
                             body: JSON.stringify({
-                                model: "openrouter/free",
+                                models: [
+                                    "meta-llama/llama-3-8b-instruct:free",
+                                    "google/gemma-2-9b-it:free",
+                                    "qwen/qwen-2.5-7b-instruct:free",
+                                    "microsoft/phi-3-medium-128k-instruct:free",
+                                    "openrouter/free"
+                                ],
                                 messages: [
                                     { role: "system", content: systemPrompt },
                                     { role: "user", content: userPrompt }
@@ -558,7 +564,13 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                         });
                         const openData = await openRes.json();
                         if (openData.choices && openData.choices.length > 0) {
-                            resText = openData.choices[0].message.content;
+                            const rawText = openData.choices[0].message.content || "";
+                            if (rawText.toLowerCase().includes("user safety:") || 
+                                rawText.toLowerCase().includes("response safety:") || 
+                                rawText.trim().toLowerCase() === "safe") {
+                                throw new Error("OpenRouter returned content safety moderation message instead of chat reply");
+                            }
+                            resText = rawText;
                         } else {
                             throw new Error("OpenRouter invalid response");
                         }

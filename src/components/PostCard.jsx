@@ -207,29 +207,52 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
 
             let suggestion = '';
             if (openRouterKey) {
-                const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${openRouterKey}`,
-                        "HTTP-Referer": "https://milescircle.app",
-                        "X-Title": "Miles Circle",
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        model: "openrouter/free",
-                        messages: [{ role: "user", content: aiPrompt }]
-                    })
-                });
-                const data = await res.json();
-                suggestion = data.choices?.[0]?.message?.content || '';
-            } else if (geminiKey) {
-                const gRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: aiPrompt }] }] })
-                });
-                const gData = await gRes.json();
-                suggestion = gData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                try {
+                    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${openRouterKey}`,
+                            "HTTP-Referer": "https://milescircle.app",
+                            "X-Title": "Miles Circle",
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            models: [
+                                "meta-llama/llama-3-8b-instruct:free",
+                                "google/gemma-2-9b-it:free",
+                                "qwen/qwen-2.5-7b-instruct:free",
+                                "microsoft/phi-3-medium-128k-instruct:free",
+                                "openrouter/free"
+                            ],
+                            messages: [{ role: "user", content: aiPrompt }]
+                        })
+                    });
+                    const data = await res.json();
+                    const rawText = data.choices?.[0]?.message?.content || '';
+                    if (rawText.toLowerCase().includes("user safety:") || 
+                        rawText.toLowerCase().includes("response safety:") || 
+                        rawText.trim().toLowerCase() === "safe") {
+                        throw new Error("OpenRouter safety moderation check triggered");
+                    }
+                    suggestion = rawText;
+                } catch (openErr) {
+                    console.error("OpenRouter failed in PostCard, trying fallback:", openErr);
+                    suggestion = '';
+                }
+            }
+
+            if (!suggestion.trim() && geminiKey) {
+                try {
+                    const gRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: aiPrompt }] }] })
+                    });
+                    const gData = await gRes.json();
+                    suggestion = gData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                } catch (geminiErr) {
+                    console.error("Gemini failed in PostCard:", geminiErr);
+                }
             }
 
             if (suggestion.trim()) {
