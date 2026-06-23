@@ -36,6 +36,26 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const [offerFreeAccess, setOfferFreeAccess] = useState('');
     const [postingOffer, setPostingOffer] = useState(false);
 
+    // Buy & Sell States
+    const [showCreateBuySell, setShowCreateBuySell] = useState(false);
+    const [buySellType, setBuySellType] = useState('sell'); // 'sell' or 'buy'
+    const [buySellTitle, setBuySellTitle] = useState('');
+    const [buySellPrice, setBuySellPrice] = useState('');
+    const [buySellCondition, setBuySellCondition] = useState('good');
+    const [buySellDesc, setBuySellDesc] = useState('');
+    const [buySellContact, setBuySellContact] = useState('');
+    const [postingBuySell, setPostingBuySell] = useState(false);
+
+    // Lost & Found States
+    const [showCreateLostFound, setShowCreateLostFound] = useState(false);
+    const [lostFoundType, setLostFoundType] = useState('lost'); // 'lost' or 'found'
+    const [lostFoundTitle, setLostFoundTitle] = useState('');
+    const [lostFoundLocation, setLostFoundLocation] = useState('');
+    const [lostFoundDate, setLostFoundDate] = useState('');
+    const [lostFoundDesc, setLostFoundDesc] = useState('');
+    const [lostFoundContact, setLostFoundContact] = useState('');
+    const [postingLostFound, setPostingLostFound] = useState(false);
+
     const fetchOffers = async () => {
         setLoadingOffers(true);
         try {
@@ -84,6 +104,92 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
             alert("Failed to create offer: " + err.message);
         } finally {
             setPostingOffer(false);
+        }
+    };
+
+    const handleCreateBuySell = async (e) => {
+        if (e) e.preventDefault();
+        if (!session?.user?.id || !position) return;
+
+        setPostingBuySell(true);
+        try {
+            const typeLabel = buySellType === 'sell' ? 'FOR SALE' : 'WANTED / LOOKING TO BUY';
+            const conditionLabel = buySellType === 'sell' ? ` | Condition: ${buySellCondition}` : '';
+            const priceText = buySellPrice ? ` | Price: ₹${buySellPrice}` : '';
+            const contactText = buySellContact ? `\nContact/Meetup: ${buySellContact}` : '';
+            
+            const postContent = `🏷️ #buysell [${typeLabel}]
+Item: ${buySellTitle.trim()}${priceText}${conditionLabel}
+Details: ${buySellDesc.trim()}${contactText}`;
+
+            const locationWKT = `POINT(${position[1]} ${position[0]})`;
+
+            const { error } = await supabase
+                .from('posts')
+                .insert([{
+                    user_id: session.user.id,
+                    content: postContent,
+                    location: locationWKT
+                }]);
+
+            if (error) throw error;
+
+            setBuySellTitle('');
+            setBuySellPrice('');
+            setBuySellCondition('good');
+            setBuySellDesc('');
+            setBuySellContact('');
+            setShowCreateBuySell(false);
+            fetchPosts();
+        } catch (err) {
+            console.error("Error creating buy/sell post:", err);
+            alert("Failed to post: " + err.message);
+        } finally {
+            setPostingBuySell(false);
+        }
+    };
+
+    const handleCreateLostFound = async (e) => {
+        if (e) e.preventDefault();
+        if (!session?.user?.id || !position) return;
+
+        setPostingLostFound(true);
+        try {
+            const typeLabel = lostFoundType === 'lost' ? 'LOST ITEM' : 'FOUND ITEM';
+            const locationLabel = lostFoundType === 'lost' ? 'Last Seen' : 'Found At';
+            const dateLabel = lostFoundType === 'lost' ? 'Lost Date' : 'Found Date';
+            const contactText = lostFoundContact ? `\nContact/Details: ${lostFoundContact}` : '';
+            const dateText = lostFoundDate ? `\n${dateLabel}: ${lostFoundDate}` : '';
+
+            const postContent = `🔍 #lostfound [${typeLabel}]
+Item: ${lostFoundTitle.trim()}
+${locationLabel}: ${lostFoundLocation.trim()}${dateText}
+Details: ${lostFoundDesc.trim()}${contactText}`;
+
+            const locationWKT = `POINT(${position[1]} ${position[0]})`;
+
+            const { error } = await supabase
+                .from('posts')
+                .insert([{
+                    user_id: session.user.id,
+                    content: postContent,
+                    location: locationWKT
+                }]);
+
+            if (error) throw error;
+
+            setLostFoundTitle('');
+            setLostFoundLocation('');
+            setLostFoundDate('');
+            setLostFoundDesc('');
+            setLostFoundContact('');
+            setShowCreateLostFound(false);
+            fetchPosts();
+        } catch (err) {
+            console.error("Error creating lost/found post:", err);
+            alert("Failed to post: " + err.message);
+        } finally {
+            setPostingLostFound(false);
         }
     };
 
@@ -1392,6 +1498,353 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                 }}
                             >
                                 {postingOffer ? 'Creating Advertisement...' : 'Create Advertisement'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Buy & Sell Modal */}
+            {showCreateBuySell && (
+                <div className="modal-overlay" style={{ zIndex: 4000, display: 'block', overflowY: 'scroll', WebkitOverflowScrolling: 'touch', padding: '20px 10px' }} onClick={() => setShowCreateBuySell(false)}>
+                    <div className="onboarding-card-premium anim-fade-in" style={{ maxWidth: '480px', width: '90%', margin: '20px auto 40px', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                        <header style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h2 className="onboarding-title" style={{ fontSize: '1.5rem', margin: 0 }}>Post Buy & Sell Item</h2>
+                            <button onClick={() => setShowCreateBuySell(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+                        </header>
+                        
+                        <form onSubmit={handleCreateBuySell} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>I want to...</label>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setBuySellType('sell')}
+                                        style={{
+                                            flex: 1,
+                                            background: buySellType === 'sell' ? 'var(--accent-red)' : 'var(--glass-bg)',
+                                            color: 'white',
+                                            border: '1px solid var(--glass-border)',
+                                            borderRadius: '10px',
+                                            padding: '10px',
+                                            cursor: 'pointer',
+                                            fontWeight: 'bold'
+                                        }}
+                                    >
+                                        Sell an Item
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setBuySellType('buy')}
+                                        style={{
+                                            flex: 1,
+                                            background: buySellType === 'buy' ? 'var(--accent-red)' : 'var(--glass-bg)',
+                                            color: 'white',
+                                            border: '1px solid var(--glass-border)',
+                                            borderRadius: '10px',
+                                            padding: '10px',
+                                            cursor: 'pointer',
+                                            fontWeight: 'bold'
+                                        }}
+                                    >
+                                        Buy / Request
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Item Title</label>
+                                <input
+                                    type="text"
+                                    placeholder={buySellType === 'sell' ? "e.g. Selling Mountain Bike" : "e.g. Looking for used Study Table"}
+                                    value={buySellTitle}
+                                    onChange={e => setBuySellTitle(e.target.value)}
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        color: 'var(--text-primary)',
+                                        padding: '12px',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Price (₹) {buySellType === 'buy' && '(Optional / Budget)'}</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="e.g. 1500"
+                                    value={buySellPrice}
+                                    onChange={e => setBuySellPrice(e.target.value)}
+                                    required={buySellType === 'sell'}
+                                    style={{
+                                        width: '100%',
+                                        background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        color: 'var(--text-primary)',
+                                        padding: '12px',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+
+                            {buySellType === 'sell' && (
+                                <div className="field-block" style={{ margin: 0 }}>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Item Condition</label>
+                                    <select
+                                        value={buySellCondition}
+                                        onChange={e => setBuySellCondition(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            background: 'var(--glass-bg)',
+                                            border: '1px solid var(--glass-border)',
+                                            borderRadius: '12px',
+                                            color: 'var(--text-primary)',
+                                            padding: '12px',
+                                            outline: 'none',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <option value="New" style={{ background: '#222' }}>New</option>
+                                        <option value="Like New" style={{ background: '#222' }}>Like New</option>
+                                        <option value="Good" style={{ background: '#222' }}>Good / Used</option>
+                                        <option value="Fair" style={{ background: '#222' }}>Fair / Functional</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Description</label>
+                                <textarea
+                                    placeholder="Describe specifications, condition details, negotiation policy..."
+                                    value={buySellDesc}
+                                    onChange={e => setBuySellDesc(e.target.value)}
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        height: '100px',
+                                        background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        color: 'var(--text-primary)',
+                                        padding: '12px',
+                                        outline: 'none',
+                                        resize: 'none'
+                                    }}
+                                />
+                            </div>
+
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Contact / Meetup Info (Optional)</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Meet near Subway / WhatsApp me"
+                                    value={buySellContact}
+                                    onChange={e => setBuySellContact(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        color: 'var(--text-primary)',
+                                        padding: '12px',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={postingBuySell}
+                                style={{
+                                    background: 'var(--accent-red)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    padding: '14px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    marginTop: '10px',
+                                    transition: 'all 0.2s',
+                                    opacity: postingBuySell ? 0.6 : 1
+                                }}
+                            >
+                                {postingBuySell ? 'Posting...' : 'Post Item'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Lost & Found Modal */}
+            {showCreateLostFound && (
+                <div className="modal-overlay" style={{ zIndex: 4000, display: 'block', overflowY: 'scroll', WebkitOverflowScrolling: 'touch', padding: '20px 10px' }} onClick={() => setShowCreateLostFound(false)}>
+                    <div className="onboarding-card-premium anim-fade-in" style={{ maxWidth: '480px', width: '90%', margin: '20px auto 40px', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                        <header style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h2 className="onboarding-title" style={{ fontSize: '1.5rem', margin: 0 }}>Post Lost & Found</h2>
+                            <button onClick={() => setShowCreateLostFound(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+                        </header>
+                        
+                        <form onSubmit={handleCreateLostFound} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '8px', display: 'block' }}>Report Type</label>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setLostFoundType('lost')}
+                                        style={{
+                                            flex: 1,
+                                            background: lostFoundType === 'lost' ? 'var(--accent-red)' : 'var(--glass-bg)',
+                                            color: 'white',
+                                            border: '1px solid var(--glass-border)',
+                                            borderRadius: '10px',
+                                            padding: '10px',
+                                            cursor: 'pointer',
+                                            fontWeight: 'bold'
+                                        }}
+                                    >
+                                        Lost Item
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setLostFoundType('found')}
+                                        style={{
+                                            flex: 1,
+                                            background: lostFoundType === 'found' ? 'var(--accent-red)' : 'var(--glass-bg)',
+                                            color: 'white',
+                                            border: '1px solid var(--glass-border)',
+                                            borderRadius: '10px',
+                                            padding: '10px',
+                                            cursor: 'pointer',
+                                            fontWeight: 'bold'
+                                        }}
+                                    >
+                                        Found Item
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Item Name</label>
+                                <input
+                                    type="text"
+                                    placeholder={lostFoundType === 'lost' ? "e.g. Lost Black Leather Wallet" : "e.g. Found Keys / Pet"}
+                                    value={lostFoundTitle}
+                                    onChange={e => setLostFoundTitle(e.target.value)}
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        color: 'var(--text-primary)',
+                                        padding: '12px',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Location {lostFoundType === 'lost' ? 'Last Seen' : 'Found At'}</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Near Central Avenue Park / Starbucks"
+                                    value={lostFoundLocation}
+                                    onChange={e => setLostFoundLocation(e.target.value)}
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        color: 'var(--text-primary)',
+                                        padding: '12px',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Date {lostFoundType === 'lost' ? 'Lost' : 'Found'} (Optional)</label>
+                                <input
+                                    type="date"
+                                    value={lostFoundDate}
+                                    onChange={e => setLostFoundDate(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        color: 'var(--text-primary)',
+                                        padding: '12px',
+                                        outline: 'none',
+                                        cursor: 'pointer'
+                                    }}
+                                />
+                            </div>
+
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Description & Details</label>
+                                <textarea
+                                    placeholder="Describe colors, brands, unique marks, keychain designs, contents..."
+                                    value={lostFoundDesc}
+                                    onChange={e => setLostFoundDesc(e.target.value)}
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        height: '100px',
+                                        background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        color: 'var(--text-primary)',
+                                        padding: '12px',
+                                        outline: 'none',
+                                        resize: 'none'
+                                    }}
+                                />
+                            </div>
+
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Contact / Reward details</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Call 987654xxxx / Reward if found!"
+                                    value={lostFoundContact}
+                                    onChange={e => setLostFoundContact(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)',
+                                        borderRadius: '12px',
+                                        color: 'var(--text-primary)',
+                                        padding: '12px',
+                                        outline: 'none'
+                                    }}
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={postingLostFound}
+                                style={{
+                                    background: 'var(--accent-red)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    padding: '14px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    marginTop: '10px',
+                                    transition: 'all 0.2s',
+                                    opacity: postingLostFound ? 0.6 : 1
+                                }}
+                            >
+                                {postingLostFound ? 'Posting...' : 'Post Report'}
                             </button>
                         </form>
                     </div>
