@@ -2034,150 +2034,9 @@ function App() {
                                     )}
 
                                     {/* MAP LAYER */}
-                                    <div className="map-wrapper" style={{ position: 'absolute', inset: 0, opacity: locationAvailable ? 1 : 0.3, filter: locationAvailable ? 'none' : 'blur(5px)' }} onClick={() => setShowWeatherPanel(false)}>
-                                        {locationAvailable && weather && (() => {
-                                            const wd = getWeatherDescription(weather.code);
-                                            const uvLabel = weather.uv == null ? null : weather.uv <= 2 ? 'Low' : weather.uv <= 5 ? 'Moderate' : weather.uv <= 7 ? 'High' : 'Very High';
-                                            const uvColor = weather.uv == null ? '#aaa' : weather.uv <= 2 ? '#4caf50' : weather.uv <= 5 ? '#ff9800' : weather.uv <= 7 ? '#f44336' : '#9c27b0';
-                                            const feelsLike = weather.temp != null ? Math.round(weather.temp - (weather.windspeed || 0) * 0.05) : null;
-                                            return (
-                                                <>
-                                                    {/* Clickable weather pill — bottom-left, above chat input */}
-                                                    <button
-                                                        onClick={e => { e.stopPropagation(); setShowWeatherPanel(p => !p); }}
-                                                        style={{
-                                                            position: 'absolute',
-                                                            bottom: '90px',
-                                                            left: '16px',
-                                                            zIndex: 1000,
-                                                            background: showWeatherPanel
-                                                                ? 'rgba(255,255,255,0.18)'
-                                                                : 'var(--glass-bg)',
-                                                            border: `1px solid ${showWeatherPanel ? 'rgba(255,255,255,0.4)' : 'var(--glass-border)'}`,
-                                                            borderRadius: '50px',
-                                                            padding: '7px 14px 7px 10px',
-                                                            backdropFilter: 'blur(20px)',
-                                                            WebkitBackdropFilter: 'blur(20px)',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: '8px',
-                                                            boxShadow: showWeatherPanel
-                                                                ? '0 4px 24px rgba(255,255,255,0.12)'
-                                                                : '0 4px 20px rgba(0,0,0,0.3)',
-                                                            pointerEvents: 'auto',
-                                                            cursor: 'pointer',
-                                                            transition: 'all 0.25s ease',
-                                                        }}
-                                                    >
-                                                        <span style={{ fontSize: '1.3rem', lineHeight: 1 }}>{wd.emoji}</span>
-                                                        <span style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>
-                                                            {weather.temp}°C
-                                                        </span>
-                                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
-                                                            {wd.text}
-                                                        </span>
-                                                        <span style={{
-                                                            fontSize: '0.65rem',
-                                                            color: showWeatherPanel ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                                            transition: 'transform 0.25s',
-                                                            display: 'inline-block',
-                                                            transform: showWeatherPanel ? 'rotate(180deg)' : 'rotate(0deg)',
-                                                        }}>▼</span>
-                                                    </button>
-
-                                                    {/* Expanded weather detail panel */}
-                                                    {showWeatherPanel && (
-                                                        <div
-                                                            style={{
-                                                                position: 'absolute',
-                                                                bottom: '150px',
-                                                                left: '16px',
-                                                                zIndex: 1000,
-                                                                width: 'min(320px, calc(100vw - 80px))',
-                                                                background: 'rgba(12, 12, 20, 0.82)',
-                                                                border: '1px solid rgba(255,255,255,0.12)',
-                                                                borderRadius: '20px',
-                                                                padding: '18px 16px',
-                                                                backdropFilter: 'blur(30px)',
-                                                                WebkitBackdropFilter: 'blur(30px)',
-                                                                boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-                                                                pointerEvents: 'auto',
-                                                                animation: 'slideDownFade 0.25s ease',
-                                                            }}
-                                                            onClick={e => e.stopPropagation()}
-                                                        >
-                                                            {/* Header row */}
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '14px' }}>
-                                                                <span style={{ fontSize: '2.8rem', lineHeight: 1 }}>{wd.emoji}</span>
-                                                                <div>
-                                                                    <div style={{ fontSize: '2rem', fontWeight: '900', color: '#fff', lineHeight: 1, letterSpacing: '-1px' }}>
-                                                                        {weather.temp}°<span style={{ fontSize: '1rem', fontWeight: '600', opacity: 0.7 }}>C</span>
-                                                                    </div>
-                                                                    <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)', marginTop: '2px' }}>{wd.text}</div>
-                                                                    {feelsLike != null && (
-                                                                        <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', marginTop: '1px' }}>
-                                                                            Feels like {feelsLike}°C
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Stats grid */}
-                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                                                {/* Wind */}
-                                                                <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                                    <span style={{ fontSize: '1.3rem' }}>💨</span>
-                                                                    <span style={{ fontSize: '1rem', fontWeight: '800', color: '#fff' }}>{weather.windspeed ?? '—'} <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>km/h</span></span>
-                                                                    <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>Wind Speed</span>
-                                                                </div>
-
-                                                                {/* Humidity */}
-                                                                <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                                    <span style={{ fontSize: '1.3rem' }}>💧</span>
-                                                                    <span style={{ fontSize: '1rem', fontWeight: '800', color: '#fff' }}>{weather.humidity != null ? weather.humidity + '%' : '—'}</span>
-                                                                    <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>Humidity</span>
-                                                                </div>
-
-                                                                {/* Rain chance */}
-                                                                <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                                    <span style={{ fontSize: '1.3rem' }}>🌧️</span>
-                                                                    <span style={{ fontSize: '1rem', fontWeight: '800', color: '#fff' }}>{weather.rainChance != null ? weather.rainChance + '%' : '—'}</span>
-                                                                    <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>Rain Chance</span>
-                                                                </div>
-
-                                                                {/* UV Index */}
-                                                                <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                                    <span style={{ fontSize: '1.3rem' }}>☀️</span>
-                                                                    <span style={{ fontSize: '1rem', fontWeight: '800', color: uvColor }}>
-                                                                        {weather.uv != null ? weather.uv.toFixed(1) : '—'} <span style={{ fontSize: '0.65rem', color: uvColor, opacity: 0.85 }}>{uvLabel}</span>
-                                                                    </span>
-                                                                    <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>UV Index</span>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Rain amount bar if rain > 0 */}
-                                                            {weather.rain != null && weather.rain > 0 && (
-                                                                <div style={{ marginTop: '12px', background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '12px' }}>
-                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                                                        <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>🌂 Current Rainfall</span>
-                                                                        <span style={{ fontSize: '0.75rem', color: '#7ec8f7', fontWeight: '800' }}>{weather.rain} mm</span>
-                                                                    </div>
-                                                                    <div style={{ height: '5px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
-                                                                        <div style={{ height: '100%', width: `${Math.min(weather.rain * 20, 100)}%`, background: 'linear-gradient(90deg, #5fc3f7, #2196f3)', borderRadius: '10px' }} />
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            <div style={{ marginTop: '12px', fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>
-                                                                Powered by Open-Meteo • Tap pill to close
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            );
-                                        })()}
 
                                         {locationAvailable && (
+
                                             <MapContainer center={position} zoom={13} zoomControl={false} className="map-view">
                                                 <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
                                                 <Marker 
@@ -2392,7 +2251,7 @@ function App() {
                                     {/* CHAT LAYER */}
                                     {locationAvailable && (
                                         <div className="chat-interface">
-                                            <header className={`app-header-new ${isHeaderHidden ? 'hidden' : ''}`}>
+                                            <header className={`app-header-new ${isHeaderHidden ? 'hidden' : ''}`} style={{ position: 'relative' }}>
                                                 <div className="brand-wrap">
                                                     <div className="pulse-circle-mini" style={{ width: '40px', height: '40px', marginRight: '12px' }}>
                                                         <img src="/logo.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -2406,6 +2265,127 @@ function App() {
                                                         }}>OFFLINE</span>
                                                     )}
                                                 </div>
+
+                                                {/* Weather pill — centre of header */}
+                                                {weather && (() => {
+                                                    const wd = getWeatherDescription(weather.code);
+                                                    const uvLabel = weather.uv == null ? null : weather.uv <= 2 ? 'Low' : weather.uv <= 5 ? 'Moderate' : weather.uv <= 7 ? 'High' : 'Very High';
+                                                    const uvColor = weather.uv == null ? '#aaa' : weather.uv <= 2 ? '#4caf50' : weather.uv <= 5 ? '#ff9800' : weather.uv <= 7 ? '#f44336' : '#9c27b0';
+                                                    const feelsLike = weather.temp != null ? Math.round(weather.temp - (weather.windspeed || 0) * 0.05) : null;
+                                                    return (
+                                                        <div style={{ position: 'relative' }}>
+                                                            {/* Pill button */}
+                                                            <button
+                                                                onClick={e => { e.stopPropagation(); setShowWeatherPanel(p => !p); }}
+                                                                style={{
+                                                                    background: showWeatherPanel ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.07)',
+                                                                    border: `1px solid ${showWeatherPanel ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.1)'}`,
+                                                                    borderRadius: '50px',
+                                                                    padding: '5px 12px 5px 8px',
+                                                                    backdropFilter: 'blur(20px)',
+                                                                    WebkitBackdropFilter: 'blur(20px)',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '6px',
+                                                                    cursor: 'pointer',
+                                                                    transition: 'all 0.2s ease',
+                                                                    whiteSpace: 'nowrap',
+                                                                }}
+                                                            >
+                                                                <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>{wd.emoji}</span>
+                                                                <span style={{ fontSize: '0.88rem', fontWeight: '800', color: 'var(--text-primary)' }}>{weather.temp}°C</span>
+                                                                <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', fontWeight: '600', display: 'none' }} className="weather-label">{wd.text}</span>
+                                                                <span style={{
+                                                                    fontSize: '0.6rem',
+                                                                    color: 'var(--text-secondary)',
+                                                                    display: 'inline-block',
+                                                                    transform: showWeatherPanel ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                                    transition: 'transform 0.2s',
+                                                                }}>▼</span>
+                                                            </button>
+
+                                                            {/* Detail panel — drops below header */}
+                                                            {showWeatherPanel && (
+                                                                <div
+                                                                    onClick={e => e.stopPropagation()}
+                                                                    style={{
+                                                                        position: 'absolute',
+                                                                        top: 'calc(100% + 10px)',
+                                                                        left: '50%',
+                                                                        transform: 'translateX(-50%)',
+                                                                        zIndex: 9000,
+                                                                        width: 'min(320px, calc(100vw - 32px))',
+                                                                        background: 'rgba(10, 10, 18, 0.92)',
+                                                                        border: '1px solid rgba(255,255,255,0.12)',
+                                                                        borderRadius: '20px',
+                                                                        padding: '18px 16px',
+                                                                        backdropFilter: 'blur(30px)',
+                                                                        WebkitBackdropFilter: 'blur(30px)',
+                                                                        boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+                                                                        animation: 'slideDownFade 0.22s ease',
+                                                                    }}
+                                                                >
+                                                                    {/* Header row */}
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '14px' }}>
+                                                                        <span style={{ fontSize: '2.6rem', lineHeight: 1 }}>{wd.emoji}</span>
+                                                                        <div>
+                                                                            <div style={{ fontSize: '2rem', fontWeight: '900', color: '#fff', lineHeight: 1, letterSpacing: '-1px' }}>
+                                                                                {weather.temp}°<span style={{ fontSize: '1rem', fontWeight: '600', opacity: 0.7 }}>C</span>
+                                                                            </div>
+                                                                            <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)', marginTop: '2px' }}>{wd.text}</div>
+                                                                            {feelsLike != null && (
+                                                                                <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', marginTop: '1px' }}>Feels like {feelsLike}°C</div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Stats grid */}
+                                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                                                        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                            <span style={{ fontSize: '1.2rem' }}>💨</span>
+                                                                            <span style={{ fontSize: '1rem', fontWeight: '800', color: '#fff' }}>{weather.windspeed ?? '—'} <span style={{ fontSize: '0.65rem', opacity: 0.6 }}>km/h</span></span>
+                                                                            <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>Wind Speed</span>
+                                                                        </div>
+                                                                        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                            <span style={{ fontSize: '1.2rem' }}>💧</span>
+                                                                            <span style={{ fontSize: '1rem', fontWeight: '800', color: '#fff' }}>{weather.humidity != null ? weather.humidity + '%' : '—'}</span>
+                                                                            <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>Humidity</span>
+                                                                        </div>
+                                                                        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                            <span style={{ fontSize: '1.2rem' }}>🌧️</span>
+                                                                            <span style={{ fontSize: '1rem', fontWeight: '800', color: '#fff' }}>{weather.rainChance != null ? weather.rainChance + '%' : '—'}</span>
+                                                                            <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>Rain Chance</span>
+                                                                        </div>
+                                                                        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                                            <span style={{ fontSize: '1.2rem' }}>☀️</span>
+                                                                            <span style={{ fontSize: '1rem', fontWeight: '800', color: uvColor }}>
+                                                                                {weather.uv != null ? weather.uv.toFixed(1) : '—'} <span style={{ fontSize: '0.65rem', opacity: 0.85 }}>{uvLabel}</span>
+                                                                            </span>
+                                                                            <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>UV Index</span>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {weather.rain != null && weather.rain > 0 && (
+                                                                        <div style={{ marginTop: '12px', background: 'rgba(255,255,255,0.06)', borderRadius: '14px', padding: '12px' }}>
+                                                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                                                                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>🌂 Current Rainfall</span>
+                                                                                <span style={{ fontSize: '0.75rem', color: '#7ec8f7', fontWeight: '800' }}>{weather.rain} mm</span>
+                                                                            </div>
+                                                                            <div style={{ height: '5px', background: 'rgba(255,255,255,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
+                                                                                <div style={{ height: '100%', width: `${Math.min(weather.rain * 20, 100)}%`, background: 'linear-gradient(90deg, #5fc3f7, #2196f3)', borderRadius: '10px' }} />
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+
+                                                                    <div style={{ marginTop: '12px', fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>
+                                                                        Powered by Open-Meteo • Tap pill to close
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+
                                                 <div className="header-actions">
                                                     {offlineMode && (
                                                         <button
