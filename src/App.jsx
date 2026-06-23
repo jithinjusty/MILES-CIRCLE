@@ -1462,7 +1462,7 @@ function App() {
 
 
     return (
-        <div className={`app-container ${isMapInteracting ? 'map-mode' : 'chat-mode'} ${profile?.theme_mode === 'light' ? 'light-mode' : ''}`}>
+        <div className={`app-container ${(isMapInteracting || !isSliderHidden) ? 'map-mode' : 'chat-mode'} ${profile?.theme_mode === 'light' ? 'light-mode' : ''}`}>
             {incomingWave && (
                 <div style={{
                     position: 'fixed',
@@ -2022,7 +2022,7 @@ function App() {
                                     )}
 
                                     {/* MAP LAYER */}
-                                    <div className="map-wrapper" style={{ position: 'relative', opacity: locationAvailable ? 1 : 0.3, filter: locationAvailable ? 'none' : 'blur(5px)' }}>
+                                    <div className="map-wrapper" style={{ position: 'absolute', inset: 0, opacity: locationAvailable ? 1 : 0.3, filter: locationAvailable ? 'none' : 'blur(5px)' }}>
                                         {locationAvailable && weather && (
                                             <div style={{
                                                 position: 'absolute',
