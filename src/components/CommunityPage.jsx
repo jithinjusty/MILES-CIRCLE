@@ -6,12 +6,17 @@ import { ArrowLeft } from 'lucide-react';
 
 export default function CommunityPage({ session, onBack }) {
     return (
-        <div className="events-overlay" style={{ zIndex: 100000, background: 'var(--bg-color)', overflowY: 'auto' }}>
-            <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-                <button onClick={onBack} className="icon-btn" style={{ marginBottom: '20px', background: 'var(--glass-bg)' }}>
-                    <ArrowLeft size={24} color="var(--text-primary)" /> Back
+        <div className="events-page" style={{ zIndex: 100000, background: 'var(--bg-dark)', overflowY: 'auto' }}>
+            <div className="events-header" style={{ padding: '20px', borderBottom: '1px solid var(--glass-border)' }}>
+                <button className="events-back-btn" onClick={onBack}>
+                    <ArrowLeft size={20} />
                 </button>
-                <h1 style={{ marginBottom: '20px', color: 'var(--text-primary)' }}>Community Hub</h1>
+                <div className="events-header-info">
+                    <h2>Community Hub</h2>
+                    <p>Connect with your neighbors</p>
+                </div>
+            </div>
+            <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px', width: '100%' }}>
                 
                 <Leaderboard session={session} />
                 <ClubsPanel session={session} />
