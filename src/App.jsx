@@ -271,6 +271,7 @@ function App() {
     const [newPassword, setNewPassword] = useState('');
     const [mockPostType, setMockPostType] = useState('discussion'); // Mock options
     const [waves, setWaves] = useState([]);
+    const [activeChats, setActiveChats] = useState([]);
     const [incomingWave, setIncomingWave] = useState(null);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatProfile, setChatProfile] = useState(null);
@@ -2914,6 +2915,7 @@ function App() {
                                                         session={session}
                                                         activeNeighborsCount={activeNeighbors.length + 1}
                                                         waves={waves}
+                                                        activeChats={activeChats}
                                                         activeNeighbors={activeNeighbors}
                                                         hasVibedToday={
                                                             profile?.vibe_updated_at ? 

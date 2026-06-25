@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PostCard from './PostCard'
 
-export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick, aiResponderEnabled, hasVibedToday = false, waves = [] }) {
+export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick, aiResponderEnabled, hasVibedToday = false, waves = [], activeChats = [] }) {
     const [showWavesModal, setShowWavesModal] = useState(false);
     const [showMessagesModal, setShowMessagesModal] = useState(false);
     const [posts, setPosts] = useState([])
@@ -1984,13 +1984,55 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                             <button onClick={() => setShowMessagesModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
                         </div>
                         
-                        <div style={{
-                            padding: '2rem', textAlign: 'center', background: 'var(--glass-bg)',
-                            border: '1px solid var(--glass-border)', borderRadius: '16px', color: 'var(--text-secondary)'
-                        }}>
-                            <span style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}>💬</span>
-                            <div style={{ marginBottom: '10px' }}>To start a private chat, open a neighbor's profile and click Message.</div>
-                            <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>Incoming messages will pop up automatically.</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {activeChats.length === 0 ? (
+                                <div style={{
+                                    padding: '2rem', textAlign: 'center', background: 'var(--glass-bg)',
+                                    border: '1px solid var(--glass-border)', borderRadius: '16px', color: 'var(--text-secondary)'
+                                }}>
+                                    <span style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}>💬</span>
+                                    <div style={{ marginBottom: '10px' }}>No active messages yet.</div>
+                                    <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>To start a private chat, open a neighbor's profile and click Message.</div>
+                                </div>
+                            ) : (
+                                activeChats.map((chat, idx) => (
+                                    <div key={idx} style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        padding: '12px 16px', background: 'var(--glass-bg)',
+                                        border: '1px solid var(--glass-border)', borderRadius: '16px',
+                                        flexWrap: 'wrap', gap: '10px'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <div style={{
+                                                width: '32px', height: '32px', borderRadius: '10px',
+                                                background: 'var(--panel-bg)', border: '1px solid var(--glass-border)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: '0.9rem', fontWeight: '800', color: 'var(--accent-red)'
+                                            }}>
+                                                {(chat.otherName || '?')[0].toUpperCase()}
+                                            </div>
+                                            <div style={{ flex: 1, minWidth: '100px' }}>
+                                                <div style={{ fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                                                    {chat.otherName}
+                                                </div>
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', maxWidth: '180px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {chat.lastMessage}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => {
+                                            setShowMessagesModal(false);
+                                            onUserClick(chat.otherId);
+                                        }} style={{
+                                            background: 'linear-gradient(135deg, #FF5722 0%, #FF9800 100%)',
+                                            color: 'white', border: 'none', borderRadius: '10px',
+                                            padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer'
+                                        }}>
+                                            Open Chat
+                                        </button>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>
