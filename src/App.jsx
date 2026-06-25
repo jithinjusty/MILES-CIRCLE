@@ -925,10 +925,16 @@ function App() {
                 if (data.preferred_radius) setRadius(parseFloat(data.preferred_radius));
                 if (!data.onboarding_completed) setOnboardingStep(1)
                 else {
-                    // Check if vibe check-in is needed (older than 24 hours)
-                    const lastUpdated = data.vibe_updated_at ? new Date(data.vibe_updated_at).getTime() : 0;
-                    const dayInMs = 24 * 60 * 60 * 1000;
-                    if (Date.now() - lastUpdated > dayInMs) {
+                    // Check if vibe check-in is needed (not updated today)
+                    let needsVibeCheck = true;
+                    if (data.vibe_updated_at) {
+                        const d1 = new Date(data.vibe_updated_at);
+                        const d2 = new Date();
+                        if (d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate()) {
+                            needsVibeCheck = false;
+                        }
+                    }
+                    if (needsVibeCheck) {
                         setShowVibeCheck(true);
                     }
                 }
@@ -1901,9 +1907,20 @@ function App() {
                     fontFamily: 'var(--font-family)'
                 }}>
                     <span style={{ fontSize: '1.5rem', animation: 'pulse 1s infinite' }}>👋</span>
-                    <div>
+                    <div 
+                        onClick={async () => {
+                            try {
+                                const { data, error } = await supabase.from('profiles').select('*').eq('id', incomingWave.from_id).single();
+                                if (data) {
+                                    setViewingProfile(data);
+                                    setIncomingWave(null);
+                                }
+                            } catch(err) { console.error(err); }
+                        }}
+                        style={{ cursor: 'pointer' }}
+                    >
                         <div style={{ fontWeight: '900', fontSize: '0.9rem' }}>Incoming Wave!</div>
-                        <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>{incomingWave.from_name} is waving at you!</div>
+                        <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>{incomingWave.from_name} is waving at you! (Tap to view)</div>
                     </div>
                     <button
                         onClick={async () => {
@@ -2897,6 +2914,11 @@ function App() {
                                                         session={session}
                                                         activeNeighborsCount={activeNeighbors.length + 1}
                                                         activeNeighbors={activeNeighbors}
+                                                        hasVibedToday={
+                                                            profile?.vibe_updated_at ? 
+                                                            new Date(profile.vibe_updated_at).toDateString() === new Date().toDateString() 
+                                                            : false
+                                                        }
                                                         onVibeClick={() => setShowVibeCheck(true)}
                                                         aiResponderEnabled={aiResponderEnabled}
                                                         onUserClick={async (userId, isAi, aiName) => {

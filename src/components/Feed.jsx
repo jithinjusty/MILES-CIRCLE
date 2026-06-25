@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PostCard from './PostCard'
 
-export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick, aiResponderEnabled }) {
+export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick, aiResponderEnabled, hasVibedToday = false }) {
     const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(true)
     const [toast, setToast] = useState(null)
@@ -1002,7 +1002,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
             </div>
 
             {/* Neighborhood Vibe Gauge */}
-            {neighborhoodVibes.length > 0 && (
+            {(!hasVibedToday && neighborhoodVibes.length > 0) && (
                 <div 
                     onClick={onVibeClick}
                     style={{
