@@ -1,6 +1,5 @@
 import React from 'react';
 import Leaderboard from './Leaderboard';
-import BorrowingShed from './BorrowingShed';
 import ClubsPanel from './ClubsPanel';
 import { ArrowLeft } from 'lucide-react';
 
@@ -20,8 +19,7 @@ export default function CommunityPage({ session, onBack }) {
                 
                 <Leaderboard session={session} />
                 <ClubsPanel session={session} />
-                <BorrowingShed session={session} />
-            </div>
+                            </div>
         </div>
     );
 }

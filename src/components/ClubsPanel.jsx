@@ -118,7 +118,7 @@ export default function ClubsPanel({ session }) {
                                 <h4 style={{ margin: '0 0 5px 0' }}>{club.name}</h4>
                                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>{club.description}</p>
                             </div>
-                            <div style={{ display: 'flex', gap: '8px' }}>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                                 {club.creator_id === session.user.id && (
                                     <button onClick={() => deleteClub(club.id)} style={{ padding: '5px 15px', borderRadius: '20px', background: 'transparent', color: 'var(--accent-red)', border: '1px solid var(--accent-red)', cursor: 'pointer', fontWeight: 'bold' }}>
                                         Delete

@@ -2913,6 +2913,7 @@ function App() {
                                                         refreshTrigger={feedTrigger}
                                                         session={session}
                                                         activeNeighborsCount={activeNeighbors.length + 1}
+                                                        waves={waves}
                                                         activeNeighbors={activeNeighbors}
                                                         hasVibedToday={
                                                             profile?.vibe_updated_at ? 
