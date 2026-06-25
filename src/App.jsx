@@ -28,6 +28,8 @@ const WhatsAppIcon = ({ size = 16, color = "currentColor", className = "" }) => 
 import Feed from './components/Feed'
 import PhotoEditor from './components/PhotoEditor'
 import EventsPage from './components/EventsPage'
+import CommunityPage from './components/CommunityPage'
+import { Users } from 'lucide-react'
 
 const INITIAL_POSITION = null; // No default location, must be detected
 
@@ -262,12 +264,19 @@ function App() {
     const [isHeaderHidden, setIsHeaderHidden] = useState(false);
     const lastChatScroll = useRef(0);
     const [showEvents, setShowEvents] = useState(false);
+    const [showCommunity, setShowCommunity] = useState(false);
     const [newEventsCount, setNewEventsCount] = useState(0);
     const lastEventCheckRef = useRef(null);
     const [isExploreMapMode, setIsExploreMapMode] = useState(false);
     const [newPassword, setNewPassword] = useState('');
+    const [mockPostType, setMockPostType] = useState('discussion'); // Mock options
     const [waves, setWaves] = useState([]);
     const [incomingWave, setIncomingWave] = useState(null);
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatProfile, setChatProfile] = useState(null);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [chatInput, setChatInput] = useState('');
+    const lastScrollY = useRef(0);
     const [mapPosts, setMapPosts] = useState([]);
     const [announcementContent, setAnnouncementContent] = useState('');
     const [isBroadcasting, setIsBroadcasting] = useState(false);
@@ -862,7 +871,7 @@ function App() {
                     const newWaves = newProfile.received_waves;
                     setWaves(newWaves);
                     if (newWaves.length > 0) {
-                        const latestWave = newWaves[0];
+                        const latestWave = newWaves[newWaves.length - 1];
                         if (latestWave.timestamp !== lastWaveTimeRef.current) {
                             lastWaveTimeRef.current = latestWave.timestamp;
                             setIncomingWave(latestWave);
@@ -875,8 +884,28 @@ function App() {
             })
             .subscribe();
 
+        const messagesChannel = supabase
+            .channel(`direct-messages-${session.user.id}`)
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'direct_messages',
+                filter: `recipient_id=eq.${session.user.id}`
+            }, (payload) => {
+                const newMsg = payload.new;
+                setChatMessages(prev => {
+                    if (prev.find(m => m.id === newMsg.id)) return prev;
+                    return [...prev, newMsg];
+                });
+                if (!isChatOpen || chatProfile?.id !== newMsg.sender_id) {
+                    alert(`New message received! 💬`);
+                }
+            })
+            .subscribe();
+
         return () => {
             supabase.removeChannel(profileChannel);
+            supabase.removeChannel(messagesChannel);
         };
     }, [session?.user?.id]);
 
@@ -1676,6 +1705,47 @@ function App() {
         } catch (err) {
             console.error("Error sending wave:", err);
             alert("Failed to send wave: " + err.message);
+        }
+    };
+
+    const openChat = async (neighborId, neighborName) => {
+        setChatProfile({ id: neighborId, full_name: neighborName });
+        setIsChatOpen(true);
+        const { data, error } = await supabase
+            .from('direct_messages')
+            .select('*')
+            .or(`and(sender_id.eq.${session.user.id},recipient_id.eq.${neighborId}),and(sender_id.eq.${neighborId},recipient_id.eq.${session.user.id})`)
+            .order('created_at', { ascending: true });
+        if (data) {
+            setChatMessages(data);
+        }
+    };
+
+    const handleSendDirectMessage = async () => {
+        if (!chatInput.trim() || !chatProfile) return;
+        const msg = chatInput.trim();
+        setChatInput('');
+        
+        const tempMsg = {
+            id: 'temp-' + Date.now(),
+            sender_id: session.user.id,
+            recipient_id: chatProfile.id,
+            content: msg,
+            created_at: new Date().toISOString()
+        };
+        setChatMessages(prev => [...prev, tempMsg]);
+
+        const { data, error } = await supabase.from('direct_messages').insert({
+            sender_id: session.user.id,
+            recipient_id: chatProfile.id,
+            content: msg
+        }).select().single();
+
+        if (error) {
+            console.error("Error sending message:", error);
+            alert("Failed to send message.");
+        } else if (data) {
+            setChatMessages(prev => prev.map(m => m.id === tempMsg.id ? data : m));
         }
     };
 
@@ -2804,6 +2874,9 @@ function App() {
                                                             <span className="events-notif-badge">{newEventsCount > 9 ? '9+' : newEventsCount}</span>
                                                         )}
                                                     </button>
+                                                    <button className="header-events-btn" onClick={() => setShowCommunity(true)} title="Community">
+                                                        <Users size={20} />
+                                                    </button>
                                                     <div className="user-avatar-btn" onClick={() => setShowSettings(true)}>
                                                         {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : getInitial()}
                                                     </div>
@@ -3491,7 +3564,7 @@ function App() {
                                                                          No waves received yet. Go wave at your neighbors on the map!
                                                                      </div>
                                                                  ) : (
-                                                                     waves.map((wave, idx) => (
+                                                                     waves.slice().reverse().map((wave, idx) => (
                                                                          <div key={idx} style={{
                                                                              display: 'flex',
                                                                              alignItems: 'center',
@@ -3526,30 +3599,48 @@ function App() {
                                                                                      </div>
                                                                                  </div>
                                                                              </div>
-                                                                             <button
-                                                                                 onClick={async () => {
-                                                                                     try {
-                                                                                         await supabase.rpc('send_proximity_wave', { p_recipient_id: wave.from_id });
-                                                                                         alert(`Waved back at ${wave.from_name}! 👋`);
-                                                                                     } catch (err) {
-                                                                                         console.error(err);
-                                                                                         alert("Failed to wave back: " + err.message);
-                                                                                     }
-                                                                                 }}
-                                                                                 style={{
-                                                                                     background: 'linear-gradient(135deg, #FF9800 0%, #FF5722 100%)',
-                                                                                     color: 'white',
-                                                                                     border: 'none',
-                                                                                     borderRadius: '10px',
-                                                                                     padding: '8px 16px',
-                                                                                     fontSize: '0.8rem',
-                                                                                     fontWeight: '800',
-                                                                                     cursor: 'pointer',
-                                                                                     boxShadow: '0 4px 10px rgba(255, 87, 34, 0.2)'
-                                                                                 }}
-                                                                             >
-                                                                                 👋 Wave Back
-                                                                             </button>
+                                                                             <div style={{ display: 'flex', gap: '8px' }}>
+                                                                                <button
+                                                                                    onClick={() => openChat(wave.from_id, wave.from_name)}
+                                                                                    style={{
+                                                                                        background: 'var(--glass-bg)',
+                                                                                        color: 'var(--text-primary)',
+                                                                                        border: '1px solid var(--glass-border)',
+                                                                                        borderRadius: '10px',
+                                                                                        padding: '8px',
+                                                                                        cursor: 'pointer',
+                                                                                        display: 'flex',
+                                                                                        alignItems: 'center',
+                                                                                        justifyContent: 'center'
+                                                                                    }}
+                                                                                >
+                                                                                    💬
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={async () => {
+                                                                                        try {
+                                                                                            await supabase.rpc('send_proximity_wave', { p_recipient_id: wave.from_id });
+                                                                                            alert(`Waved back at ${wave.from_name}! 👋`);
+                                                                                        } catch (err) {
+                                                                                            console.error(err);
+                                                                                            alert("Failed to wave back: " + err.message);
+                                                                                        }
+                                                                                    }}
+                                                                                    style={{
+                                                                                        background: 'linear-gradient(135deg, #FF9800 0%, #FF5722 100%)',
+                                                                                        color: 'white',
+                                                                                        border: 'none',
+                                                                                        borderRadius: '10px',
+                                                                                        padding: '8px 16px',
+                                                                                        fontSize: '0.8rem',
+                                                                                        fontWeight: '800',
+                                                                                        cursor: 'pointer',
+                                                                                        boxShadow: '0 4px 10px rgba(255, 87, 34, 0.2)'
+                                                                                    }}
+                                                                                >
+                                                                                    👋 Wave Back
+                                                                                </button>
+                                                                             </div>
                                                                          </div>
                                                                      ))
                                                                  )}
@@ -3797,29 +3888,77 @@ function App() {
                                                                 );
                                                             })}
                                                         </div>
-                                                        <button 
-                                                            className="btn-wave-primary" 
-                                                            onClick={handleSendWave} 
-                                                            style={{
-                                                                width: '100%',
-                                                                padding: '12px',
-                                                                borderRadius: '14px',
-                                                                background: 'linear-gradient(135deg, #FF9800 0%, #FF5722 100%)',
-                                                                color: 'white',
-                                                                border: 'none',
-                                                                fontWeight: '800',
-                                                                cursor: 'pointer',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                gap: '8px',
-                                                                marginBottom: '10px',
-                                                                boxShadow: '0 4px 15px rgba(255, 87, 34, 0.25)',
-                                                                transition: 'transform 0.2s'
-                                                            }}
-                                                        >
-                                                            👋 Wave at {viewingProfile.full_name || 'Neighbor'}
-                                                        </button>
+                                                        <div style={{ display: 'flex', gap: '10px', width: '100%', marginBottom: '10px' }}>
+                                                            {(!viewingProfile.received_waves || !viewingProfile.received_waves.some(w => w.from_id === session?.user?.id)) ? (
+                                                                <button 
+                                                                    className="btn-wave-primary" 
+                                                                    onClick={handleSendWave} 
+                                                                    style={{
+                                                                        flex: 1,
+                                                                        padding: '12px',
+                                                                        borderRadius: '14px',
+                                                                        background: 'linear-gradient(135deg, #FF9800 0%, #FF5722 100%)',
+                                                                        color: 'white',
+                                                                        border: 'none',
+                                                                        fontWeight: '800',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        gap: '8px',
+                                                                        boxShadow: '0 4px 15px rgba(255, 87, 34, 0.25)',
+                                                                        transition: 'transform 0.2s'
+                                                                    }}
+                                                                >
+                                                                    👋 Wave
+                                                                </button>
+                                                            ) : (
+                                                                <button 
+                                                                    className="btn-wave-primary" 
+                                                                    disabled
+                                                                    style={{
+                                                                        flex: 1,
+                                                                        padding: '12px',
+                                                                        borderRadius: '14px',
+                                                                        background: 'var(--glass-bg)',
+                                                                        color: 'var(--text-secondary)',
+                                                                        border: '1px solid var(--glass-border)',
+                                                                        fontWeight: '800',
+                                                                        cursor: 'not-allowed',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        gap: '8px'
+                                                                    }}
+                                                                >
+                                                                    👋 Waved
+                                                                </button>
+                                                            )}
+                                                            
+                                                            {(viewingProfile.received_waves?.some(w => w.from_id === session?.user?.id) && waves.some(w => w.from_id === viewingProfile.id)) && (
+                                                                <button
+                                                                    className="btn-wave-primary"
+                                                                    onClick={() => openChat(viewingProfile.id, viewingProfile.full_name || 'Neighbor')}
+                                                                    style={{
+                                                                        flex: 1,
+                                                                        padding: '12px',
+                                                                        borderRadius: '14px',
+                                                                        background: 'var(--panel-bg)',
+                                                                        color: 'var(--text-primary)',
+                                                                        border: '1px solid var(--glass-border)',
+                                                                        fontWeight: '800',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        gap: '8px',
+                                                                        transition: 'transform 0.2s'
+                                                                    }}
+                                                                >
+                                                                    💬 Message
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                         <button 
                                                             className="btn-wave-primary" 
                                                             onClick={() => setShowDirectTransfer(!showDirectTransfer)} 
@@ -3929,6 +4068,14 @@ function App() {
                                                     console.error("Error viewing profile:", err);
                                                 }
                                             }}
+                                        />
+                                    )}
+
+                                    {/* COMMUNITY PAGE */}
+                                    {showCommunity && (
+                                        <CommunityPage
+                                            session={session}
+                                            onBack={() => setShowCommunity(false)}
                                         />
                                     )}
 
@@ -4115,6 +4262,129 @@ function App() {
                         </>
                     )}
                 </>
+            )}
+
+            {/* PRIVATE CHAT MODAL */}
+            {isChatOpen && chatProfile && (
+                <div className="modal-overlay" onClick={() => setIsChatOpen(false)}>
+                    <div className="chat-modal-content" onClick={e => e.stopPropagation()} style={{
+                        background: 'var(--bg-primary)',
+                        width: '90%',
+                        maxWidth: '450px',
+                        height: '80vh',
+                        maxHeight: '600px',
+                        borderRadius: '24px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden',
+                        boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                        border: '1px solid var(--glass-border)'
+                    }}>
+                        <div className="chat-header" style={{
+                            padding: '16px',
+                            borderBottom: '1px solid var(--glass-border)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            background: 'var(--glass-bg)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{
+                                    width: '36px', height: '36px', borderRadius: '12px',
+                                    background: 'var(--panel-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontWeight: '900', color: 'var(--accent-red)'
+                                }}>
+                                    {(chatProfile.full_name || '?')[0].toUpperCase()}
+                                </div>
+                                <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>{chatProfile.full_name}</h3>
+                            </div>
+                            <button onClick={() => setIsChatOpen(false)} style={{
+                                background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer'
+                            }}>
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <div className="chat-messages-area" style={{
+                            flex: 1,
+                            padding: '16px',
+                            overflowY: 'auto',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px'
+                        }}>
+                            {chatMessages.length === 0 ? (
+                                <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginTop: '20px' }}>
+                                    No messages yet. Say hi! 👋
+                                </div>
+                            ) : (
+                                chatMessages.map((msg, i) => {
+                                    const isMe = msg.sender_id === session.user.id;
+                                    return (
+                                        <div key={msg.id || i} style={{
+                                            alignSelf: isMe ? 'flex-end' : 'flex-start',
+                                            maxWidth: '75%',
+                                            background: isMe ? 'linear-gradient(135deg, #FF9800, #FF5722)' : 'var(--panel-bg)',
+                                            color: isMe ? 'white' : 'var(--text-primary)',
+                                            padding: '10px 14px',
+                                            borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                                            border: isMe ? 'none' : '1px solid var(--glass-border)',
+                                            wordBreak: 'break-word',
+                                            fontSize: '0.9rem'
+                                        }}>
+                                            {msg.content}
+                                            <div style={{ fontSize: '0.65rem', opacity: 0.7, marginTop: '4px', textAlign: isMe ? 'right' : 'left' }}>
+                                                {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                        <div className="chat-input-area" style={{
+                            padding: '12px',
+                            borderTop: '1px solid var(--glass-border)',
+                            background: 'var(--glass-bg)',
+                            display: 'flex',
+                            gap: '10px'
+                        }}>
+                            <input
+                                type="text"
+                                placeholder="Type a message..."
+                                value={chatInput}
+                                onChange={e => setChatInput(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleSendDirectMessage()}
+                                style={{
+                                    flex: 1,
+                                    padding: '12px 16px',
+                                    borderRadius: '20px',
+                                    border: '1px solid var(--glass-border)',
+                                    background: 'var(--panel-bg)',
+                                    color: 'var(--text-primary)',
+                                    outline: 'none'
+                                }}
+                            />
+                            <button
+                                onClick={handleSendDirectMessage}
+                                disabled={!chatInput.trim()}
+                                style={{
+                                    width: '44px',
+                                    height: '44px',
+                                    borderRadius: '50%',
+                                    border: 'none',
+                                    background: chatInput.trim() ? 'var(--accent-red)' : 'var(--glass-border)',
+                                    color: 'white',
+                                    cursor: chatInput.trim() ? 'pointer' : 'not-allowed',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s'
+                                }}
+                            >
+                                <Send size={20} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );
