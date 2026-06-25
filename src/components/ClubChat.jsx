@@ -85,7 +85,6 @@ export default function ClubChat({ club, session, onBack }) {
                 </button>
                 <div>
                     <h2 style={{ margin: 0 }}>{club.name}</h2>
-                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{club.description}</p>
                 </div>
             </div>
 

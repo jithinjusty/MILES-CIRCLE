@@ -68,6 +68,12 @@ export default function ClubsPanel({ session }) {
         setMyMemberships(prev => new Set([...prev, clubId]));
     };
 
+    const deleteClub = async (clubId) => {
+        if (!window.confirm("Are you sure you want to delete this club?")) return;
+        await supabase.from('micro_clubs').delete().eq('id', clubId);
+        fetchClubs();
+    };
+
     if (activeClub) {
         return <ClubChat club={activeClub} session={session} onBack={() => setActiveClub(null)} />;
     }
@@ -112,15 +118,22 @@ export default function ClubsPanel({ session }) {
                                 <h4 style={{ margin: '0 0 5px 0' }}>{club.name}</h4>
                                 <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0 }}>{club.description}</p>
                             </div>
-                            {isMember ? (
-                                <button onClick={() => setActiveClub(club)} style={{ padding: '5px 15px', borderRadius: '20px', background: 'linear-gradient(135deg, #FF5722 0%, #FF9800 100%)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
-                                    Open Chat
-                                </button>
-                            ) : (
-                                <button onClick={() => joinClub(club.id)} style={{ padding: '5px 15px', borderRadius: '20px', background: 'var(--glass-bg)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', cursor: 'pointer' }}>
-                                    Join
-                                </button>
-                            )}
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                {club.creator_id === session.user.id && (
+                                    <button onClick={() => deleteClub(club.id)} style={{ padding: '5px 15px', borderRadius: '20px', background: 'transparent', color: 'var(--accent-red)', border: '1px solid var(--accent-red)', cursor: 'pointer', fontWeight: 'bold' }}>
+                                        Delete
+                                    </button>
+                                )}
+                                {isMember ? (
+                                    <button onClick={() => setActiveClub(club)} style={{ padding: '5px 15px', borderRadius: '20px', background: 'linear-gradient(135deg, #FF5722 0%, #FF9800 100%)', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+                                        Open Chat
+                                    </button>
+                                ) : (
+                                    <button onClick={() => joinClub(club.id)} style={{ padding: '5px 15px', borderRadius: '20px', background: 'var(--glass-bg)', color: 'var(--text-primary)', border: '1px solid var(--glass-border)', cursor: 'pointer' }}>
+                                        Join
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     );
                 })}
