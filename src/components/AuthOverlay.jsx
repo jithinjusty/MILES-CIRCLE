@@ -58,13 +58,13 @@ export default function AuthOverlay({ onInstall }) {
         const { error, data } = result;
 
         if (error) {
-            let errorText = error.message;
+            let errorText = error.message || "An unexpected error occurred.";
             if (isSignUp) {
-                if (error.message.toLowerCase().includes('already registered')) {
+                if (errorText.toLowerCase().includes('already registered')) {
                     errorText = 'This email ID is already registered with Miles Circle.';
                 }
             } else {
-                const errMsg = error.message.toLowerCase();
+                const errMsg = errorText.toLowerCase();
                 if (errMsg.includes('email not confirmed')) {
                     errorText = 'Please verify your email address first.';
                 } else if (errMsg.includes('invalid login credentials') || errMsg.includes('invalid login') || error.status === 400) {
@@ -116,7 +116,7 @@ export default function AuthOverlay({ onInstall }) {
             }
         })
         if (error) {
-            setMessage({ type: 'error', text: error.message })
+            setMessage({ type: 'error', text: error?.message || "Authentication error." })
             setLoading(false)
         }
     }

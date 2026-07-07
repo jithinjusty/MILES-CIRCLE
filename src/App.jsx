@@ -939,7 +939,7 @@ function App() {
                         setShowVibeCheck(true);
                     }
                 }
-            } else if (error && (error.code === 'PGRST116' || error.message.includes('0 rows'))) {
+            } else if (error && (error.code === 'PGRST116' || (error.message && error.message.includes('0 rows')))) {
                 // Profile doesn't exist yet, trigger onboarding to collect basic info
                 setOnboardingStep(1);
             }
@@ -4142,6 +4142,7 @@ function App() {
                                                     borderRadius: '20px',
                                                     padding: '1.25rem',
                                                     width: '280px',
+                                                    maxWidth: '90vw',
                                                     boxShadow: '0 20px 50px rgba(0,0,0,0.6)',
                                                     backdropFilter: 'blur(20px)',
                                                     display: 'flex',
