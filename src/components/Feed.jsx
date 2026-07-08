@@ -1754,54 +1754,6 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                 </div>
             )}
 
-            {/* Floating New Message Notification */}
-            {showScrollDown && (
-                <button 
-                    onClick={() => scrollToTop('smooth')}
-                    className="scroll-down-btn anim-fade-in"
-                    style={{
-                        position: 'fixed',
-                        bottom: '90px', // Above the taskbar/input
-                        right: '25px',
-                        width: '45px',
-                        height: '45px',
-                        borderRadius: '50%',
-                        background: 'var(--accent-red)',
-                        color: 'white',
-                        border: 'none',
-                        boxShadow: '0 8px 24px rgba(210, 85, 78, 0.4)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        zIndex: 100,
-                        transition: 'all 0.3s'
-                    }}
-                >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M17 11l-5-5-5 5M17 18l-5-5-5 5"/>
-                    </svg>
-                    {unreadCount > 0 && (
-                        <div style={{
-                            position: 'absolute',
-                            top: '-8px',
-                            right: '-8px',
-                            background: '#ffefef',
-                            color: 'var(--accent-red)',
-                            fontSize: '0.75rem',
-                            fontWeight: '900',
-                            padding: '4px 8px',
-                            borderRadius: '12px',
-                            border: '2px solid var(--accent-red)',
-                            minWidth: '24px',
-                            textAlign: 'center',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                        }}>
-                            {unreadCount}
-                        </div>
-                    )}
-                </button>
-            )}
 
             {/* Create Shop Offer Modal */}
             {showCreateOffer && (

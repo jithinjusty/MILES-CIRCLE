@@ -425,9 +425,9 @@ function App() {
                     box-shadow: 0 4px 12px ${glowStyle};
                     overflow: hidden;
                 ">
-                    \${avatarUrl ? \`<img src="\${avatarUrl}" style="width: 100%; height: 100%; object-fit: cover;" />\` : \`
-                        <span style="color: \${haloColor}; font-size: 0.75rem; font-weight: 800; font-family: var(--font-family);">\${initial}</span>
-                    \`}
+                    ${avatarUrl ? `<img src="${avatarUrl}" style="width: 100%; height: 100%; object-fit: cover;" />` : `
+                        <span style="color: ${haloColor}; font-size: 0.75rem; font-weight: 800; font-family: var(--font-family);">${initial}</span>
+                    `}
                 </div>
                 <div style="
                     width: 8px; height: 8px;
