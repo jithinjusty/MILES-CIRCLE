@@ -124,7 +124,7 @@ const alertIconInstance = L.divIcon({
 });
 
 function App() {
-    const [showSplash, setShowSplash] = useState(true)
+    const [showSplash, setShowSplash] = useState(() => !sessionStorage.getItem('miles_splash_seen'))
     const [authLoading, setAuthLoading] = useState(true);
     const [session, setSession] = useState(null)
     const [profile, setProfile] = useState({});
@@ -854,6 +854,9 @@ function App() {
             .then(({ data }) => {
                 if (data && Array.isArray(data.received_waves)) {
                     setWaves(data.received_waves);
+                    if (data.received_waves.length > 0) {
+                        lastWaveTimeRef.current = data.received_waves[data.received_waves.length - 1].timestamp;
+                    }
                 }
             });
 
@@ -1953,7 +1956,10 @@ function App() {
                     </button>
                 </div>
             )}
-            {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
+            {showSplash && <SplashScreen onComplete={() => {
+                sessionStorage.setItem('miles_splash_seen', 'true');
+                setShowSplash(false);
+            }} />}
 
             {/* Fallback Loader if Splash is gone but Auth is still checking */}
             {!showSplash && authLoading && (

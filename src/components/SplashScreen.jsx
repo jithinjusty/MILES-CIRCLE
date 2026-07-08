@@ -6,11 +6,11 @@ export default function SplashScreen({ onComplete }) {
     useEffect(() => {
         const fadeTimer = setTimeout(() => {
             setFadeOut(true)
-        }, 2500)
+        }, 1200)
 
         const completeTimer = setTimeout(() => {
             onComplete?.()
-        }, 3000)
+        }, 1500)
 
         return () => {
             clearTimeout(fadeTimer)
