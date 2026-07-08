@@ -28,7 +28,6 @@ const WhatsAppIcon = ({ size = 16, color = "currentColor", className = "" }) => 
 import Feed from './components/Feed'
 import PhotoEditor from './components/PhotoEditor'
 import EventsPage from './components/EventsPage'
-import CommunityPage from './components/CommunityPage'
 import { Users } from 'lucide-react'
 
 const INITIAL_POSITION = null; // No default location, must be detected
@@ -264,7 +263,6 @@ function App() {
     const [isHeaderHidden, setIsHeaderHidden] = useState(false);
     const lastChatScroll = useRef(0);
     const [showEvents, setShowEvents] = useState(false);
-    const [showCommunity, setShowCommunity] = useState(false);
     const [newEventsCount, setNewEventsCount] = useState(0);
     const lastEventCheckRef = useRef(null);
     const [isExploreMapMode, setIsExploreMapMode] = useState(false);
@@ -2897,9 +2895,6 @@ function App() {
                                                             <span className="events-notif-badge">{newEventsCount > 9 ? '9+' : newEventsCount}</span>
                                                         )}
                                                     </button>
-                                                    <button className="header-events-btn" onClick={() => setShowCommunity(true)} title="Community">
-                                                        <Users size={20} />
-                                                    </button>
                                                     <div className="user-avatar-btn" onClick={() => setShowSettings(true)}>
                                                         {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : getInitial()}
                                                     </div>
@@ -4098,14 +4093,6 @@ function App() {
                                                     console.error("Error viewing profile:", err);
                                                 }
                                             }}
-                                        />
-                                    )}
-
-                                    {/* COMMUNITY PAGE */}
-                                    {showCommunity && (
-                                        <CommunityPage
-                                            session={session}
-                                            onBack={() => setShowCommunity(false)}
                                         />
                                     )}
 
