@@ -960,112 +960,108 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
 
     return (
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0', position: 'relative' }}>
-            {/* Category Filter Bar */}
-            <div className="feed-category-bar" style={{
-                display: 'flex',
-                gap: '8px',
-                padding: '12px 16px',
-                overflowX: 'auto',
-                borderBottom: '1px solid rgba(212, 175, 55, 0.2)',
-                background: 'rgba(20, 20, 20, 0.95)',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                position: 'sticky',
-                top: 0,
-                zIndex: 10,
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                alignItems: 'center'
-            }}>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    {categories.map(cat => (
-                        <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => setActiveCategory(cat.id)}
+            {/* Sticky Header Group */}
+            <div style={{ position: 'sticky', top: 0, zIndex: 10, display: 'flex', flexDirection: 'column', width: '100%' }}>
+                {/* Category Filter Bar */}
+                <div className="feed-category-bar" style={{
+                    display: 'flex',
+                    gap: '8px',
+                    padding: '12px 16px',
+                    overflowX: 'auto',
+                    borderBottom: '1px solid rgba(212, 175, 55, 0.2)',
+                    background: 'rgba(20, 20, 20, 0.95)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                    alignItems: 'center'
+                }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        {categories.map(cat => (
+                            <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => setActiveCategory(cat.id)}
+                                style={{
+                                    background: activeCategory === cat.id ? '#d4af37' : 'rgba(255, 255, 255, 0.05)',
+                                    color: activeCategory === cat.id ? '#111' : 'var(--text-primary)',
+                                    border: `1px solid ${activeCategory === cat.id ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
+                                    borderRadius: '20px',
+                                    padding: '8px 16px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: activeCategory === cat.id ? '700' : '500',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    whiteSpace: 'nowrap',
+                                    transition: 'all 0.2s ease',
+                                    boxShadow: activeCategory === cat.id ? '0 4px 12px rgba(212,175,55,0.3)' : 'none'
+                                }}
+                            >
+                                <span>{cat.icon}</span>
+                                <span>{cat.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', alignItems: 'center' }}>
+                        {activeCategory === 'buysell' && (
+                            <button
+                                type="button"
+                                onClick={() => setSwiperMode(!swiperMode)}
+                                style={{
+                                    background: swiperMode ? '#d4af37' : 'rgba(255, 255, 255, 0.05)',
+                                    color: swiperMode ? '#111' : 'var(--text-primary)',
+                                    border: `1px solid ${swiperMode ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
+                                    borderRadius: '20px',
+                                    padding: '6px 14px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '700',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    whiteSpace: 'nowrap',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <span>🛍️</span>
+                                <span>{swiperMode ? 'List View' : 'Swiper View'}</span>
+                            </button>
+                        )}
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
                             style={{
-                                background: activeCategory === cat.id ? '#d4af37' : 'rgba(255, 255, 255, 0.05)',
-                                color: activeCategory === cat.id ? '#111' : 'var(--text-primary)',
-                                border: `1px solid ${activeCategory === cat.id ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
+                                background: 'rgba(30, 30, 30, 0.8)',
+                                color: '#d4af37',
+                                border: '1px solid rgba(212, 175, 55, 0.3)',
                                 borderRadius: '20px',
-                                padding: '8px 16px',
-                                fontSize: '0.8rem',
-                                fontWeight: activeCategory === cat.id ? '700' : '500',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                whiteSpace: 'nowrap',
-                                transition: 'all 0.2s ease',
-                                boxShadow: activeCategory === cat.id ? '0 4px 12px rgba(212,175,55,0.3)' : 'none'
-                            }}
-                        >
-                            <span>{cat.icon}</span>
-                            <span>{cat.label}</span>
-                        </button>
-                    ))}
-                </div>
-                <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', alignItems: 'center' }}>
-                    {activeCategory === 'buysell' && (
-                        <button
-                            type="button"
-                            onClick={() => setSwiperMode(!swiperMode)}
-                            style={{
-                                background: swiperMode ? '#d4af37' : 'rgba(255, 255, 255, 0.05)',
-                                color: swiperMode ? '#111' : 'var(--text-primary)',
-                                border: `1px solid ${swiperMode ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
-                                borderRadius: '20px',
-                                padding: '6px 14px',
+                                padding: '6px 12px',
                                 fontSize: '0.75rem',
                                 fontWeight: '700',
                                 cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                whiteSpace: 'nowrap',
-                                transition: 'all 0.2s ease'
+                                outline: 'none',
+                                whiteSpace: 'nowrap'
                             }}
                         >
-                            <span>🛍️</span>
-                            <span>{swiperMode ? 'List View' : 'Swiper View'}</span>
-                        </button>
-                    )}
-                    <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        style={{
-                            background: 'rgba(30, 30, 30, 0.8)',
-                            color: '#d4af37',
-                            border: '1px solid rgba(212, 175, 55, 0.3)',
-                            borderRadius: '20px',
-                            padding: '6px 12px',
-                            fontSize: '0.75rem',
-                            fontWeight: '700',
-                            cursor: 'pointer',
-                            outline: 'none',
-                            whiteSpace: 'nowrap'
-                        }}
-                    >
-                        <option value="latest" style={{ background: '#1c1c1e' }}>🕒 Latest</option>
-                        <option value="closest" style={{ background: '#1c1c1e' }}>📍 Closest</option>
-                        <option value="helpful" style={{ background: '#1c1c1e' }}>⭐ Helpful</option>
-                    </select>
+                            <option value="latest" style={{ background: '#1c1c1e' }}>🕒 Latest</option>
+                            <option value="closest" style={{ background: '#1c1c1e' }}>📍 Closest</option>
+                            <option value="helpful" style={{ background: '#1c1c1e' }}>⭐ Helpful</option>
+                        </select>
+                    </div>
                 </div>
-            </div>
 
-            {/* Steady Headers: Waves & Messages (Classic Luxury) */}
-            <div style={{
-                position: 'sticky',
-                top: '110px',
-                zIndex: 9,
-                display: 'flex',
-                background: 'linear-gradient(to right, rgba(20, 20, 20, 0.98), rgba(30, 30, 30, 0.98))',
-                backdropFilter: 'blur(15px)',
-                borderBottom: '1px solid rgba(212, 175, 55, 0.2)',
-                width: '100%',
-                boxSizing: 'border-box',
-                boxShadow: '0 4px 25px rgba(0,0,0,0.3)'
-            }}>
+                {/* Steady Headers: Waves & Messages (Classic Luxury) */}
+                <div style={{
+                    display: 'flex',
+                    background: 'linear-gradient(to right, rgba(20, 20, 20, 0.98), rgba(30, 30, 30, 0.98))',
+                    backdropFilter: 'blur(15px)',
+                    borderBottom: '1px solid rgba(212, 175, 55, 0.2)',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    boxShadow: '0 4px 25px rgba(0,0,0,0.3)'
+                }}>
                 <div 
                     onClick={() => setShowWavesModal(true)}
                     style={{
