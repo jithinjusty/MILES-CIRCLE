@@ -2453,12 +2453,12 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                         </div>
                         
                         <div style={{ padding: '0', maxHeight: '60vh', overflowY: 'auto' }}>
-                            {activeNeighbors.length === 0 ? (
+                            {activeNeighbors.filter(n => n.id !== session?.user?.id).length === 0 ? (
                                 <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                                     No other neighbors are currently active in your circle.
                                 </div>
                             ) : (
-                                activeNeighbors.map(neighbor => (
+                                activeNeighbors.filter(n => n.id !== session?.user?.id).map(neighbor => (
                                     <div key={neighbor.id} onClick={() => { setShowNeighborsModal(false); onUserClick(neighbor.id); }} style={{
                                         display: 'flex',
                                         alignItems: 'center',

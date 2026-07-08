@@ -927,6 +927,7 @@ function App() {
                 const chatMap = new Map();
                 for (const msg of data) {
                     const otherId = msg.sender_id === session.user.id ? msg.recipient_id : msg.sender_id;
+                    if (otherId === session.user.id) continue;
                     if (!chatMap.has(otherId)) {
                         chatMap.set(otherId, {
                             otherId,
@@ -3699,30 +3700,32 @@ function App() {
                                                                                 >
                                                                                     💬
                                                                                 </button>
-                                                                                <button
-                                                                                    onClick={async () => {
-                                                                                        try {
-                                                                                            await supabase.rpc('send_proximity_wave', { p_recipient_id: wave.from_id });
-                                                                                            alert(`Waved back at ${wave.from_name}! 👋`);
-                                                                                        } catch (err) {
-                                                                                            console.error(err);
-                                                                                            alert("Failed to wave back: " + err.message);
-                                                                                        }
-                                                                                    }}
-                                                                                    style={{
-                                                                                        background: 'linear-gradient(135deg, #FF9800 0%, #FF5722 100%)',
-                                                                                        color: 'white',
-                                                                                        border: 'none',
-                                                                                        borderRadius: '10px',
-                                                                                        padding: '8px 16px',
-                                                                                        fontSize: '0.8rem',
-                                                                                        fontWeight: '800',
-                                                                                        cursor: 'pointer',
-                                                                                        boxShadow: '0 4px 10px rgba(255, 87, 34, 0.2)'
-                                                                                    }}
-                                                                                >
-                                                                                    👋 Wave Back
-                                                                                </button>
+                                                                                {wave.from_id !== session?.user?.id && (
+                                                                                    <button
+                                                                                        onClick={async () => {
+                                                                                            try {
+                                                                                                await supabase.rpc('send_proximity_wave', { p_recipient_id: wave.from_id });
+                                                                                                alert(`Waved back at ${wave.from_name}! 👋`);
+                                                                                            } catch (err) {
+                                                                                                console.error(err);
+                                                                                                alert("Failed to wave back: " + err.message);
+                                                                                            }
+                                                                                        }}
+                                                                                        style={{
+                                                                                            background: 'linear-gradient(135deg, #FF9800 0%, #FF5722 100%)',
+                                                                                            color: 'white',
+                                                                                            border: 'none',
+                                                                                            borderRadius: '10px',
+                                                                                            padding: '8px 16px',
+                                                                                            fontSize: '0.8rem',
+                                                                                            fontWeight: '800',
+                                                                                            cursor: 'pointer',
+                                                                                            boxShadow: '0 4px 10px rgba(255, 87, 34, 0.2)'
+                                                                                        }}
+                                                                                    >
+                                                                                        👋 Wave Back
+                                                                                    </button>
+                                                                                )}
                                                                              </div>
                                                                          </div>
                                                                      ))
