@@ -1785,6 +1785,13 @@ function App() {
             .order('created_at', { ascending: true });
         if (data) {
             setChatMessages(data);
+            
+            // Mark received unread messages as read
+            const unreadIds = data.filter(m => m.recipient_id === session.user.id && !m.read).map(m => m.id);
+            if (unreadIds.length > 0) {
+                await supabase.from('direct_messages').update({ read: true }).in('id', unreadIds);
+                fetchActiveChats();
+            }
         }
     };
 
@@ -1798,9 +1805,16 @@ function App() {
             sender_id: session.user.id,
             recipient_id: chatProfile.id,
             content: msg,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            read: false
         };
         setChatMessages(prev => [...prev, tempMsg]);
+
+        // Mark any existing unread messages in this chat as read since user is replying
+        const unreadIds = chatMessages.filter(m => m.recipient_id === session.user.id && !m.read && !m.id.toString().startsWith('temp-')).map(m => m.id);
+        if (unreadIds.length > 0) {
+            await supabase.from('direct_messages').update({ read: true }).in('id', unreadIds);
+        }
 
         const { data, error } = await supabase.from('direct_messages').insert({
             sender_id: session.user.id,
