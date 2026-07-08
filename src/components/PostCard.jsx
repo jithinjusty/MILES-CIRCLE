@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply, posts, isHelpful, onHelpfulToggle, session, onTransferPoints }) {
+export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply, posts, isHelpful, onHelpfulToggle, session, onTransferPoints, onDelete }) {
     const [showMenu, setShowMenu] = useState(false);
     const [menuPos, setMenuPos] = useState({ x: 0, y: 0 });
     const [translatedText, setTranslatedText] = useState(null);
@@ -418,6 +418,14 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                             <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0 12px' }} />
                             <button onClick={handleAIReply} style={{ ...menuBtnStyle, color: 'var(--accent-red)' }}>
                                 <span>✨</span> Generate AI Reply
+                            </button>
+                        </>
+                    )}
+                    {isMine && onDelete && (
+                        <>
+                            <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0 12px' }} />
+                            <button onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete(post.id); }} style={{ ...menuBtnStyle, color: '#ff4444' }}>
+                                <span>🗑️</span> Delete
                             </button>
                         </>
                     )}

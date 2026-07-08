@@ -109,6 +109,12 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const [lostFoundContact, setLostFoundContact] = useState('');
     const [postingLostFound, setPostingLostFound] = useState(false);
     
+    // Alert States
+    const [showCreateAlert, setShowCreateAlert] = useState(false);
+    const [alertTitle, setAlertTitle] = useState('');
+    const [alertDesc, setAlertDesc] = useState('');
+    const [postingAlert, setPostingAlert] = useState(false);
+
     // Barter States
     const [showCreateBarter, setShowCreateBarter] = useState(false);
     const [barterType, setBarterType] = useState('offer'); // 'offer' or 'request'
@@ -290,6 +296,74 @@ Details: ${lostFoundDesc.trim()}${contactText}`;
             showToast("Failed to post: " + err.message, "error");
         } finally {
             setPostingLostFound(false);
+        }
+    };
+
+    const handleCreateAlert = async (e) => {
+        if (e) e.preventDefault();
+        if (!session?.user?.id || !position) return;
+
+        setPostingAlert(true);
+        try {
+            const postContent = `🚨 [ALERT] ${alertTitle.trim()}\n${alertDesc.trim()}`;
+            const locationWKT = `POINT(${position[1]} ${position[0]})`;
+
+            const { error } = await supabase
+                .from('posts')
+                .insert([{
+                    user_id: session.user.id,
+                    content: postContent,
+                    location: locationWKT,
+                    is_alert: true
+                }]);
+
+            if (error) throw error;
+
+            setAlertTitle('');
+            setAlertDesc('');
+            setShowCreateAlert(false);
+            fetchPosts();
+        } catch (err) {
+            console.error("Error creating alert post:", err);
+            showToast("Failed to post: " + err.message, "error");
+        } finally {
+            setPostingAlert(false);
+        }
+    };
+
+    const handleFetchWeatherAlert = async () => {
+        if (!position || isNaN(position[0]) || isNaN(position[1])) {
+            showToast("Location not available for weather.", "error");
+            return;
+        }
+        setPostingAlert(true);
+        try {
+            const res = await fetch(
+                `https://api.open-meteo.com/v1/forecast?latitude=${position[0]}&longitude=${position[1]}` +
+                `&current_weather=true&hourly=precipitation_probability&current=windspeed_10m` +
+                `&wind_speed_unit=kmh&timezone=auto`
+            );
+            if (!res.ok) throw new Error("Weather fetch failed");
+            const data = await res.json();
+            
+            const temp = Math.round(data.current_weather.temperature);
+            const wind = Math.round(data.current_weather.windspeed ?? data.current?.windspeed_10m ?? 0);
+            const rainChance = data.hourly?.precipitation_probability?.[0] ?? 0;
+            
+            let alertMsg = `Current temperature is ${temp}°C in our area.\n`;
+            if (rainChance > 40) alertMsg += `🌧️ High chance of rain (${rainChance}%). Please be prepared!\n`;
+            if (wind > 30) alertMsg += `💨 High winds detected (${wind} km/h). Secure loose outdoor items.\n`;
+            if (temp > 35) alertMsg += `☀️ Extreme heat warning! Stay hydrated.\n`;
+            if (temp < 5) alertMsg += `❄️ Freezing temperatures expected. Drive safely.\n`;
+            
+            setAlertTitle(`Local Weather Alert`);
+            setAlertDesc(alertMsg.trim());
+            showToast("Weather fetched successfully!", "success");
+        } catch (err) {
+            console.error("Error fetching weather:", err);
+            showToast("Could not fetch weather data.", "error");
+        } finally {
+            setPostingAlert(false);
         }
     };
 
@@ -533,6 +607,21 @@ Details: ${lostFoundDesc.trim()}${contactText}`;
                 }
                 return p;
             }));
+        }
+    };
+
+    const handleDeletePost = async (postId) => {
+        try {
+            const { error } = await supabase
+                .from('posts')
+                .delete()
+                .eq('id', postId);
+            if (error) throw error;
+            setPosts(prev => prev.filter(p => p.id !== postId));
+            showToast("Post deleted successfully", "success");
+        } catch (err) {
+            console.error("Failed to delete post:", err);
+            showToast("Failed to delete post: " + err.message, "error");
         }
     };
 
@@ -1575,6 +1664,34 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                         </button>
                     )}
 
+                    {activeCategory === 'alerts' && (
+                        <button
+                            onClick={() => setShowCreateAlert(true)}
+                            style={{
+                                width: '100%',
+                                background: 'linear-gradient(135deg, #d32f2f 0%, #c62828 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '16px',
+                                padding: '14px',
+                                fontWeight: 'bold',
+                                fontSize: '0.9rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                boxShadow: '0 8px 24px rgba(211, 47, 47, 0.25)',
+                                marginBottom: '1rem',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                            onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
+                        >
+                            <span>🚨</span> Broadcast Alert
+                        </button>
+                    )}
+
                     {activeCategory === 'offers' ? (
                         loadingOffers ? (
                             <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
@@ -1629,6 +1746,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                 onHelpfulToggle={handleHelpfulToggle}
                                 session={session}
                                 onTransferPoints={onTransferPoints}
+                                onDelete={handleDeletePost}
                             />
                         ))
                     )}
@@ -2189,6 +2307,43 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
 
                             <button type="submit" disabled={postingBarter} style={{ background: 'var(--accent-red)', color: 'white', border: 'none', borderRadius: '12px', padding: '14px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', transition: 'all 0.2s', opacity: postingBarter ? 0.6 : 1 }}>
                                 {postingBarter ? 'Posting...' : 'Post Barter'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Create Alert Modal */}
+            {showCreateAlert && (
+                <div className="modal-overlay" style={{ zIndex: 4000, display: 'block', overflowY: 'scroll', WebkitOverflowScrolling: 'touch', padding: '20px 10px' }} onClick={() => setShowCreateAlert(false)}>
+                    <div className="onboarding-card-premium anim-fade-in" style={{ maxWidth: '480px', width: '90%', margin: '20px auto 40px', flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                        <header style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h2 className="onboarding-title" style={{ fontSize: '1.5rem', margin: 0, color: 'var(--accent-red)' }}>🚨 Broadcast Alert</h2>
+                            <button onClick={() => setShowCreateAlert(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
+                        </header>
+                        
+                        <form onSubmit={handleCreateAlert} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Alert Title</label>
+                                    <button 
+                                        type="button" 
+                                        onClick={handleFetchWeatherAlert}
+                                        style={{ background: 'rgba(211, 47, 47, 0.1)', border: '1px solid rgba(211, 47, 47, 0.3)', color: 'var(--accent-red)', padding: '4px 8px', borderRadius: '8px', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}
+                                    >
+                                        ⛅ Auto-Fill Weather
+                                    </button>
+                                </div>
+                                <input required type="text" placeholder="e.g. Weather Warning, Road Blocked" value={alertTitle} onChange={e => setAlertTitle(e.target.value)} style={{ width: '100%', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', color: 'var(--text-primary)', padding: '12px', outline: 'none' }} />
+                            </div>
+
+                            <div className="field-block" style={{ margin: 0 }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Alert Details</label>
+                                <textarea required rows="4" placeholder="Describe the situation..." value={alertDesc} onChange={e => setAlertDesc(e.target.value)} style={{ width: '100%', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', borderRadius: '12px', color: 'var(--text-primary)', padding: '12px', outline: 'none', resize: 'none' }} />
+                            </div>
+
+                            <button type="submit" disabled={postingAlert} style={{ background: 'linear-gradient(135deg, #d32f2f 0%, #c62828 100%)', color: 'white', border: 'none', borderRadius: '12px', padding: '14px', fontWeight: 'bold', cursor: 'pointer', marginTop: '10px', transition: 'all 0.2s', opacity: postingAlert ? 0.6 : 1, boxShadow: '0 4px 15px rgba(211, 47, 47, 0.4)' }}>
+                                {postingAlert ? 'Broadcasting...' : 'Broadcast to Neighborhood'}
                             </button>
                         </form>
                     </div>
