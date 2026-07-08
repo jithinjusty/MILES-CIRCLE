@@ -938,8 +938,8 @@ function App() {
                     }
                 }
                 
-                const unreadCount = data.filter(m => m.recipient_id === session.user.id && m.read === false).length;
-                setUnreadMessagesCount(unreadCount);
+                const unreadSenders = new Set(data.filter(m => m.recipient_id === session.user.id && m.read === false).map(m => m.sender_id));
+                setUnreadMessagesCount(unreadSenders.size);
                 
                 const otherIds = Array.from(chatMap.keys());
                 if (otherIds.length > 0) {
@@ -1999,7 +1999,27 @@ function App() {
                         <div style={{ fontWeight: '900', fontSize: '0.9rem' }}>Incoming Wave!</div>
                         <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>{incomingWave.from_name} is waving at you! (Tap to view)</div>
                     </div>
-                    <button
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                            onClick={() => {
+                                openChat(incomingWave.from_id, incomingWave.from_name);
+                                setIncomingWave(null);
+                            }}
+                            style={{
+                                background: 'rgba(255,255,255,0.2)',
+                                color: 'white',
+                                border: '1px solid rgba(255,255,255,0.3)',
+                                borderRadius: '8px',
+                                padding: '6px 12px',
+                                fontSize: '0.75rem',
+                                fontWeight: '900',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            💬 Msg
+                        </button>
+                        <button
                         onClick={async () => {
                             try {
                                 await supabase.rpc('send_proximity_wave', { p_recipient_id: incomingWave.from_id });
@@ -2024,6 +2044,7 @@ function App() {
                     >
                         Wave Back
                     </button>
+                    </div>
                 </div>
             )}
             {showSplash && <SplashScreen onComplete={() => {
