@@ -964,65 +964,66 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
             <div className="feed-category-bar" style={{
                 display: 'flex',
                 gap: '8px',
-                padding: '10px 16px',
-                borderBottom: '1px solid rgba(212, 175, 55, 0.15)',
+                padding: '12px 16px',
+                overflowX: 'auto',
+                borderBottom: '1px solid rgba(212, 175, 55, 0.2)',
                 background: 'rgba(20, 20, 20, 0.95)',
-                backdropFilter: 'blur(10px)',
-                WebkitBackdropFilter: 'blur(10px)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
                 position: 'sticky',
                 top: 0,
                 zIndex: 10,
-                overflowX: 'auto',
                 scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
                 alignItems: 'center'
             }}>
-                {categories.map(cat => (
-                    <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setActiveCategory(cat.id)}
-                        style={{
-                            background: activeCategory === cat.id ? '#d4af37' : 'rgba(255, 255, 255, 0.05)',
-                            color: activeCategory === cat.id ? '#111' : 'var(--text-primary)',
-                            border: `1px solid ${activeCategory === cat.id ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
-                            borderRadius: '20px',
-                            padding: '6px 14px',
-                            fontSize: '0.75rem',
-                            fontWeight: activeCategory === cat.id ? '700' : '500',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            transition: 'all 0.2s',
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0
-                        }}
-                    >
-                        <span style={{ fontSize: '0.9rem' }}>{cat.icon}</span>
-                        <span>{cat.label}</span>
-                    </button>
-                ))}
-            </div>
-            
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', padding: '6px 16px', background: 'rgba(20, 20, 20, 0.95)' }}>
-                {activeCategory === 'buysell' && (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    {categories.map(cat => (
+                        <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => setActiveCategory(cat.id)}
+                            style={{
+                                background: activeCategory === cat.id ? '#d4af37' : 'rgba(255, 255, 255, 0.05)',
+                                color: activeCategory === cat.id ? '#111' : 'var(--text-primary)',
+                                border: `1px solid ${activeCategory === cat.id ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
+                                borderRadius: '20px',
+                                padding: '8px 16px',
+                                fontSize: '0.8rem',
+                                fontWeight: activeCategory === cat.id ? '700' : '500',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                whiteSpace: 'nowrap',
+                                transition: 'all 0.2s ease',
+                                boxShadow: activeCategory === cat.id ? '0 4px 12px rgba(212,175,55,0.3)' : 'none'
+                            }}
+                        >
+                            <span>{cat.icon}</span>
+                            <span>{cat.label}</span>
+                        </button>
+                    ))}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', alignItems: 'center' }}>
+                    {activeCategory === 'buysell' && (
                         <button
                             type="button"
                             onClick={() => setSwiperMode(!swiperMode)}
                             style={{
-                                background: swiperMode ? 'linear-gradient(135deg, #d4af37 0%, #aa8c2c 100%)' : 'rgba(255, 255, 255, 0.05)',
+                                background: swiperMode ? '#d4af37' : 'rgba(255, 255, 255, 0.05)',
                                 color: swiperMode ? '#111' : 'var(--text-primary)',
                                 border: `1px solid ${swiperMode ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
-                                borderRadius: '25px',
-                                padding: '6px 16px',
-                                fontSize: '0.8rem',
+                                borderRadius: '20px',
+                                padding: '6px 14px',
+                                fontSize: '0.75rem',
                                 fontWeight: '700',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '8px',
-                                transition: 'all 0.3s ease',
-                                boxShadow: swiperMode ? '0 4px 15px rgba(212, 175, 55, 0.4)' : 'none'
+                                gap: '6px',
+                                whiteSpace: 'nowrap',
+                                transition: 'all 0.2s ease'
                             }}
                         >
                             <span>🛍️</span>
@@ -1033,22 +1034,21 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value)}
                         style={{
-                            background: 'rgba(20, 20, 20, 0.8)',
+                            background: 'rgba(30, 30, 30, 0.8)',
                             color: '#d4af37',
-                            border: '1px solid rgba(212, 175, 55, 0.4)',
-                            borderRadius: '25px',
-                            padding: '6px 14px',
-                            fontSize: '0.8rem',
+                            border: '1px solid rgba(212, 175, 55, 0.3)',
+                            borderRadius: '20px',
+                            padding: '6px 12px',
+                            fontSize: '0.75rem',
                             fontWeight: '700',
                             cursor: 'pointer',
                             outline: 'none',
-                            transition: 'all 0.3s ease',
-                            textAlign: 'center'
+                            whiteSpace: 'nowrap'
                         }}
                     >
-                        <option value="latest" style={{ background: '#1c1c1e', color: '#d4af37' }}>🕒 Latest</option>
-                        <option value="closest" style={{ background: '#1c1c1e', color: '#d4af37' }}>📍 Closest</option>
-                        <option value="helpful" style={{ background: '#1c1c1e', color: '#d4af37' }}>⭐ Helpful</option>
+                        <option value="latest" style={{ background: '#1c1c1e' }}>🕒 Latest</option>
+                        <option value="closest" style={{ background: '#1c1c1e' }}>📍 Closest</option>
+                        <option value="helpful" style={{ background: '#1c1c1e' }}>⭐ Helpful</option>
                     </select>
                 </div>
             </div>
