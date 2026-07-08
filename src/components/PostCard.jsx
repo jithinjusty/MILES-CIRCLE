@@ -233,8 +233,8 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
 
     // Find the original post being replied to
     const repliedToPost = post?.reply_to_id && posts ? posts.find(p => p.id === post.reply_to_id) : null;
-    const repliedToName = post?.reply_to_author || (repliedToPost?.is_ai ? repliedToPost?.ai_name : (repliedToPost?.full_name || repliedToPost?.user_email?.split('@')[0]));
-    const repliedToContent = post?.reply_to_content || repliedToPost?.content;
+    const repliedToName = repliedToPost ? (repliedToPost.is_ai ? repliedToPost.ai_name : (repliedToPost.full_name || repliedToPost.user_email?.split('@')[0])) : null;
+    const repliedToContent = repliedToPost ? repliedToPost.content : null;
 
     // Close menu on outside click
     useEffect(() => {
