@@ -3,9 +3,10 @@ import { RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PostCard from './PostCard'
 
-export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick, aiResponderEnabled, hasVibedToday = false, waves = [], activeChats = [], onOpenChat }) {
+export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick, aiResponderEnabled, hasVibedToday = false, waves = [], activeChats = [], onOpenChat, onShowMap }) {
     const [showWavesModal, setShowWavesModal] = useState(false);
     const [showMessagesModal, setShowMessagesModal] = useState(false);
+    const [showNeighborsModal, setShowNeighborsModal] = useState(false);
     const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(true)
     const [toast, setToast] = useState(null)
@@ -321,6 +322,7 @@ Details: ${lostFoundDesc.trim()}${contactText}`;
     const filteredPosts = posts
         .filter(post => {
             if (activeCategory === 'all') return true;
+            if (activeCategory === 'alerts') return post.is_alert;
             return getPostCategory(post.content) === activeCategory;
         })
         .sort((a, b) => {
@@ -956,6 +958,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
 
     const categories = [
         { id: 'all', label: 'All sphere', icon: '🌍' },
+        { id: 'alerts', label: 'Alerts', icon: '🚨' },
         { id: 'general', label: 'General', icon: '💬' },
         { id: 'buysell', label: 'Buy & Sell', icon: '🏷️' },
         { id: 'offers', label: 'Local Offers', icon: '🎁' },
@@ -1137,19 +1140,19 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                         WebkitBackdropFilter: 'blur(10px)',
                         marginBottom: '0.5rem'
                     }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px' }}>
+                        <div onClick={() => setShowNeighborsModal(true)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px', cursor: 'pointer' }}>
                             <span style={{ fontSize: '1.25rem' }}>👥</span>
                             <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Neighbors</span>
                             <span style={{ fontSize: '0.85rem', fontWeight: '900', color: 'var(--text-primary)' }}>{activeNeighborsCount} online</span>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px', borderLeft: '1px solid var(--glass-border)', borderRight: '1px solid var(--glass-border)' }}>
+                        <div onClick={() => { setActiveCategory('alerts'); scrollToTop('smooth'); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px', borderLeft: '1px solid var(--glass-border)', borderRight: '1px solid var(--glass-border)', cursor: 'pointer' }}>
                             <span style={{ fontSize: '1.25rem' }}>🚨</span>
                             <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Alerts</span>
                             <span style={{ fontSize: '0.85rem', fontWeight: '900', color: posts.filter(p => p.is_alert).length > 0 ? 'var(--accent-red)' : 'var(--text-primary)' }}>
                                 {posts.filter(p => p.is_alert).length} active
                             </span>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px' }}>
+                        <div onClick={onShowMap} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px', cursor: 'pointer' }}>
                             <span style={{ fontSize: '1.25rem' }}>⚡</span>
                             <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Flash Meets</span>
                             <span style={{ fontSize: '0.85rem', fontWeight: '900', color: '#ff9f43' }}>
@@ -2402,6 +2405,71 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                             >
                                 Confirm
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Neighbors List Modal */}
+            {showNeighborsModal && (
+                <div className="modal-overlay" style={{ zIndex: 4000, display: 'block', overflowY: 'scroll', WebkitOverflowScrolling: 'touch', padding: '20px 10px' }} onClick={() => setShowNeighborsModal(false)}>
+                    <div className="modal-container anim-fade-in" style={{
+                        maxWidth: '500px',
+                        margin: '0 auto',
+                        background: 'var(--panel-bg)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: '24px',
+                        boxShadow: '0 16px 40px rgba(0,0,0,0.4)',
+                        overflow: 'hidden'
+                    }} onClick={e => e.stopPropagation()}>
+                        <div style={{
+                            padding: '16px 20px',
+                            borderBottom: '1px solid var(--glass-border)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            background: 'rgba(255,255,255,0.02)'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '1.2rem' }}>👥</span>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: 'var(--text-primary)' }}>Online Neighbors</h3>
+                            </div>
+                            <button className="btn-close" onClick={() => setShowNeighborsModal(false)}>✕</button>
+                        </div>
+                        
+                        <div style={{ padding: '0', maxHeight: '60vh', overflowY: 'auto' }}>
+                            {activeNeighbors.length === 0 ? (
+                                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                    No other neighbors are currently active in your circle.
+                                </div>
+                            ) : (
+                                activeNeighbors.map(neighbor => (
+                                    <div key={neighbor.id} onClick={() => { setShowNeighborsModal(false); onUserClick(neighbor.id); }} style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '16px 20px',
+                                        borderBottom: '1px solid var(--glass-border)',
+                                        background: 'rgba(255,255,255,0.01)',
+                                        cursor: 'pointer'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{
+                                                width: '40px', height: '40px', borderRadius: '12px',
+                                                background: 'rgba(255,255,255,0.1)', overflow: 'hidden',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: '1.2rem', fontWeight: '800', color: 'var(--text-primary)'
+                                            }}>
+                                                {neighbor.avatar_url ? <img src={neighbor.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt=""/> : (neighbor.full_name || '?')[0].toUpperCase()}
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                <span style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>{neighbor.full_name || 'Neighbor'}</span>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Tap to view profile</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>
