@@ -2980,6 +2980,7 @@ function App() {
                                                         }
                                                         onVibeClick={() => setShowVibeCheck(true)}
                                                         aiResponderEnabled={aiResponderEnabled}
+                                                        onOpenChat={openChat}
                                                         onUserClick={async (userId, isAi, aiName) => {
                                                             const isReallyAi = !!isAi || (typeof isAi === 'string' && isAi.toLowerCase() === 'true');
                                                             if (isReallyAi) {

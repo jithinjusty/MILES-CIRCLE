@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PostCard from './PostCard'
 
-export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick, aiResponderEnabled, hasVibedToday = false, waves = [], activeChats = [] }) {
+export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick, aiResponderEnabled, hasVibedToday = false, waves = [], activeChats = [], onOpenChat }) {
     const [showWavesModal, setShowWavesModal] = useState(false);
     const [showMessagesModal, setShowMessagesModal] = useState(false);
     const [posts, setPosts] = useState([])
@@ -376,24 +376,30 @@ Details: ${lostFoundDesc.trim()}${contactText}`;
                 }
             }
 
-            const isMyPost = session?.user?.id && newestPost && (newestPost.user_id === session.user.id && !newestPost.is_ai);
             const nearTop = isNearTop();
+            const diff = posts.length - prevPostsLength.current;
+            const isNewPostAdded = diff > 0 && prevPostsLength.current > 0;
+            const isMyPost = isNewPostAdded && session?.user?.id && newestPost && (newestPost.user_id === session.user.id && !newestPost.is_ai);
 
             if (isInitialLoad.current) {
                 // Instantly jump to top on first open
                 feedStartRef.current?.scrollIntoView({ behavior: 'auto' });
                 isInitialLoad.current = false;
-            } else if (isMyPost || nearTop) {
-                // Smoothly auto-scroll if it's the user's post or they are at the top
-                feedStartRef.current?.scrollIntoView({ behavior: 'smooth' });
-                setUnreadCount(0);
-            } else {
-                // User is reading history, update unread count for new messages
-                const diff = posts.length - prevPostsLength.current;
-                if (diff > 0 && prevPostsLength.current > 0) {
+            } else if (isNewPostAdded) {
+                if (isMyPost || nearTop) {
+                    // Smoothly auto-scroll if it's the user's post or they are at the top
+                    feedStartRef.current?.scrollIntoView({ behavior: 'smooth' });
+                    setUnreadCount(0);
+                } else {
+                    // User is reading history, update unread count for new messages
                     setUnreadCount(prev => prev + diff);
                 }
+            } else if (diff < 0 || prevPostsLength.current === 0) {
+                // Category switch or filter change
+                feedStartRef.current?.scrollIntoView({ behavior: 'auto' });
+                setUnreadCount(0);
             }
+            
             prevPostsLength.current = posts.length;
         }
     }, [posts, session])
@@ -960,155 +966,6 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
 
     return (
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '0', position: 'relative' }}>
-            {/* Sticky Header Group */}
-            <div style={{ position: 'sticky', top: 0, zIndex: 10, display: 'flex', flexDirection: 'column', width: '100%' }}>
-                {/* Category Filter Bar */}
-                <div className="feed-category-bar" style={{
-                    display: 'flex',
-                    gap: '8px',
-                    padding: '12px 16px',
-                    overflowX: 'auto',
-                    borderBottom: '1px solid rgba(212, 175, 55, 0.2)',
-                    background: 'rgba(20, 20, 20, 0.95)',
-                    backdropFilter: 'blur(20px)',
-                    WebkitBackdropFilter: 'blur(20px)',
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none',
-                    alignItems: 'center'
-                }}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        {categories.map(cat => (
-                            <button
-                                key={cat.id}
-                                type="button"
-                                onClick={() => setActiveCategory(cat.id)}
-                                style={{
-                                    background: activeCategory === cat.id ? '#d4af37' : 'rgba(255, 255, 255, 0.05)',
-                                    color: activeCategory === cat.id ? '#111' : 'var(--text-primary)',
-                                    border: `1px solid ${activeCategory === cat.id ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
-                                    borderRadius: '20px',
-                                    padding: '8px 16px',
-                                    fontSize: '0.8rem',
-                                    fontWeight: activeCategory === cat.id ? '700' : '500',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    whiteSpace: 'nowrap',
-                                    transition: 'all 0.2s ease',
-                                    boxShadow: activeCategory === cat.id ? '0 4px 12px rgba(212,175,55,0.3)' : 'none'
-                                }}
-                            >
-                                <span>{cat.icon}</span>
-                                <span>{cat.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', alignItems: 'center' }}>
-                        {activeCategory === 'buysell' && (
-                            <button
-                                type="button"
-                                onClick={() => setSwiperMode(!swiperMode)}
-                                style={{
-                                    background: swiperMode ? '#d4af37' : 'rgba(255, 255, 255, 0.05)',
-                                    color: swiperMode ? '#111' : 'var(--text-primary)',
-                                    border: `1px solid ${swiperMode ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
-                                    borderRadius: '20px',
-                                    padding: '6px 14px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: '700',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    whiteSpace: 'nowrap',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                <span>🛍️</span>
-                                <span>{swiperMode ? 'List View' : 'Swiper View'}</span>
-                            </button>
-                        )}
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value)}
-                            style={{
-                                background: 'rgba(30, 30, 30, 0.8)',
-                                color: '#d4af37',
-                                border: '1px solid rgba(212, 175, 55, 0.3)',
-                                borderRadius: '20px',
-                                padding: '6px 12px',
-                                fontSize: '0.75rem',
-                                fontWeight: '700',
-                                cursor: 'pointer',
-                                outline: 'none',
-                                whiteSpace: 'nowrap'
-                            }}
-                        >
-                            <option value="latest" style={{ background: '#1c1c1e' }}>🕒 Latest</option>
-                            <option value="closest" style={{ background: '#1c1c1e' }}>📍 Closest</option>
-                            <option value="helpful" style={{ background: '#1c1c1e' }}>⭐ Helpful</option>
-                        </select>
-                    </div>
-                </div>
-
-                {/* Steady Headers: Waves & Messages (Classic Luxury) */}
-                <div style={{
-                    display: 'flex',
-                    background: 'linear-gradient(to right, rgba(20, 20, 20, 0.98), rgba(30, 30, 30, 0.98))',
-                    backdropFilter: 'blur(15px)',
-                    borderBottom: '1px solid rgba(212, 175, 55, 0.2)',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    boxShadow: '0 4px 25px rgba(0,0,0,0.3)'
-                }}>
-                <div 
-                    onClick={() => setShowWavesModal(true)}
-                    style={{
-                        flex: 1,
-                        padding: '16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '10px',
-                        cursor: 'pointer',
-                        borderRight: '1px solid rgba(212, 175, 55, 0.15)',
-                        transition: 'all 0.3s',
-                        color: '#d4af37',
-                        textTransform: 'uppercase',
-                        letterSpacing: '1px'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(212, 175, 55, 0.05)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                    <span style={{ fontSize: '1.2rem', filter: 'sepia(1) hue-rotate(320deg)' }}>👋</span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: '800' }}>Waves ({waves.length})</span>
-                </div>
-                
-                <div 
-                    onClick={() => setShowMessagesModal(true)}
-                    style={{
-                        flex: 1,
-                        padding: '16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '10px',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s',
-                        color: '#d4af37',
-                        textTransform: 'uppercase',
-                        letterSpacing: '1px'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(212, 175, 55, 0.05)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                >
-                    <span style={{ fontSize: '1.2rem', filter: 'sepia(1) hue-rotate(320deg)' }}>💬</span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: '800' }}>Messages</span>
-                </div>
-                </div>
-            </div>
-
             {/* Neighborhood Vibe Gauge */}
             {(!hasVibedToday && neighborhoodVibes.length > 0) && (
                 <div 
@@ -1266,6 +1123,190 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                 </div>
             )}
 
+            {/* Active Proximity Radar Stats Bar */}
+                    <div className="proximity-radar-stats" style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: '12px',
+                        padding: '14px 8px',
+                        background: 'var(--panel-bg)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: '16px',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        marginBottom: '0.5rem'
+                    }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '1.25rem' }}>👥</span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Neighbors</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: '900', color: 'var(--text-primary)' }}>{activeNeighborsCount} online</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px', borderLeft: '1px solid var(--glass-border)', borderRight: '1px solid var(--glass-border)' }}>
+                            <span style={{ fontSize: '1.25rem' }}>🚨</span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Alerts</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: '900', color: posts.filter(p => p.is_alert).length > 0 ? 'var(--accent-red)' : 'var(--text-primary)' }}>
+                                {posts.filter(p => p.is_alert).length} active
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px' }}>
+                            <span style={{ fontSize: '1.25rem' }}>⚡</span>
+                            <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Flash Meets</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: '900', color: '#ff9f43' }}>
+                                Live map
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Sticky Header Group */}
+            <div style={{ position: 'sticky', top: 0, zIndex: 10, display: 'flex', flexDirection: 'column', width: '100%' }}>
+                {/* Category Filter Bar */}
+                <div className="feed-category-bar" style={{
+                    display: 'flex',
+                    gap: '8px',
+                    padding: '12px 16px',
+                    overflowX: 'auto',
+                    borderBottom: '1px solid rgba(212, 175, 55, 0.2)',
+                    background: 'rgba(20, 20, 20, 0.95)',
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                    alignItems: 'center'
+                }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        {categories.map(cat => (
+                            <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => setActiveCategory(cat.id)}
+                                style={{
+                                    background: activeCategory === cat.id ? '#d4af37' : 'rgba(255, 255, 255, 0.05)',
+                                    color: activeCategory === cat.id ? '#111' : 'var(--text-primary)',
+                                    border: `1px solid ${activeCategory === cat.id ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
+                                    borderRadius: '20px',
+                                    padding: '8px 16px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: activeCategory === cat.id ? '700' : '500',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    whiteSpace: 'nowrap',
+                                    transition: 'all 0.2s ease',
+                                    boxShadow: activeCategory === cat.id ? '0 4px 12px rgba(212,175,55,0.3)' : 'none'
+                                }}
+                            >
+                                <span>{cat.icon}</span>
+                                <span>{cat.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', alignItems: 'center' }}>
+                        {activeCategory === 'buysell' && (
+                            <button
+                                type="button"
+                                onClick={() => setSwiperMode(!swiperMode)}
+                                style={{
+                                    background: swiperMode ? '#d4af37' : 'rgba(255, 255, 255, 0.05)',
+                                    color: swiperMode ? '#111' : 'var(--text-primary)',
+                                    border: `1px solid ${swiperMode ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
+                                    borderRadius: '20px',
+                                    padding: '6px 14px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '700',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    whiteSpace: 'nowrap',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                <span>🛍️</span>
+                                <span>{swiperMode ? 'List View' : 'Swiper View'}</span>
+                            </button>
+                        )}
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            style={{
+                                background: 'rgba(30, 30, 30, 0.8)',
+                                color: '#d4af37',
+                                border: '1px solid rgba(212, 175, 55, 0.3)',
+                                borderRadius: '20px',
+                                padding: '6px 12px',
+                                fontSize: '0.75rem',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                outline: 'none',
+                                whiteSpace: 'nowrap'
+                            }}
+                        >
+                            <option value="latest" style={{ background: '#1c1c1e' }}>🕒 Latest</option>
+                            <option value="closest" style={{ background: '#1c1c1e' }}>📍 Closest</option>
+                            <option value="helpful" style={{ background: '#1c1c1e' }}>⭐ Helpful</option>
+                        </select>
+                    </div>
+                </div>
+
+                {/* Steady Headers: Waves & Messages (Classic Luxury) */}
+                <div style={{
+                    display: 'flex',
+                    background: 'linear-gradient(to right, rgba(20, 20, 20, 0.98), rgba(30, 30, 30, 0.98))',
+                    backdropFilter: 'blur(15px)',
+                    borderBottom: '1px solid rgba(212, 175, 55, 0.2)',
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    boxShadow: '0 4px 25px rgba(0,0,0,0.3)'
+                }}>
+                <div 
+                    onClick={() => setShowWavesModal(true)}
+                    style={{
+                        flex: 1,
+                        padding: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '10px',
+                        cursor: 'pointer',
+                        borderRight: '1px solid rgba(212, 175, 55, 0.15)',
+                        transition: 'all 0.3s',
+                        color: '#d4af37',
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(212, 175, 55, 0.05)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                    <span style={{ fontSize: '1.2rem', filter: 'sepia(1) hue-rotate(320deg)' }}>👋</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '800' }}>Waves ({waves.length})</span>
+                </div>
+                
+                <div 
+                    onClick={() => setShowMessagesModal(true)}
+                    style={{
+                        flex: 1,
+                        padding: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '10px',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                        color: '#d4af37',
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(212, 175, 55, 0.05)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                    <span style={{ fontSize: '1.2rem', filter: 'sepia(1) hue-rotate(320deg)' }}>💬</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '800' }}>Messages</span>
+                </div>
+                </div>
+            </div>
+
             {swiperMode ? (
                 <div className="swiper-container" style={{
                     padding: '2rem 1.5rem',
@@ -1405,41 +1446,6 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
             ) : (
                 <div className="app-feed-container" style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1.5rem', boxSizing: 'border-box' }}>
                     <div ref={feedStartRef} style={{ height: 0, margin: 0, padding: 0 }} />
-                    {/* Active Proximity Radar Stats Bar */}
-                    <div className="proximity-radar-stats" style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: '12px',
-                        padding: '14px 8px',
-                        background: 'var(--panel-bg)',
-                        border: '1px solid var(--glass-border)',
-                        borderRadius: '16px',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
-                        backdropFilter: 'blur(10px)',
-                        WebkitBackdropFilter: 'blur(10px)',
-                        marginBottom: '0.5rem'
-                    }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px' }}>
-                            <span style={{ fontSize: '1.25rem' }}>👥</span>
-                            <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Neighbors</span>
-                            <span style={{ fontSize: '0.85rem', fontWeight: '900', color: 'var(--text-primary)' }}>{activeNeighborsCount} online</span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px', borderLeft: '1px solid var(--glass-border)', borderRight: '1px solid var(--glass-border)' }}>
-                            <span style={{ fontSize: '1.25rem' }}>🚨</span>
-                            <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Alerts</span>
-                            <span style={{ fontSize: '0.85rem', fontWeight: '900', color: posts.filter(p => p.is_alert).length > 0 ? 'var(--accent-red)' : 'var(--text-primary)' }}>
-                                {posts.filter(p => p.is_alert).length} active
-                            </span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '4px' }}>
-                            <span style={{ fontSize: '1.25rem' }}>⚡</span>
-                            <span style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Flash Meets</span>
-                            <span style={{ fontSize: '0.85rem', fontWeight: '900', color: '#ff9f43' }}>
-                                Live map
-                            </span>
-                        </div>
-                    </div>
-
                     {activeCategory === 'offers' && (
                         <button
                             onClick={() => setShowCreateOffer(true)}
@@ -2020,7 +2026,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                         </div>
                                         <button onClick={() => {
                                             setShowMessagesModal(false);
-                                            onUserClick(chat.otherId);
+                                            if (onOpenChat) onOpenChat(chat.otherId, chat.otherName);
                                         }} style={{
                                             background: 'linear-gradient(135deg, #FF5722 0%, #FF9800 100%)',
                                             color: 'white', border: 'none', borderRadius: '10px',
