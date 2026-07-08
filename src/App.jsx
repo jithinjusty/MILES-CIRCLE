@@ -4392,6 +4392,49 @@ function App() {
                 </>
             )}
 
+            {/* FLOATING ACTION BUTTON */}
+            {session && !isExploreMapMode && !isChatOpen && !showSettings && !viewingProfile && !incomingWave && (
+                <button
+                    onClick={() => setShowCreatePost(true)}
+                    style={{
+                        position: 'fixed',
+                        bottom: '80px',
+                        right: '24px',
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #FF5722 0%, #E64A19 100%)',
+                        color: 'white',
+                        border: 'none',
+                        boxShadow: '0 8px 25px rgba(230, 74, 25, 0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        zIndex: 1000,
+                        transition: 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                >
+                    <Plus size={28} />
+                </button>
+            )}
+
+            {/* CREATE POST MODAL */}
+            {showCreatePost && (
+                <CreatePostModal
+                    position={position}
+                    radius={radius}
+                    onClose={() => setShowCreatePost(false)}
+                    onPostCreated={() => {
+                        setShowCreatePost(false);
+                        setFeedTrigger(prev => prev + 1);
+                        setIsExploreMapMode(false); 
+                    }}
+                />
+            )}
+
             {/* PRIVATE CHAT MODAL */}
             {isChatOpen && chatProfile && (
                 <div className="modal-overlay" onClick={() => setIsChatOpen(false)}>
