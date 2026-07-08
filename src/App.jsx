@@ -269,8 +269,9 @@ function App() {
     const [newPassword, setNewPassword] = useState('');
     const [mockPostType, setMockPostType] = useState('discussion'); // Mock options
     const [waves, setWaves] = useState([]);
-    const [activeChats, setActiveChats] = useState([]);
     const [incomingWave, setIncomingWave] = useState(null);
+    const [activeChats, setActiveChats] = useState([]);
+    const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatProfile, setChatProfile] = useState(null);
     const [chatMessages, setChatMessages] = useState([]);
@@ -936,6 +937,10 @@ function App() {
                         });
                     }
                 }
+                
+                const unreadCount = data.filter(m => m.recipient_id === session.user.id && m.read === false).length;
+                setUnreadMessagesCount(unreadCount);
+                
                 const otherIds = Array.from(chatMap.keys());
                 if (otherIds.length > 0) {
                     const { data: profiles, error: profileError } = await supabase
@@ -2973,6 +2978,7 @@ function App() {
                                                         activeNeighborsCount={activeNeighbors.length + 1}
                                                         waves={waves}
                                                         activeChats={activeChats}
+                                                        unreadMessagesCount={unreadMessagesCount}
                                                         activeNeighbors={activeNeighbors}
                                                         hasVibedToday={
                                                             profile?.vibe_updated_at ? 

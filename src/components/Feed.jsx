@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PostCard from './PostCard'
 
-export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick, aiResponderEnabled, hasVibedToday = false, waves = [], activeChats = [], onOpenChat, onShowMap }) {
+export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick, aiResponderEnabled, hasVibedToday = false, waves = [], activeChats = [], unreadMessagesCount = 0, onOpenChat, onShowMap }) {
     const [showWavesModal, setShowWavesModal] = useState(false);
     const [showMessagesModal, setShowMessagesModal] = useState(false);
     const [showNeighborsModal, setShowNeighborsModal] = useState(false);
@@ -1321,7 +1321,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                 >
                     <span style={{ fontSize: '1.2rem', filter: 'sepia(1) hue-rotate(320deg)' }}>💬</span>
                     <span style={{ fontSize: '0.85rem', fontWeight: '800' }}>
-                        Messages {activeChats?.length > 0 && <span style={{ marginLeft: '4px' }}>({activeChats.length})</span>}
+                        Messages {unreadMessagesCount > 0 && <span style={{ marginLeft: '4px' }}>({unreadMessagesCount})</span>}
                     </span>
                 </div>
                 </div>
