@@ -3010,7 +3010,7 @@ function App() {
                                                         radius={radius}
                                                         refreshTrigger={feedTrigger}
                                                         session={session}
-                                                        activeNeighborsCount={activeNeighbors.length + 1}
+                                                        activeNeighborsCount={activeNeighbors.filter(n => n.id !== session?.user?.id).length}
                                                         waves={waves}
                                                         activeChats={activeChats}
                                                         unreadMessagesCount={unreadMessagesCount}
