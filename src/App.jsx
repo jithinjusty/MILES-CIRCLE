@@ -2879,34 +2879,6 @@ function App() {
                                                                 }}>▼</span>
                                                             </button>
 
-                                                            {isExploreMapMode && (
-                                                                <button 
-                                                                    className="anim-fade-in"
-                                                                    onClick={() => setIsExploreMapMode(false)} 
-                                                                    title="Close Map"
-                                                                    style={{
-                                                                        position: 'absolute',
-                                                                        top: '55px',
-                                                                        left: '50%',
-                                                                        transform: 'translateX(-50%)',
-                                                                        background: 'var(--accent-red)',
-                                                                        border: 'none',
-                                                                        color: 'white',
-                                                                        width: '38px',
-                                                                        height: '38px',
-                                                                        borderRadius: '50%',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center',
-                                                                        cursor: 'pointer',
-                                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-                                                                        zIndex: 100
-                                                                    }}
-                                                                >
-                                                                    <X size={20} />
-                                                                </button>
-                                                            )}
-
                                                             {/* Detail panel — drops below header */}
                                                             {showWeatherPanel && (
                                                                 <div
@@ -3013,6 +2985,32 @@ function App() {
                                                     <div className="user-avatar-btn" onClick={() => setShowSettings(true)}>
                                                         {profile?.avatar_url ? <img src={profile.avatar_url} alt="" /> : getInitial()}
                                                     </div>
+                                                    {isExploreMapMode && (
+                                                        <button 
+                                                            className="anim-fade-in"
+                                                            onClick={() => setIsExploreMapMode(false)} 
+                                                            title="Close Map"
+                                                            style={{
+                                                                position: 'absolute',
+                                                                top: '55px',
+                                                                right: '20px',
+                                                                background: 'var(--accent-red)',
+                                                                border: 'none',
+                                                                color: 'white',
+                                                                width: '38px',
+                                                                height: '38px',
+                                                                borderRadius: '50%',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                cursor: 'pointer',
+                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                                                                zIndex: 100
+                                                            }}
+                                                        >
+                                                            <X size={20} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </header>
 
