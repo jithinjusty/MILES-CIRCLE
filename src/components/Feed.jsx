@@ -963,49 +963,49 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
             {/* Category Filter Bar */}
             <div className="feed-category-bar" style={{
                 display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-                padding: '16px 20px',
-                borderBottom: '1px solid rgba(212, 175, 55, 0.3)',
-                background: 'linear-gradient(to bottom, rgba(20, 20, 20, 0.95), rgba(30, 30, 30, 0.85))',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
+                gap: '8px',
+                padding: '10px 16px',
+                borderBottom: '1px solid rgba(212, 175, 55, 0.15)',
+                background: 'rgba(20, 20, 20, 0.95)',
+                backdropFilter: 'blur(10px)',
+                WebkitBackdropFilter: 'blur(10px)',
                 position: 'sticky',
                 top: 0,
                 zIndex: 10,
-                alignItems: 'stretch',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
+                overflowX: 'auto',
+                scrollbarWidth: 'none',
+                alignItems: 'center'
             }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
-                    {categories.map(cat => (
-                        <button
-                            key={cat.id}
-                            type="button"
-                            onClick={() => setActiveCategory(cat.id)}
-                            style={{
-                                background: activeCategory === cat.id ? 'linear-gradient(135deg, #d4af37 0%, #aa8c2c 100%)' : 'rgba(255, 255, 255, 0.05)',
-                                color: activeCategory === cat.id ? '#111' : 'var(--text-primary)',
-                                border: `1px solid ${activeCategory === cat.id ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
-                                borderRadius: '25px',
-                                padding: '8px 18px',
-                                fontSize: '0.85rem',
-                                fontWeight: activeCategory === cat.id ? '800' : '600',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
-                                boxShadow: activeCategory === cat.id ? '0 4px 15px rgba(212, 175, 55, 0.4)' : 'none',
-                                textShadow: activeCategory === cat.id ? 'none' : '0 1px 2px rgba(0,0,0,0.5)'
-                            }}
-                        >
-                            <span style={{ fontSize: '1rem' }}>{cat.icon}</span>
-                            <span style={{ letterSpacing: '0.5px' }}>{cat.label}</span>
-                        </button>
-                    ))}
-                </div>
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center', marginTop: '4px' }}>
-                    {activeCategory === 'buysell' && (
+                {categories.map(cat => (
+                    <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setActiveCategory(cat.id)}
+                        style={{
+                            background: activeCategory === cat.id ? '#d4af37' : 'rgba(255, 255, 255, 0.05)',
+                            color: activeCategory === cat.id ? '#111' : 'var(--text-primary)',
+                            border: `1px solid ${activeCategory === cat.id ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
+                            borderRadius: '20px',
+                            padding: '6px 14px',
+                            fontSize: '0.75rem',
+                            fontWeight: activeCategory === cat.id ? '700' : '500',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0
+                        }}
+                    >
+                        <span style={{ fontSize: '0.9rem' }}>{cat.icon}</span>
+                        <span>{cat.label}</span>
+                    </button>
+                ))}
+            </div>
+            
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center', padding: '6px 16px', background: 'rgba(20, 20, 20, 0.95)' }}>
+                {activeCategory === 'buysell' && (
                         <button
                             type="button"
                             onClick={() => setSwiperMode(!swiperMode)}
