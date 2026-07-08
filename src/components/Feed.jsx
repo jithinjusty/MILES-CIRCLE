@@ -7,6 +7,16 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const [showWavesModal, setShowWavesModal] = useState(false);
     const [showMessagesModal, setShowMessagesModal] = useState(false);
     const [showNeighborsModal, setShowNeighborsModal] = useState(false);
+    const [unreadWavesCount, setUnreadWavesCount] = useState(0);
+    const prevWavesLength = useRef(waves.length);
+
+    useEffect(() => {
+        if (waves.length > prevWavesLength.current && prevWavesLength.current > 0) {
+            setUnreadWavesCount(prev => prev + (waves.length - prevWavesLength.current));
+        }
+        prevWavesLength.current = waves.length;
+    }, [waves.length]);
+
     const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(true)
     const [toast, setToast] = useState(null)
@@ -1264,7 +1274,10 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                     boxShadow: '0 4px 25px rgba(0,0,0,0.3)'
                 }}>
                 <div 
-                    onClick={() => setShowWavesModal(true)}
+                    onClick={() => {
+                        setShowWavesModal(true);
+                        setUnreadWavesCount(0);
+                    }}
                     style={{
                         flex: 1,
                         padding: '16px',
@@ -1283,7 +1296,9 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                     <span style={{ fontSize: '1.2rem', filter: 'sepia(1) hue-rotate(320deg)' }}>👋</span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: '800' }}>Waves ({waves.length})</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '800' }}>
+                        Waves {unreadWavesCount > 0 && <span style={{ background: 'var(--accent-red)', color: 'white', padding: '2px 6px', borderRadius: '10px', fontSize: '0.7rem', marginLeft: '4px' }}>{unreadWavesCount}</span>}
+                    </span>
                 </div>
                 
                 <div 

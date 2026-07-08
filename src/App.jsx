@@ -3972,74 +3972,78 @@ function App() {
                                                             })}
                                                         </div>
                                                         <div style={{ display: 'flex', gap: '10px', width: '100%', marginBottom: '10px' }}>
-                                                            {(!viewingProfile.received_waves || !viewingProfile.received_waves.some(w => w.from_id === session?.user?.id)) ? (
-                                                                <button 
-                                                                    className="btn-wave-primary" 
-                                                                    onClick={handleSendWave} 
-                                                                    style={{
-                                                                        flex: 1,
-                                                                        padding: '12px',
-                                                                        borderRadius: '14px',
-                                                                        background: 'linear-gradient(135deg, #FF9800 0%, #FF5722 100%)',
-                                                                        color: 'white',
-                                                                        border: 'none',
-                                                                        fontWeight: '800',
-                                                                        cursor: 'pointer',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center',
-                                                                        gap: '8px',
-                                                                        boxShadow: '0 4px 15px rgba(255, 87, 34, 0.25)',
-                                                                        transition: 'transform 0.2s'
-                                                                    }}
-                                                                >
-                                                                    👋 Wave
-                                                                </button>
-                                                            ) : (
-                                                                <button 
-                                                                    className="btn-wave-primary" 
-                                                                    disabled
-                                                                    style={{
-                                                                        flex: 1,
-                                                                        padding: '12px',
-                                                                        borderRadius: '14px',
-                                                                        background: 'var(--glass-bg)',
-                                                                        color: 'var(--text-secondary)',
-                                                                        border: '1px solid var(--glass-border)',
-                                                                        fontWeight: '800',
-                                                                        cursor: 'not-allowed',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center',
-                                                                        gap: '8px'
-                                                                    }}
-                                                                >
-                                                                    👋 Waved
-                                                                </button>
-                                                            )}
-                                                            
-                                                            {(viewingProfile.received_waves?.some(w => w.from_id === session?.user?.id) && waves.some(w => w.from_id === viewingProfile.id)) && (
-                                                                <button
-                                                                    className="btn-wave-primary"
-                                                                    onClick={() => openChat(viewingProfile.id, viewingProfile.full_name || 'Neighbor')}
-                                                                    style={{
-                                                                        flex: 1,
-                                                                        padding: '12px',
-                                                                        borderRadius: '14px',
-                                                                        background: 'var(--panel-bg)',
-                                                                        color: 'var(--text-primary)',
-                                                                        border: '1px solid var(--glass-border)',
-                                                                        fontWeight: '800',
-                                                                        cursor: 'pointer',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center',
-                                                                        gap: '8px',
-                                                                        transition: 'transform 0.2s'
-                                                                    }}
-                                                                >
-                                                                    💬 Message
-                                                                </button>
+                                                            {viewingProfile.id !== session?.user?.id && (
+                                                                <>
+                                                                    {(!viewingProfile.received_waves || !viewingProfile.received_waves.some(w => w.from_id === session?.user?.id)) ? (
+                                                                        <button 
+                                                                            className="btn-wave-primary" 
+                                                                            onClick={handleSendWave} 
+                                                                            style={{
+                                                                                flex: 1,
+                                                                                padding: '12px',
+                                                                                borderRadius: '14px',
+                                                                                background: 'linear-gradient(135deg, #FF9800 0%, #FF5722 100%)',
+                                                                                color: 'white',
+                                                                                border: 'none',
+                                                                                fontWeight: '800',
+                                                                                cursor: 'pointer',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center',
+                                                                                gap: '8px',
+                                                                                boxShadow: '0 4px 15px rgba(255, 87, 34, 0.25)',
+                                                                                transition: 'transform 0.2s'
+                                                                            }}
+                                                                        >
+                                                                            👋 Wave
+                                                                        </button>
+                                                                    ) : (
+                                                                        <button 
+                                                                            className="btn-wave-primary" 
+                                                                            disabled
+                                                                            style={{
+                                                                                flex: 1,
+                                                                                padding: '12px',
+                                                                                borderRadius: '14px',
+                                                                                background: 'var(--glass-bg)',
+                                                                                color: 'var(--text-secondary)',
+                                                                                border: '1px solid var(--glass-border)',
+                                                                                fontWeight: '800',
+                                                                                cursor: 'not-allowed',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center',
+                                                                                gap: '8px'
+                                                                            }}
+                                                                        >
+                                                                            👋 Waved
+                                                                        </button>
+                                                                    )}
+                                                                    
+                                                                    {(viewingProfile.received_waves?.some(w => w.from_id === session?.user?.id) && waves.some(w => w.from_id === viewingProfile.id)) && (
+                                                                        <button
+                                                                            className="btn-wave-primary"
+                                                                            onClick={() => openChat(viewingProfile.id, viewingProfile.full_name || 'Neighbor')}
+                                                                            style={{
+                                                                                flex: 1,
+                                                                                padding: '12px',
+                                                                                borderRadius: '14px',
+                                                                                background: 'var(--panel-bg)',
+                                                                                color: 'var(--text-primary)',
+                                                                                border: '1px solid var(--glass-border)',
+                                                                                fontWeight: '800',
+                                                                                cursor: 'pointer',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                justifyContent: 'center',
+                                                                                gap: '8px',
+                                                                                transition: 'transform 0.2s'
+                                                                            }}
+                                                                        >
+                                                                            💬 Message
+                                                                        </button>
+                                                                    )}
+                                                                </>
                                                             )}
                                                         </div>
                                                         <button 
