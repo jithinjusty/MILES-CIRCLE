@@ -2879,6 +2879,34 @@ function App() {
                                                                 }}>▼</span>
                                                             </button>
 
+                                                            {isExploreMapMode && (
+                                                                <button 
+                                                                    className="anim-fade-in"
+                                                                    onClick={() => setIsExploreMapMode(false)} 
+                                                                    title="Close Map"
+                                                                    style={{
+                                                                        position: 'absolute',
+                                                                        top: '55px',
+                                                                        left: 'calc(50% + 40px)', // A little offset from the center
+                                                                        transform: 'translateX(-50%)',
+                                                                        background: 'var(--accent-red)',
+                                                                        border: 'none',
+                                                                        color: 'white',
+                                                                        width: '38px',
+                                                                        height: '38px',
+                                                                        borderRadius: '50%',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        cursor: 'pointer',
+                                                                        boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                                                                        zIndex: 100
+                                                                    }}
+                                                                >
+                                                                    <X size={20} />
+                                                                </button>
+                                                            )}
+
                                                             {/* Detail panel — drops below header */}
                                                             {showWeatherPanel && (
                                                                 <div
@@ -2976,29 +3004,6 @@ function App() {
                                                             <Globe size={13} /> Go Online
                                                         </button>
                                                     )}
-                                                    {isExploreMapMode && (
-                                                        <button 
-                                                             className="header-map-btn active" 
-                                                             onClick={() => setIsExploreMapMode(false)} 
-                                                             title="Close Map"
-                                                             style={{
-                                                                 background: 'var(--accent-red)',
-                                                                 border: 'none',
-                                                                 color: 'white',
-                                                                 width: '40px',
-                                                                 height: '40px',
-                                                                 borderRadius: '50%',
-                                                                 display: 'flex',
-                                                                 alignItems: 'center',
-                                                                 justifyContent: 'center',
-                                                                 cursor: 'pointer',
-                                                                 marginRight: '8px',
-                                                                 transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-                                                             }}
-                                                         >
-                                                             <X size={20} />
-                                                         </button>
-                                                     )}
                                                     <button className="header-events-btn" onClick={() => { setShowEvents(true); setNewEventsCount(0); localStorage.setItem('miles_last_event_seen', new Date().toISOString()); }} title="Events">
                                                         <Calendar size={20} />
                                                         {newEventsCount > 0 && (
