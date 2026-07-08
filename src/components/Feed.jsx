@@ -1106,6 +1106,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                     <span style={{ fontSize: '1.2rem', filter: 'sepia(1) hue-rotate(320deg)' }}>💬</span>
                     <span style={{ fontSize: '0.85rem', fontWeight: '800' }}>Messages</span>
                 </div>
+                </div>
             </div>
 
             {/* Neighborhood Vibe Gauge */}

@@ -1,4 +1,4 @@
-:root {
+﻿:root {
     --bg-dark: #000000;
     --chat-bg: rgba(15, 15, 15, 0.85);
     --accent-red: #D2554E;
@@ -3594,6 +3594,8 @@ body {
 @keyframes bouncing-bar {
     0% { height: 20%; }
     100% { height: 100%; }
-} 
- . f e e d - c a t e g o r y - b a r : : - w e b k i t - s c r o l l b a r   {   d i s p l a y :   n o n e ;   w i d t h :   0 ;   h e i g h t :   0 ;   }  
- 
+}
+
+.feed-category-bar::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+
