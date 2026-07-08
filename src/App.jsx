@@ -2976,27 +2976,29 @@ function App() {
                                                             <Globe size={13} /> Go Online
                                                         </button>
                                                     )}
-                                                    <button 
-                                                         className={`header-map-btn ${isExploreMapMode ? 'active' : ''}`} 
-                                                         onClick={() => setIsExploreMapMode(!isExploreMapMode)} 
-                                                         title="Explore Map"
-                                                         style={{
-                                                             background: isExploreMapMode ? 'var(--accent-red)' : 'rgba(255, 255, 255, 0.1)',
-                                                             border: 'none',
-                                                             color: 'white',
-                                                             width: '40px',
-                                                             height: '40px',
-                                                             borderRadius: '50%',
-                                                             display: 'flex',
-                                                             alignItems: 'center',
-                                                             justifyContent: 'center',
-                                                             cursor: 'pointer',
-                                                             marginRight: '8px',
-                                                             transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-                                                         }}
-                                                     >
-                                                         <MapIcon size={20} style={{ transform: isExploreMapMode ? 'scale(1.15)' : 'none', transition: 'transform 0.3s' }} />
-                                                     </button>
+                                                    {isExploreMapMode && (
+                                                        <button 
+                                                             className="header-map-btn active" 
+                                                             onClick={() => setIsExploreMapMode(false)} 
+                                                             title="Close Map"
+                                                             style={{
+                                                                 background: 'var(--accent-red)',
+                                                                 border: 'none',
+                                                                 color: 'white',
+                                                                 width: '40px',
+                                                                 height: '40px',
+                                                                 borderRadius: '50%',
+                                                                 display: 'flex',
+                                                                 alignItems: 'center',
+                                                                 justifyContent: 'center',
+                                                                 cursor: 'pointer',
+                                                                 marginRight: '8px',
+                                                                 transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+                                                             }}
+                                                         >
+                                                             <X size={20} />
+                                                         </button>
+                                                     )}
                                                     <button className="header-events-btn" onClick={() => { setShowEvents(true); setNewEventsCount(0); localStorage.setItem('miles_last_event_seen', new Date().toISOString()); }} title="Events">
                                                         <Calendar size={20} />
                                                         {newEventsCount > 0 && (
