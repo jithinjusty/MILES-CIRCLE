@@ -902,14 +902,62 @@ function App() {
                 if (!isChatOpen || chatProfile?.id !== newMsg.sender_id) {
                     alert(`New message received! 💬`);
                 }
+                fetchActiveChats();
             })
             .subscribe();
+
+        fetchActiveChats();
 
         return () => {
             supabase.removeChannel(profileChannel);
             supabase.removeChannel(messagesChannel);
         };
     }, [session?.user?.id]);
+
+    const fetchActiveChats = async () => {
+        if (!session?.user?.id) return;
+        try {
+            const { data, error } = await supabase
+                .from('direct_messages')
+                .select('*')
+                .or(`sender_id.eq.${session.user.id},recipient_id.eq.${session.user.id}`)
+                .order('created_at', { ascending: false });
+
+            if (data && !error) {
+                const chatMap = new Map();
+                for (const msg of data) {
+                    const otherId = msg.sender_id === session.user.id ? msg.recipient_id : msg.sender_id;
+                    if (!chatMap.has(otherId)) {
+                        chatMap.set(otherId, {
+                            otherId,
+                            lastMessage: msg.content,
+                            created_at: msg.created_at
+                        });
+                    }
+                }
+                const otherIds = Array.from(chatMap.keys());
+                if (otherIds.length > 0) {
+                    const { data: profiles, error: profileError } = await supabase
+                        .from('profiles')
+                        .select('id, full_name')
+                        .in('id', otherIds);
+
+                    if (profiles && !profileError) {
+                        const finalChats = profiles.map(p => {
+                            const chatInfo = chatMap.get(p.id);
+                            return { ...chatInfo, otherName: p.full_name };
+                        });
+                        finalChats.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                        setActiveChats(finalChats);
+                    }
+                } else {
+                    setActiveChats([]);
+                }
+            }
+        } catch (err) {
+            console.error("Failed to fetch active chats:", err);
+        }
+    };
 
     const fetchProfile = async (userId) => {
         try {
@@ -1753,6 +1801,8 @@ function App() {
             recipient_id: chatProfile.id,
             content: msg
         }).select().single();
+
+        fetchActiveChats();
 
         if (error) {
             console.error("Error sending message:", error);
