@@ -208,7 +208,6 @@ body {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    mask-image: linear-gradient(to bottom, transparent 0%, black 10%);
     min-height: 0;
     scrollbar-width: none;
 }
