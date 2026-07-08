@@ -963,151 +963,152 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
             {/* Category Filter Bar */}
             <div className="feed-category-bar" style={{
                 display: 'flex',
-                gap: '8px',
-                padding: '12px 16px',
-                overflowX: 'auto',
-                borderBottom: '1px solid var(--glass-border)',
-                background: 'rgba(30, 30, 30, 0.7)',
+                flexDirection: 'column',
+                gap: '12px',
+                padding: '16px 20px',
+                borderBottom: '1px solid rgba(212, 175, 55, 0.3)',
+                background: 'linear-gradient(to bottom, rgba(20, 20, 20, 0.95), rgba(30, 30, 30, 0.85))',
                 backdropFilter: 'blur(20px)',
                 WebkitBackdropFilter: 'blur(20px)',
                 position: 'sticky',
                 top: 0,
                 zIndex: 10,
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                alignItems: 'center'
+                alignItems: 'stretch',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)'
             }}>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
                     {categories.map(cat => (
                         <button
                             key={cat.id}
                             type="button"
                             onClick={() => setActiveCategory(cat.id)}
                             style={{
-                                background: activeCategory === cat.id ? 'var(--accent-red)' : 'var(--glass-bg)',
-                                color: activeCategory === cat.id ? 'white' : 'var(--text-primary)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: '20px',
-                                padding: '8px 16px',
-                                fontSize: '0.8rem',
-                                fontWeight: '700',
+                                background: activeCategory === cat.id ? 'linear-gradient(135deg, #d4af37 0%, #aa8c2c 100%)' : 'rgba(255, 255, 255, 0.05)',
+                                color: activeCategory === cat.id ? '#111' : 'var(--text-primary)',
+                                border: `1px solid ${activeCategory === cat.id ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
+                                borderRadius: '25px',
+                                padding: '8px 18px',
+                                fontSize: '0.85rem',
+                                fontWeight: activeCategory === cat.id ? '800' : '600',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '6px',
-                                whiteSpace: 'nowrap',
-                                transition: 'all 0.2s ease',
-                                boxShadow: activeCategory === cat.id ? '0 4px 12px rgba(210,85,78,0.3)' : 'none'
+                                gap: '8px',
+                                transition: 'all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+                                boxShadow: activeCategory === cat.id ? '0 4px 15px rgba(212, 175, 55, 0.4)' : 'none',
+                                textShadow: activeCategory === cat.id ? 'none' : '0 1px 2px rgba(0,0,0,0.5)'
                             }}
                         >
-                            <span>{cat.icon}</span>
-                            <span>{cat.label}</span>
+                            <span style={{ fontSize: '1rem' }}>{cat.icon}</span>
+                            <span style={{ letterSpacing: '0.5px' }}>{cat.label}</span>
                         </button>
                     ))}
                 </div>
-                <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', alignItems: 'center', marginTop: '4px' }}>
                     {activeCategory === 'buysell' && (
                         <button
                             type="button"
                             onClick={() => setSwiperMode(!swiperMode)}
                             style={{
-                                background: swiperMode ? '#2ecc71' : 'var(--glass-bg)',
-                                color: swiperMode ? 'white' : 'var(--text-primary)',
-                                border: '1px solid var(--glass-border)',
-                                borderRadius: '20px',
-                                padding: '8px 16px',
+                                background: swiperMode ? 'linear-gradient(135deg, #d4af37 0%, #aa8c2c 100%)' : 'rgba(255, 255, 255, 0.05)',
+                                color: swiperMode ? '#111' : 'var(--text-primary)',
+                                border: `1px solid ${swiperMode ? '#d4af37' : 'rgba(212, 175, 55, 0.2)'}`,
+                                borderRadius: '25px',
+                                padding: '6px 16px',
                                 fontSize: '0.8rem',
                                 fontWeight: '700',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '6px',
-                                whiteSpace: 'nowrap',
-                                transition: 'all 0.2s ease',
-                                boxShadow: swiperMode ? '0 4px 12px rgba(46,204,113,0.3)' : 'none'
+                                gap: '8px',
+                                transition: 'all 0.3s ease',
+                                boxShadow: swiperMode ? '0 4px 15px rgba(212, 175, 55, 0.4)' : 'none'
                             }}
                         >
                             <span>🛍️</span>
-                            <span>{swiperMode ? 'List View' : 'Swiper'}</span>
+                            <span>{swiperMode ? 'List View' : 'Swiper View'}</span>
                         </button>
                     )}
                     <select
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value)}
                         style={{
-                            background: 'var(--glass-bg)',
-                            color: 'var(--text-primary)',
-                            border: '1px solid var(--glass-border)',
-                            borderRadius: '20px',
-                            padding: '8px 12px',
+                            background: 'rgba(20, 20, 20, 0.8)',
+                            color: '#d4af37',
+                            border: '1px solid rgba(212, 175, 55, 0.4)',
+                            borderRadius: '25px',
+                            padding: '6px 14px',
                             fontSize: '0.8rem',
                             fontWeight: '700',
                             cursor: 'pointer',
                             outline: 'none',
-                            transition: 'all 0.2s ease',
+                            transition: 'all 0.3s ease',
+                            textAlign: 'center'
                         }}
                     >
-                        <option value="latest" style={{ background: '#1c1c1e', color: 'var(--text-primary)' }}>🕒 Latest</option>
-                        <option value="closest" style={{ background: '#1c1c1e', color: 'var(--text-primary)' }}>📍 Closest</option>
-                        <option value="helpful" style={{ background: '#1c1c1e', color: 'var(--text-primary)' }}>⭐ Helpful</option>
+                        <option value="latest" style={{ background: '#1c1c1e', color: '#d4af37' }}>🕒 Latest</option>
+                        <option value="closest" style={{ background: '#1c1c1e', color: '#d4af37' }}>📍 Closest</option>
+                        <option value="helpful" style={{ background: '#1c1c1e', color: '#d4af37' }}>⭐ Helpful</option>
                     </select>
                 </div>
             </div>
 
-            
-            
-            {/* Steady Headers: Waves & Messages */}
+            {/* Steady Headers: Waves & Messages (Classic Luxury) */}
             <div style={{
                 position: 'sticky',
-                top: '55px',
+                top: '110px',
                 zIndex: 9,
                 display: 'flex',
-                background: 'rgba(30, 30, 30, 0.95)',
-                backdropFilter: 'blur(10px)',
-                borderBottom: '1px solid var(--glass-border)',
+                background: 'linear-gradient(to right, rgba(20, 20, 20, 0.98), rgba(30, 30, 30, 0.98))',
+                backdropFilter: 'blur(15px)',
+                borderBottom: '1px solid rgba(212, 175, 55, 0.2)',
                 width: '100%',
                 boxSizing: 'border-box',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.1)'
+                boxShadow: '0 4px 25px rgba(0,0,0,0.3)'
             }}>
                 <div 
                     onClick={() => setShowWavesModal(true)}
                     style={{
                         flex: 1,
-                        padding: '14px',
+                        padding: '16px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '8px',
+                        gap: '10px',
                         cursor: 'pointer',
-                        borderRight: '1px solid var(--glass-border)',
-                        transition: 'all 0.2s',
-                        color: 'var(--text-primary)'
+                        borderRight: '1px solid rgba(212, 175, 55, 0.15)',
+                        transition: 'all 0.3s',
+                        color: '#d4af37',
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(212, 175, 55, 0.05)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                    <span style={{ fontSize: '1.2rem' }}>👋</span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: '800', letterSpacing: '0.5px' }}>WAVES ({waves.length})</span>
+                    <span style={{ fontSize: '1.2rem', filter: 'sepia(1) hue-rotate(320deg)' }}>👋</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '800' }}>Waves ({waves.length})</span>
                 </div>
                 
                 <div 
                     onClick={() => setShowMessagesModal(true)}
                     style={{
                         flex: 1,
-                        padding: '14px',
+                        padding: '16px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '8px',
+                        gap: '10px',
                         cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        color: 'var(--text-primary)'
+                        transition: 'all 0.3s',
+                        color: '#d4af37',
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px'
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(212, 175, 55, 0.05)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                    <span style={{ fontSize: '1.2rem' }}>💬</span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: '800', letterSpacing: '0.5px' }}>MESSAGES</span>
+                    <span style={{ fontSize: '1.2rem', filter: 'sepia(1) hue-rotate(320deg)' }}>💬</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '800' }}>Messages</span>
                 </div>
             </div>
 

@@ -1525,6 +1525,11 @@ function App() {
     const handleSendMessage = async (e) => {
         if (e) e.preventDefault();
         if ((!messageContent.trim() && !attachedImageUrl) || isSending) return;
+        
+        if (!position || isNaN(position[0]) || isNaN(position[1])) {
+            alert("Cannot send message: Location unavailable.");
+            return;
+        }
 
         const originalContent = messageContent;
         setMessageContent(''); // Clear immediately for live feel
@@ -2905,7 +2910,7 @@ function App() {
                                                 opacity: isExploreMapMode ? 0 : (isMapInteracting ? 0.3 : 1),
                                                 filter: (isMapInteracting || isExploreMapMode) ? 'blur(12px)' : 'none',
                                                 transition: 'all 0.5s cubic-bezier(0.19, 1, 0.22, 1)',
-                                                pointerEvents: (isMapInteracting || isExploreMapMode) ? 'none' : 'auto'
+                                                pointerEvents: isExploreMapMode ? 'none' : 'auto'
                                             }}>
                                                 <div className="chat-messages-scroll" onScroll={handleChatScroll}>
                                                     <Feed

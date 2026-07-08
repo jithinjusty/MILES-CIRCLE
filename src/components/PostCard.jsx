@@ -430,18 +430,20 @@ export default function PostCard({ post, isMine, onUserClick, onReply, onAIReply
                 style={{
                     background: post?.is_alert 
                         ? 'linear-gradient(135deg, rgba(210, 85, 78, 0.15) 0%, rgba(210, 85, 78, 0.05) 100%)'
-                        : (isMine ? 'linear-gradient(135deg, var(--accent-red) 0%, #B2443E 100%)' : 'var(--chat-bg)'),
-                    color: (isMine && !post?.is_alert) ? 'white' : 'var(--text-primary)',
-                    padding: '1rem 1.25rem',
+                        : (isMine ? 'linear-gradient(135deg, rgba(212, 175, 55, 0.9) 0%, rgba(170, 140, 44, 0.95) 100%)' : 'linear-gradient(135deg, rgba(30, 30, 30, 0.9) 0%, rgba(20, 20, 20, 0.95) 100%)'),
+                    color: (isMine && !post?.is_alert) ? '#111' : 'var(--text-primary)',
+                    padding: '1.2rem 1.5rem',
                     borderRadius: isMine ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-                    border: post?.is_alert ? '2px solid var(--accent-red)' : (isMine ? 'none' : '1px solid var(--glass-border)'),
+                    border: post?.is_alert ? '2px solid var(--accent-red)' : (isMine ? '1px solid #d4af37' : '1px solid rgba(212, 175, 55, 0.2)'),
                     animation: post?.is_alert ? 'alert-glow 1.5s infinite alternate' : 'none',
                     maxWidth: '85%',
                     alignSelf: isMine ? 'flex-end' : 'flex-start',
-                    boxShadow: post?.is_alert ? '0 10px 30px rgba(210, 85, 78, 0.25)' : '0 10px 30px rgba(0,0,0,0.15)',
+                    boxShadow: post?.is_alert ? '0 10px 30px rgba(210, 85, 78, 0.25)' : '0 10px 35px rgba(0,0,0,0.5)',
                     cursor: 'pointer',
                     position: 'relative',
-                    userSelect: 'none'
+                    userSelect: 'none',
+                    fontFamily: 'var(--font-family)',
+                    backdropFilter: 'blur(10px)'
                 }}
                 onClick={openMenu}
                 onContextMenu={openMenu}
