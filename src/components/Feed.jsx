@@ -1297,7 +1297,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                 >
                     <span style={{ fontSize: '1.2rem', filter: 'sepia(1) hue-rotate(320deg)' }}>👋</span>
                     <span style={{ fontSize: '0.85rem', fontWeight: '800' }}>
-                        Waves {unreadWavesCount > 0 && <span style={{ background: 'var(--accent-red)', color: 'white', padding: '2px 6px', borderRadius: '10px', fontSize: '0.7rem', marginLeft: '4px' }}>{unreadWavesCount}</span>}
+                        Waves {unreadWavesCount > 0 && <span style={{ color: 'var(--accent-red)', marginLeft: '4px' }}>({unreadWavesCount})</span>}
                     </span>
                 </div>
                 
@@ -1320,7 +1320,9 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                     <span style={{ fontSize: '1.2rem', filter: 'sepia(1) hue-rotate(320deg)' }}>💬</span>
-                    <span style={{ fontSize: '0.85rem', fontWeight: '800' }}>Messages</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: '800' }}>
+                        Messages {activeChats?.length > 0 && <span style={{ marginLeft: '4px' }}>({activeChats.length})</span>}
+                    </span>
                 </div>
                 </div>
             </div>
