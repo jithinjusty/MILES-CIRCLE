@@ -2887,7 +2887,7 @@ function App() {
                                                                     style={{
                                                                         position: 'absolute',
                                                                         top: '55px',
-                                                                        left: 'calc(50% + 40px)', // A little offset from the center
+                                                                        left: '50%',
                                                                         transform: 'translateX(-50%)',
                                                                         background: 'var(--accent-red)',
                                                                         border: 'none',
