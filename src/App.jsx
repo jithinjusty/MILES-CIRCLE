@@ -4090,90 +4090,94 @@ function App() {
                                                                 </>
                                                             )}
                                                         </div>
-                                                        <button 
-                                                            className="btn-wave-primary" 
-                                                            onClick={() => setShowDirectTransfer(!showDirectTransfer)} 
-                                                            style={{
-                                                                width: '100%',
-                                                                padding: '12px',
-                                                                borderRadius: '14px',
-                                                                background: 'linear-gradient(135deg, #FFD700 0%, #FF8C00 100%)',
-                                                                color: 'black',
-                                                                border: 'none',
-                                                                fontWeight: '800',
-                                                                cursor: 'pointer',
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                gap: '8px',
-                                                                marginBottom: '10px',
-                                                                boxShadow: '0 4px 15px rgba(255, 215, 0, 0.25)',
-                                                                transition: 'transform 0.2s'
-                                                            }}
-                                                        >
-                                                            💰 Transfer Points
-                                                        </button>
-                                                        {showDirectTransfer && (
-                                                            <form onSubmit={handleDirectTransferPoints} style={{
-                                                                background: 'rgba(0, 0, 0, 0.3)',
-                                                                border: '1px solid var(--glass-border)',
-                                                                borderRadius: '16px',
-                                                                padding: '16px',
-                                                                marginBottom: '10px',
-                                                                display: 'flex',
-                                                                flexDirection: 'column',
-                                                                gap: '10px',
-                                                                textAlign: 'left'
-                                                            }} onClick={e => e.stopPropagation()}>
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-secondary)' }}>
-                                                                        Your Balance: {profile?.points || 0} pts
-                                                                    </span>
+                                                        {viewingProfile.id !== session?.user?.id && (
+                                                            <>
+                                                                <button 
+                                                                    className="btn-wave-primary" 
+                                                                    onClick={() => setShowDirectTransfer(!showDirectTransfer)} 
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        padding: '12px',
+                                                                        borderRadius: '14px',
+                                                                        background: 'linear-gradient(135deg, #FFD700 0%, #FF8C00 100%)',
+                                                                        color: 'black',
+                                                                        border: 'none',
+                                                                        fontWeight: '800',
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        gap: '8px',
+                                                                        marginBottom: '10px',
+                                                                        boxShadow: '0 4px 15px rgba(255, 215, 0, 0.25)',
+                                                                        transition: 'transform 0.2s'
+                                                                    }}
+                                                                >
+                                                                    💰 Transfer Points
+                                                                </button>
+                                                                {showDirectTransfer && (
+                                                                    <form onSubmit={handleDirectTransferPoints} style={{
+                                                                        background: 'rgba(0, 0, 0, 0.3)',
+                                                                        border: '1px solid var(--glass-border)',
+                                                                        borderRadius: '16px',
+                                                                        padding: '16px',
+                                                                        marginBottom: '10px',
+                                                                        display: 'flex',
+                                                                        flexDirection: 'column',
+                                                                        gap: '10px',
+                                                                        textAlign: 'left'
+                                                                    }} onClick={e => e.stopPropagation()}>
+                                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                            <span style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-secondary)' }}>
+                                                                                Your Balance: {profile?.points || 0} pts
+                                                                            </span>
+                                                                        </div>
+                                                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                                                            <input 
+                                                                                type="number" 
+                                                                                placeholder="Amount (e.g. 50)" 
+                                                                                value={directTransferAmount}
+                                                                                onChange={e => setDirectTransferAmount(e.target.value)}
+                                                                                min="1"
+                                                                                max={profile?.points || 0}
+                                                                                required
+                                                                                style={{
+                                                                                    flex: 1,
+                                                                                    background: 'var(--glass-bg)',
+                                                                                    border: '1px solid var(--glass-border)',
+                                                                                    borderRadius: '10px',
+                                                                                    padding: '10px 14px',
+                                                                                    color: 'var(--text-primary)',
+                                                                                    fontSize: '0.9rem',
+                                                                                    outline: 'none'
+                                                                                }}
+                                                                            />
+                                                                            <button 
+                                                                                type="submit" 
+                                                                                disabled={isDirectTransferring}
+                                                                                style={{
+                                                                                    background: 'var(--accent-red)',
+                                                                                    color: 'white',
+                                                                                    border: 'none',
+                                                                                    borderRadius: '10px',
+                                                                                    padding: '0 18px',
+                                                                                    fontWeight: 'bold',
+                                                                                    cursor: 'pointer',
+                                                                                    fontSize: '0.9rem'
+                                                                                }}
+                                                                            >
+                                                                                {isDirectTransferring ? 'Sending...' : 'Send'}
+                                                                            </button>
+                                                                        </div>
+                                                                    </form>
+                                                                )}
+                                                                <div className="viewer-actions-row">
+                                                                    <button className="btn-rate up" onClick={() => handleRate(1)}><ShieldCheck size={20} /> Like</button>
+                                                                    <button className="btn-rate down" onClick={() => handleRate(-1)}><X size={20} /> Dislike</button>
+                                                                    <button className="btn-report" onClick={handleReport}><Lock size={20} /> Report</button>
                                                                 </div>
-                                                                <div style={{ display: 'flex', gap: '8px' }}>
-                                                                    <input 
-                                                                        type="number" 
-                                                                        placeholder="Amount (e.g. 50)" 
-                                                                        value={directTransferAmount}
-                                                                        onChange={e => setDirectTransferAmount(e.target.value)}
-                                                                        min="1"
-                                                                        max={profile?.points || 0}
-                                                                        required
-                                                                        style={{
-                                                                            flex: 1,
-                                                                            background: 'var(--glass-bg)',
-                                                                            border: '1px solid var(--glass-border)',
-                                                                            borderRadius: '10px',
-                                                                            padding: '10px 14px',
-                                                                            color: 'var(--text-primary)',
-                                                                            fontSize: '0.9rem',
-                                                                            outline: 'none'
-                                                                        }}
-                                                                    />
-                                                                    <button 
-                                                                        type="submit" 
-                                                                        disabled={isDirectTransferring}
-                                                                        style={{
-                                                                            background: 'var(--accent-red)',
-                                                                            color: 'white',
-                                                                            border: 'none',
-                                                                            borderRadius: '10px',
-                                                                            padding: '0 18px',
-                                                                            fontWeight: 'bold',
-                                                                            cursor: 'pointer',
-                                                                            fontSize: '0.9rem'
-                                                                        }}
-                                                                    >
-                                                                        {isDirectTransferring ? 'Sending...' : 'Send'}
-                                                                    </button>
-                                                                </div>
-                                                            </form>
+                                                            </>
                                                         )}
-                                                        <div className="viewer-actions-row">
-                                                            <button className="btn-rate up" onClick={() => handleRate(1)}><ShieldCheck size={20} /> Like</button>
-                                                            <button className="btn-rate down" onClick={() => handleRate(-1)}><X size={20} /> Dislike</button>
-                                                            <button className="btn-report" onClick={handleReport}><Lock size={20} /> Report</button>
-                                                        </div>
                                                     </>
                                                 )}
                                                 <button className="btn-viewer-close" onClick={() => setViewingProfile(null)}>Dismiss</button>
