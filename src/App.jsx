@@ -4403,46 +4403,40 @@ function App() {
                 </>
             )}
 
-            {/* PRIVATE CHAT MODAL */}
+            {/* PRIVATE CHAT TAB */}
             {isChatOpen && chatProfile && (
-                <div className="modal-overlay" onClick={() => setIsChatOpen(false)}>
-                    <div className="chat-modal-content" onClick={e => e.stopPropagation()} style={{
-                        background: 'var(--bg-primary)',
-                        width: '90%',
-                        maxWidth: '450px',
-                        height: '80vh',
-                        maxHeight: '600px',
-                        borderRadius: '24px',
+                <div className="chat-tab-container anim-fade-in" style={{
+                    position: 'fixed',
+                    bottom: '20px',
+                    right: '20px',
+                    zIndex: 10000,
+                    background: 'var(--bg-primary)',
+                    width: '350px',
+                    maxWidth: '90vw',
+                    height: '450px',
+                    maxHeight: '70vh',
+                    borderRadius: '20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+                    border: '1px solid var(--glass-border)'
+                }}>
+                    <div className="chat-header" style={{
+                        padding: '12px 16px',
+                        borderBottom: '1px solid var(--glass-border)',
                         display: 'flex',
-                        flexDirection: 'column',
-                        overflow: 'hidden',
-                        boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-                        border: '1px solid var(--glass-border)'
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: 'var(--glass-bg)'
                     }}>
-                        <div className="chat-header" style={{
-                            padding: '16px',
-                            borderBottom: '1px solid var(--glass-border)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            background: 'var(--glass-bg)'
+                        <h3 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1rem' }}>{chatProfile.full_name}</h3>
+                        <button onClick={() => setIsChatOpen(false)} style={{
+                            background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center'
                         }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <div style={{
-                                    width: '36px', height: '36px', borderRadius: '12px',
-                                    background: 'var(--panel-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontWeight: '900', color: 'var(--accent-red)'
-                                }}>
-                                    {(chatProfile.full_name || '?')[0].toUpperCase()}
-                                </div>
-                                <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>{chatProfile.full_name}</h3>
-                            </div>
-                            <button onClick={() => setIsChatOpen(false)} style={{
-                                background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer'
-                            }}>
-                                <X size={24} />
-                            </button>
-                        </div>
+                            <X size={20} />
+                        </button>
+                    </div>
                         <div className="chat-messages-area" style={{
                             flex: 1,
                             padding: '16px',
@@ -4532,7 +4526,6 @@ function App() {
                             </button>
                         </div>
                     </div>
-                </div>
             )}
         </div>
     );
