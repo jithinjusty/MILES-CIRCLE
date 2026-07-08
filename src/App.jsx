@@ -2848,7 +2848,7 @@ function App() {
                                                     const uvColor = weather.uv == null ? '#aaa' : weather.uv <= 2 ? '#4caf50' : weather.uv <= 5 ? '#ff9800' : weather.uv <= 7 ? '#f44336' : '#9c27b0';
                                                     const feelsLike = weather.temp != null ? Math.round(weather.temp - (weather.windspeed || 0) * 0.05) : null;
                                                     return (
-                                                        <div style={{ position: 'relative' }}>
+                                                        <div style={{ position: 'relative', transform: 'translateX(-25px)' }}>
                                                             {/* Pill button */}
                                                             <button
                                                                 onClick={e => { e.stopPropagation(); setShowWeatherPanel(p => !p); }}
