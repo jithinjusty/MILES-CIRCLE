@@ -2992,7 +2992,7 @@ function App() {
                                                             title="Close Map"
                                                             style={{
                                                                 position: 'absolute',
-                                                                top: '55px',
+                                                                top: '80px',
                                                                 right: '20px',
                                                                 background: 'var(--accent-red)',
                                                                 border: 'none',
