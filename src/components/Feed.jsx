@@ -8,6 +8,8 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const [showMessagesModal, setShowMessagesModal] = useState(false);
     const [showNeighborsModal, setShowNeighborsModal] = useState(false);
     const [unreadWavesCount, setUnreadWavesCount] = useState(0);
+    const [messagesSearchQuery, setMessagesSearchQuery] = useState('');
+    const [wavesSearchQuery, setWavesSearchQuery] = useState('');
     const prevWavesLength = useRef(waves.length);
 
     useEffect(() => {
@@ -2078,18 +2080,43 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                             <button onClick={() => setShowMessagesModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
                         </div>
                         
+                        <div style={{ marginBottom: '16px' }}>
+                            <input 
+                                type="text"
+                                placeholder="Search by name or message..."
+                                value={messagesSearchQuery}
+                                onChange={(e) => setMessagesSearchQuery(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 16px',
+                                    borderRadius: '12px',
+                                    border: '1px solid var(--glass-border)',
+                                    background: 'rgba(0,0,0,0.2)',
+                                    color: 'var(--text-primary)',
+                                    outline: 'none',
+                                    fontSize: '0.9rem'
+                                }}
+                            />
+                        </div>
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {activeChats.length === 0 ? (
+                            {activeChats.filter(chat => 
+                                (chat.otherName || '').toLowerCase().includes(messagesSearchQuery.toLowerCase()) || 
+                                (chat.lastMessage || '').toLowerCase().includes(messagesSearchQuery.toLowerCase())
+                            ).length === 0 ? (
                                 <div style={{
                                     padding: '2rem', textAlign: 'center', background: 'var(--glass-bg)',
                                     border: '1px solid var(--glass-border)', borderRadius: '16px', color: 'var(--text-secondary)'
                                 }}>
                                     <span style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}>💬</span>
-                                    <div style={{ marginBottom: '10px' }}>No active messages yet.</div>
-                                    <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>To start a private chat, open a neighbor's profile and click Message.</div>
+                                    <div style={{ marginBottom: '10px' }}>{messagesSearchQuery ? 'No matching messages found.' : 'No active messages yet.'}</div>
+                                    {!messagesSearchQuery && <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>To start a private chat, open a neighbor's profile and click Message.</div>}
                                 </div>
                             ) : (
-                                activeChats.map((chat, idx) => (
+                                activeChats.filter(chat => 
+                                    (chat.otherName || '').toLowerCase().includes(messagesSearchQuery.toLowerCase()) || 
+                                    (chat.lastMessage || '').toLowerCase().includes(messagesSearchQuery.toLowerCase())
+                                ).map((chat, idx) => (
                                     <div key={idx} style={{
                                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                         padding: '12px 16px', background: 'var(--glass-bg)',
@@ -2144,17 +2171,40 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                             <button onClick={() => setShowWavesModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem' }}>✕</button>
                         </div>
                         
+                        <div style={{ marginBottom: '16px' }}>
+                            <input 
+                                type="text"
+                                placeholder="Search by name..."
+                                value={wavesSearchQuery}
+                                onChange={(e) => setWavesSearchQuery(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 16px',
+                                    borderRadius: '12px',
+                                    border: '1px solid var(--glass-border)',
+                                    background: 'rgba(0,0,0,0.2)',
+                                    color: 'var(--text-primary)',
+                                    outline: 'none',
+                                    fontSize: '0.9rem'
+                                }}
+                            />
+                        </div>
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            {waves.length === 0 ? (
+                            {waves.filter(wave => 
+                                (wave.from_name || '').toLowerCase().includes(wavesSearchQuery.toLowerCase())
+                            ).length === 0 ? (
                                 <div style={{
                                     padding: '2rem', textAlign: 'center', background: 'var(--glass-bg)',
                                     border: '1px solid var(--glass-border)', borderRadius: '16px', color: 'var(--text-secondary)'
                                 }}>
                                     <span style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}>🏖️</span>
-                                    No waves received yet.
+                                    {wavesSearchQuery ? 'No matching waves found.' : 'No waves received yet.'}
                                 </div>
                             ) : (
-                                waves.slice().reverse().map((wave, idx) => (
+                                waves.slice().reverse().filter(wave => 
+                                    (wave.from_name || '').toLowerCase().includes(wavesSearchQuery.toLowerCase())
+                                ).map((wave, idx) => (
                                     <div key={idx} style={{
                                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                                         padding: '12px 16px', background: 'var(--glass-bg)',
