@@ -235,11 +235,35 @@ function App() {
         return saved !== 'false';
     });
 
-    const handleToggleAIResponder = (enabled) => {
+    const handleToggleAIResponder = async (enabled) => {
         setAiResponderEnabled(enabled);
         localStorage.setItem('miles_ai_responder_enabled', enabled ? 'true' : 'false');
+        if (session?.user?.id) {
+            await supabase.from('profiles').update({ ai_responder_enabled: enabled }).eq('id', session.user.id);
+        }
         showToast(`AI auto-replies ${enabled ? 'enabled' : 'disabled'}.`, "success");
     };
+
+    const handleDistanceUnitChange = async (unit) => {
+        setDistanceUnit(unit);
+        localStorage.setItem('miles_distance_unit', unit);
+        if (session?.user?.id) {
+            await supabase.from('profiles').update({ distance_unit: unit }).eq('id', session.user.id);
+        }
+    };
+
+    useEffect(() => {
+        if (profile) {
+            if (profile.distance_unit && profile.distance_unit !== distanceUnit) {
+                setDistanceUnit(profile.distance_unit);
+                localStorage.setItem('miles_distance_unit', profile.distance_unit);
+            }
+            if (profile.ai_responder_enabled !== undefined && profile.ai_responder_enabled !== aiResponderEnabled) {
+                setAiResponderEnabled(profile.ai_responder_enabled);
+                localStorage.setItem('miles_ai_responder_enabled', profile.ai_responder_enabled ? 'true' : 'false');
+            }
+        }
+    }, [profile]);
 
     // Audio recording states
     const [isRecording, setIsRecording] = useState(false);
@@ -317,6 +341,18 @@ function App() {
         if (code >= 80 && code <= 82) return { emoji: '🌦️', text: 'Showers' };
         if (code >= 95) return { emoji: '⛈️', text: 'Thunderstorm' };
         return { emoji: '🌡️', text: 'Weather' };
+    };
+
+    const generateSmartWeatherAlert = (weatherData) => {
+        if (!weatherData) return null;
+        if (weatherData.code >= 95) return "⛈️ AI Alert: Thunderstorms detected in your radius! Stay indoors if possible.";
+        if (weatherData.code >= 71 && weatherData.code <= 75) return "❄️ AI Alert: Snow is expected. Drive safe and stay warm!";
+        if (weatherData.rainChance > 50 || (weatherData.code >= 51 && weatherData.code <= 65)) return "🌧️ AI Alert: High chance of rain. Don't forget to grab an umbrella before stepping out!";
+        if (weatherData.windspeed > 30) return "💨 AI Alert: Strong winds detected in your area today. Secure loose outdoor items.";
+        if (weatherData.uv > 6) return "☀️ AI Alert: High UV index today. Apply sunscreen if you're exploring the circle!";
+        if (weatherData.temp > 35) return "🔥 AI Alert: Extreme heat warning. Stay hydrated!";
+        if (weatherData.temp < 0) return "🧊 AI Alert: Freezing temperatures. Bundle up!";
+        return "✨ AI Status: Beautiful weather for a walk! Connect with neighbors nearby.";
     };
 
     useEffect(() => {
@@ -2884,6 +2920,19 @@ function App() {
                                                                             )}
                                                                         </div>
                                                                     </div>
+                                                                    
+                                                                    {/* AI Smart Alert */}
+                                                                    <div style={{
+                                                                        background: 'linear-gradient(135deg, rgba(95, 195, 247, 0.15) 0%, rgba(33, 150, 243, 0.05) 100%)',
+                                                                        border: '1px solid rgba(95, 195, 247, 0.3)',
+                                                                        borderRadius: '12px', padding: '12px', marginBottom: '16px',
+                                                                        display: 'flex', gap: '10px', alignItems: 'flex-start'
+                                                                    }}>
+                                                                        <Sparkles size={16} color="#5fc3f7" style={{ flexShrink: 0, marginTop: '2px' }} />
+                                                                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.9)', lineHeight: 1.4 }}>
+                                                                            {generateSmartWeatherAlert(weather)}
+                                                                        </div>
+                                                                    </div>
 
                                                                     {/* Stats grid */}
                                                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -3739,8 +3788,8 @@ function App() {
                                                                 <div className="appearance-card">
                                                                     <div className="card-info"><h4>Distance Unit</h4><p>Show radius in miles or kilometers.</p></div>
                                                                     <div className="theme-toggle-strip">
-                                                                        <button className={`theme-tab ${distanceUnit === 'miles' ? 'active' : ''}`} onClick={() => { setDistanceUnit('miles'); localStorage.setItem('miles_distance_unit', 'miles'); }}>🏁 Miles</button>
-                                                                        <button className={`theme-tab ${distanceUnit === 'km' ? 'active' : ''}`} onClick={() => { setDistanceUnit('km'); localStorage.setItem('miles_distance_unit', 'km'); }}>🌍 Kilometers</button>
+                                                                        <button className={`theme-tab ${distanceUnit === 'miles' ? 'active' : ''}`} onClick={() => handleDistanceUnitChange('miles')}>🏁 Miles</button>
+                                                                        <button className={`theme-tab ${distanceUnit === 'km' ? 'active' : ''}`} onClick={() => handleDistanceUnitChange('km')}>🌍 Kilometers</button>
                                                                     </div>
                                                                 </div>
                                                                 <div className="appearance-card">

@@ -2262,7 +2262,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                                 </div>
                                             </div>
                                         </div>
-                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: '4px' }}>
                                             <button 
                                                 onClick={() => {
                                                     setShowWavesModal(false);
@@ -2271,7 +2271,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                                 style={{
                                                     background: 'rgba(255, 255, 255, 0.1)',
                                                     color: 'var(--text-primary)', border: '1px solid var(--glass-border)', borderRadius: '10px',
-                                                    padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer',
+                                                    padding: '6px 10px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
                                                 }}>
                                                 👤 Profile
                                             </button>
@@ -2283,7 +2283,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                                 style={{
                                                     background: 'rgba(255, 255, 255, 0.1)',
                                                     color: 'var(--text-primary)', border: '1px solid var(--glass-border)', borderRadius: '10px',
-                                                    padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer',
+                                                    padding: '6px 10px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
                                                 }}>
                                                 💬 Message
                                             </button>
@@ -2292,7 +2292,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                                     <div style={{
                                                         background: 'rgba(255, 255, 255, 0.05)',
                                                         color: 'var(--text-secondary)', border: '1px solid var(--glass-border)', borderRadius: '10px',
-                                                        padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center'
+                                                        padding: '6px 10px', fontSize: '0.7rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap'
                                                     }}>
                                                         Waved back 👋
                                                     </div>
@@ -2320,7 +2320,7 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                                         style={{
                                                             background: 'linear-gradient(135deg, #FF5722 0%, #FF9800 100%)',
                                                             color: 'white', border: 'none', borderRadius: '10px',
-                                                            padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer',
+                                                            padding: '6px 10px', fontSize: '0.7rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap'
                                                         }}>
                                                         👋 Wave Back
                                                     </button>
