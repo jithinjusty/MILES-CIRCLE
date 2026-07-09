@@ -216,7 +216,7 @@ function App() {
     const [messageContent, setMessageContent] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [replyingTo, setReplyingTo] = useState(null); // { id, content, author }
-    const [isSliderHidden, setIsSliderHidden] = useState(false);
+    const [isSliderHidden, setIsSliderHidden] = useState(true);
     const [locationError, setLocationError] = useState(null);
     const [offlineMode, setOfflineMode] = useState(false);   // user explicitly chose offline
     const [citySearch, setCitySearch] = useState('');         // city search input
@@ -763,51 +763,22 @@ function App() {
 
     // Track new events for notification badge
     useEffect(() => {
-        if (!session?.user || !locationAvailable) return;
+        if (!session?.user || !locationAvailable || !events) return;
 
         const lastSeen = localStorage.getItem('miles_last_event_seen');
 
-        // Initial check: count events created since we last opened the events page
-        const checkNewEvents = async () => {
-            try {
-                let query = supabase
-                    .from('local_events')
-                    .select('id, created_at', { count: 'exact', head: true });
+        let count = 0;
+        if (lastSeen) {
+            count = events.filter(e => new Date(e.created_at) > new Date(lastSeen)).length;
+        } else {
+            count = events.length;
+        }
+        
+        if (count !== newEventsCount) {
+            setNewEventsCount(count);
+        }
+    }, [events, session?.user, locationAvailable]);
 
-                if (lastSeen) {
-                    query = query.gt('created_at', lastSeen);
-                }
-
-                const { count, error } = await query;
-                if (!error && count > 0) {
-                    setNewEventsCount(count);
-                }
-            } catch (err) {
-                console.error('Event notification check error:', err);
-            }
-        };
-
-        checkNewEvents();
-
-        // Real-time subscription for new events
-        const channel = supabase
-            .channel('event-notifications')
-            .on('postgres_changes', {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'local_events'
-            }, (payload) => {
-                // Don't notify for own events
-                if (payload.new.user_id !== session.user.id) {
-                    setNewEventsCount(prev => prev + 1);
-                }
-            })
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [session?.user?.id, locationAvailable]);
 
     // Load and listen to local posts for map tracking (Q&A/Alert Pins)
     useEffect(() => {
@@ -3260,7 +3231,7 @@ function App() {
                                                             <button className={`nav-item ${activeSettingsTab === 'main' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('main')}><User size={20} /> <span>Profile Identity</span></button>
                                                             <button className={`nav-item ${activeSettingsTab === 'wallet' ? 'active' : ''}`} onClick={() => { setActiveSettingsTab('wallet'); fetchTransactions(); }}><Wallet size={20} /> <span>Karma Wallet</span></button>
                                                             <button className={`nav-item ${activeSettingsTab === 'appearance' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('appearance')}><Globe size={20} /> <span>Appearance</span></button>
-                                                            <button className={`nav-item ${activeSettingsTab === 'waves' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('waves')}><span>👋</span> <span>Waves Received</span></button>
+
                                                             {profile?.points >= 100 && (
                                                                 <button className={`nav-item ${activeSettingsTab === 'broadcasts' ? 'active' : ''}`} onClick={() => setActiveSettingsTab('broadcasts')}><span>📢</span> <span>Broadcast Announcement</span></button>
                                                             )}
@@ -3684,112 +3655,6 @@ function App() {
                                                               </div>
                                                           </div>
                                                       )}
-
-                                                     {activeSettingsTab === 'waves' && (
-                                                         <div className="settings-panel anim-fade-in">
-                                                             <div className="panel-header">
-                                                                 <h2>Waves Received</h2>
-                                                                 <p>See neighbors who waved at you in the circle.</p>
-                                                             </div>
-                                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '1.5rem' }}>
-                                                                 {waves.length === 0 ? (
-                                                                     <div style={{
-                                                                         padding: '2rem',
-                                                                         textAlign: 'center',
-                                                                         background: 'var(--glass-bg)',
-                                                                         border: '1px solid var(--glass-border)',
-                                                                         borderRadius: '16px',
-                                                                         color: 'var(--text-secondary)'
-                                                                     }}>
-                                                                         <span style={{ fontSize: '2rem', display: 'block', marginBottom: '10px' }}>🏖️</span>
-                                                                         No waves received yet. Go wave at your neighbors on the map!
-                                                                     </div>
-                                                                 ) : (
-                                                                     waves.slice().reverse().map((wave, idx) => (
-                                                                         <div key={idx} style={{
-                                                                             display: 'flex',
-                                                                             alignItems: 'center',
-                                                                             justifyContent: 'space-between',
-                                                                             padding: '12px 16px',
-                                                                             background: 'var(--glass-bg)',
-                                                                             border: '1px solid var(--glass-border)',
-                                                                             borderRadius: '16px'
-                                                                         }}>
-                                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                                                 <div style={{
-                                                                                     width: '32px',
-                                                                                     height: '32px',
-                                                                                     borderRadius: '10px',
-                                                                                     background: 'var(--panel-bg)',
-                                                                                     border: '1px solid var(--glass-border)',
-                                                                                     display: 'flex',
-                                                                                     alignItems: 'center',
-                                                                                     justifyContent: 'center',
-                                                                                     fontSize: '0.9rem',
-                                                                                     fontWeight: '800',
-                                                                                     color: 'var(--accent-red)'
-                                                                                 }}>
-                                                                                     {(wave.from_name || '?')[0].toUpperCase()}
-                                                                                 </div>
-                                                                                 <div>
-                                                                                     <div style={{ fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                                                                                         {wave.from_name}
-                                                                                     </div>
-                                                                                     <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                                                                                         {new Date(wave.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(wave.timestamp).toLocaleDateString()}
-                                                                                     </div>
-                                                                                 </div>
-                                                                             </div>
-                                                                             <div style={{ display: 'flex', gap: '8px' }}>
-                                                                                <button
-                                                                                    onClick={() => openChat(wave.from_id, wave.from_name)}
-                                                                                    style={{
-                                                                                        background: 'var(--glass-bg)',
-                                                                                        color: 'var(--text-primary)',
-                                                                                        border: '1px solid var(--glass-border)',
-                                                                                        borderRadius: '10px',
-                                                                                        padding: '8px',
-                                                                                        cursor: 'pointer',
-                                                                                        display: 'flex',
-                                                                                        alignItems: 'center',
-                                                                                        justifyContent: 'center'
-                                                                                    }}
-                                                                                >
-                                                                                    💬
-                                                                                </button>
-                                                                                {wave.from_id !== session?.user?.id && (
-                                                                                    <button
-                                                                                        onClick={async () => {
-                                                                                            try {
-                                                                                                await supabase.rpc('send_proximity_wave', { p_recipient_id: wave.from_id });
-                                                                                                alert(`Waved back at ${wave.from_name}! 👋`);
-                                                                                            } catch (err) {
-                                                                                                console.error(err);
-                                                                                                alert("Failed to wave back: " + err.message);
-                                                                                            }
-                                                                                        }}
-                                                                                        style={{
-                                                                                            background: 'linear-gradient(135deg, #FF9800 0%, #FF5722 100%)',
-                                                                                            color: 'white',
-                                                                                            border: 'none',
-                                                                                            borderRadius: '10px',
-                                                                                            padding: '8px 16px',
-                                                                                            fontSize: '0.8rem',
-                                                                                            fontWeight: '800',
-                                                                                            cursor: 'pointer',
-                                                                                            boxShadow: '0 4px 10px rgba(255, 87, 34, 0.2)'
-                                                                                        }}
-                                                                                    >
-                                                                                        👋 Wave Back
-                                                                                    </button>
-                                                                                )}
-                                                                             </div>
-                                                                         </div>
-                                                                     ))
-                                                                 )}
-                                                             </div>
-                                                         </div>
-                                                     )}
 
                                                      {activeSettingsTab === 'broadcasts' && profile?.points >= 100 && (
                                                          <div className="settings-panel anim-fade-in">

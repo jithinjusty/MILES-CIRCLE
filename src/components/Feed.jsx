@@ -2229,16 +2229,39 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                                 </div>
                                             </div>
                                         </div>
-                                        <button onClick={() => {
-                                            setShowWavesModal(false);
-                                            onUserClick(wave.from_id);
-                                        }} style={{
-                                            background: 'linear-gradient(135deg, #FF5722 0%, #FF9800 100%)',
-                                            color: 'white', border: 'none', borderRadius: '10px',
-                                            padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer'
-                                        }}>
-                                            View Profile
-                                        </button>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button 
+                                                onClick={() => {
+                                                    setShowWavesModal(false);
+                                                    onOpenChat(wave.from_id, wave.from_name);
+                                                }}
+                                                style={{
+                                                    background: 'rgba(255, 255, 255, 0.1)',
+                                                    color: 'var(--text-primary)', border: '1px solid var(--glass-border)', borderRadius: '10px',
+                                                    padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer',
+                                                }}>
+                                                💬 Message
+                                            </button>
+                                            {wave.from_id !== session?.user?.id && (
+                                                <button 
+                                                    onClick={async () => {
+                                                        try {
+                                                            await supabase.rpc('send_proximity_wave', { p_recipient_id: wave.from_id });
+                                                            alert(`Waved back at ${wave.from_name}! 👋`);
+                                                        } catch (err) {
+                                                            console.error("Error waving back:", err);
+                                                            alert("Failed to wave back: " + err.message);
+                                                        }
+                                                    }}
+                                                    style={{
+                                                        background: 'linear-gradient(135deg, #FF5722 0%, #FF9800 100%)',
+                                                        color: 'white', border: 'none', borderRadius: '10px',
+                                                        padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer',
+                                                    }}>
+                                                    👋 Wave Back
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
                                 ))
                             )}
