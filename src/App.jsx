@@ -853,17 +853,30 @@ function App() {
         };
     }, [position?.[0], position?.[1], radius, feedTrigger]);
 
+    const enrichWavesWithAvatars = async (rawWaves) => {
+        if (!rawWaves || rawWaves.length === 0) return rawWaves;
+        const fromIds = [...new Set(rawWaves.map(w => w.from_id))];
+        const { data, error } = await supabase.from('profiles').select('id, avatar_url').in('id', fromIds);
+        if (data && !error) {
+            const avatarMap = {};
+            data.forEach(p => avatarMap[p.id] = p.avatar_url);
+            return rawWaves.map(w => ({ ...w, avatar_url: avatarMap[w.from_id] }));
+        }
+        return rawWaves;
+    };
+
     // Realtime waves listener
     useEffect(() => {
         if (!session?.user?.id) return;
         
         // Initial fetch of waves
         supabase.from('profiles').select('received_waves').eq('id', session.user.id).single()
-            .then(({ data }) => {
+            .then(async ({ data }) => {
                 if (data && Array.isArray(data.received_waves)) {
-                    setWaves(data.received_waves);
-                    if (data.received_waves.length > 0) {
-                        lastWaveTimeRef.current = data.received_waves[data.received_waves.length - 1].timestamp;
+                    const enriched = await enrichWavesWithAvatars(data.received_waves);
+                    setWaves(enriched);
+                    if (enriched.length > 0) {
+                        lastWaveTimeRef.current = enriched[enriched.length - 1].timestamp;
                     }
                 }
             });
@@ -875,10 +888,10 @@ function App() {
                 schema: 'public',
                 table: 'profiles',
                 filter: `id=eq.${session.user.id}`
-            }, (payload) => {
+            }, async (payload) => {
                 const newProfile = payload.new;
                 if (newProfile && Array.isArray(newProfile.received_waves)) {
-                    const newWaves = newProfile.received_waves;
+                    const newWaves = await enrichWavesWithAvatars(newProfile.received_waves);
                     setWaves(newWaves);
                     if (newWaves.length > 0) {
                         const latestWave = newWaves[newWaves.length - 1];
@@ -952,13 +965,13 @@ function App() {
                 if (otherIds.length > 0) {
                     const { data: profiles, error: profileError } = await supabase
                         .from('profiles')
-                        .select('id, full_name')
+                        .select('id, full_name, avatar_url')
                         .in('id', otherIds);
 
                     if (profiles && !profileError) {
                         const finalChats = profiles.map(p => {
                             const chatInfo = chatMap.get(p.id);
-                            return { ...chatInfo, otherName: p.full_name };
+                            return { ...chatInfo, otherName: p.full_name, avatar_url: p.avatar_url };
                         });
                         finalChats.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                         setActiveChats(finalChats);

@@ -2153,9 +2153,10 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                                 width: '32px', height: '32px', borderRadius: '10px',
                                                 background: 'var(--panel-bg)', border: '1px solid var(--glass-border)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: '0.9rem', fontWeight: '800', color: 'var(--accent-red)'
+                                                fontSize: '0.9rem', fontWeight: '800', color: 'var(--accent-red)',
+                                                overflow: 'hidden'
                                             }}>
-                                                {(chat.otherName || '?')[0].toUpperCase()}
+                                                {chat.avatar_url ? <img src={chat.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="" /> : (chat.otherName || '?')[0].toUpperCase()}
                                             </div>
                                             <div style={{ flex: 1, minWidth: '100px' }}>
                                                 <div style={{ fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
@@ -2249,9 +2250,10 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                                 width: '32px', height: '32px', borderRadius: '10px',
                                                 background: 'var(--panel-bg)', border: '1px solid var(--glass-border)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: '0.9rem', fontWeight: '800', color: 'var(--accent-red)'
+                                                fontSize: '0.9rem', fontWeight: '800', color: 'var(--accent-red)',
+                                                overflow: 'hidden'
                                             }}>
-                                                {(wave.from_name || '?')[0].toUpperCase()}
+                                                {wave.avatar_url ? <img src={wave.avatar_url} style={{width:'100%', height:'100%', objectFit:'cover'}} alt="" /> : (wave.from_name || '?')[0].toUpperCase()}
                                             </div>
                                             <div>
                                                 <div style={{ fontWeight: '800', fontSize: '0.9rem', color: 'var(--text-primary)' }}>
