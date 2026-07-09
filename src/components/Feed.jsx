@@ -10,6 +10,10 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
     const [unreadWavesCount, setUnreadWavesCount] = useState(0);
     const [messagesSearchQuery, setMessagesSearchQuery] = useState('');
     const [wavesSearchQuery, setWavesSearchQuery] = useState('');
+    const [wavedBackIds, setWavedBackIds] = useState(() => {
+        try { return JSON.parse(localStorage.getItem('waved_back_' + session?.user?.id)) || []; }
+        catch { return []; }
+    });
     const prevWavesLength = useRef(waves.length);
 
     useEffect(() => {
@@ -2211,7 +2215,15 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                         border: '1px solid var(--glass-border)', borderRadius: '16px',
                                         flexWrap: 'wrap', gap: '10px'
                                     }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <div 
+                                            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '4px', borderRadius: '8px', transition: 'background 0.2s' }}
+                                            onClick={() => {
+                                                setShowWavesModal(false);
+                                                onUserClick(wave.from_id);
+                                            }}
+                                            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                            onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                                        >
                                             <div style={{
                                                 width: '32px', height: '32px', borderRadius: '10px',
                                                 background: 'var(--panel-bg)', border: '1px solid var(--glass-border)',
@@ -2243,23 +2255,36 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                                 💬 Message
                                             </button>
                                             {wave.from_id !== session?.user?.id && (
-                                                <button 
-                                                    onClick={async () => {
-                                                        try {
-                                                            await supabase.rpc('send_proximity_wave', { p_recipient_id: wave.from_id });
-                                                            alert(`Waved back at ${wave.from_name}! 👋`);
-                                                        } catch (err) {
-                                                            console.error("Error waving back:", err);
-                                                            alert("Failed to wave back: " + err.message);
-                                                        }
-                                                    }}
-                                                    style={{
-                                                        background: 'linear-gradient(135deg, #FF5722 0%, #FF9800 100%)',
-                                                        color: 'white', border: 'none', borderRadius: '10px',
-                                                        padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer',
+                                                wavedBackIds.includes(wave.from_id) ? (
+                                                    <div style={{
+                                                        background: 'rgba(255, 255, 255, 0.05)',
+                                                        color: 'var(--text-secondary)', border: '1px solid var(--glass-border)', borderRadius: '10px',
+                                                        padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', display: 'flex', alignItems: 'center'
                                                     }}>
-                                                    👋 Wave Back
-                                                </button>
+                                                        Waved back 👋
+                                                    </div>
+                                                ) : (
+                                                    <button 
+                                                        onClick={async () => {
+                                                            try {
+                                                                await supabase.rpc('send_proximity_wave', { p_recipient_id: wave.from_id });
+                                                                const newIds = [...wavedBackIds, wave.from_id];
+                                                                setWavedBackIds(newIds);
+                                                                localStorage.setItem('waved_back_' + session?.user?.id, JSON.stringify(newIds));
+                                                                alert(`Waved back at ${wave.from_name}! 👋`);
+                                                            } catch (err) {
+                                                                console.error("Error waving back:", err);
+                                                                alert("Failed to wave back: " + err.message);
+                                                            }
+                                                        }}
+                                                        style={{
+                                                            background: 'linear-gradient(135deg, #FF5722 0%, #FF9800 100%)',
+                                                            color: 'white', border: 'none', borderRadius: '10px',
+                                                            padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer',
+                                                        }}>
+                                                        👋 Wave Back
+                                                    </button>
+                                                )
                                             )}
                                         </div>
                                     </div>
