@@ -2140,7 +2140,15 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                         border: '1px solid var(--glass-border)', borderRadius: '16px',
                                         flexWrap: 'wrap', gap: '10px'
                                     }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <div 
+                                            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '4px', borderRadius: '8px', transition: 'background 0.2s' }}
+                                            onClick={() => {
+                                                setShowMessagesModal(false);
+                                                onUserClick(chat.otherId);
+                                            }}
+                                            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                            onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                                        >
                                             <div style={{
                                                 width: '32px', height: '32px', borderRadius: '10px',
                                                 background: 'var(--panel-bg)', border: '1px solid var(--glass-border)',
