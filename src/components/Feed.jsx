@@ -3,7 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import PostCard from './PostCard'
 
-export default function Feed({ position, radius, refreshTrigger, session, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick, aiResponderEnabled, hasVibedToday = false, waves = [], activeChats = [], unreadMessagesCount = 0, onOpenChat, onShowMap }) {
+export default function Feed({ position, radius, refreshTrigger, session, profile, onUserClick, onReplyChange, activeNeighborsCount = 1, onTransferPoints, activeNeighbors = [], onVibeClick, aiResponderEnabled, hasVibedToday = false, waves = [], activeChats = [], unreadMessagesCount = 0, onOpenChat, onShowMap }) {
     const [showWavesModal, setShowWavesModal] = useState(false);
     const [showMessagesModal, setShowMessagesModal] = useState(false);
     const [showNeighborsModal, setShowNeighborsModal] = useState(false);
@@ -22,6 +22,19 @@ export default function Feed({ position, radius, refreshTrigger, session, onUser
         }
         prevWavesLength.current = waves.length;
     }, [waves.length]);
+
+    useEffect(() => {
+        if (profile && Array.isArray(profile.sent_waves)) {
+            const remoteIds = profile.sent_waves.map(w => w.to_id);
+            if (remoteIds.length > 0) {
+                setWavedBackIds(prev => {
+                    const merged = [...new Set([...prev, ...remoteIds])];
+                    localStorage.setItem('waved_back_' + session?.user?.id, JSON.stringify(merged));
+                    return merged;
+                });
+            }
+        }
+    }, [profile, session?.user?.id]);
 
     const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(true)
@@ -2241,7 +2254,19 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                                 </div>
                                             </div>
                                         </div>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                            <button 
+                                                onClick={() => {
+                                                    setShowWavesModal(false);
+                                                    onUserClick(wave.from_id);
+                                                }}
+                                                style={{
+                                                    background: 'rgba(255, 255, 255, 0.1)',
+                                                    color: 'var(--text-primary)', border: '1px solid var(--glass-border)', borderRadius: '10px',
+                                                    padding: '6px 12px', fontSize: '0.75rem', fontWeight: 'bold', cursor: 'pointer',
+                                                }}>
+                                                👤 Profile
+                                            </button>
                                             <button 
                                                 onClick={() => {
                                                     setShowWavesModal(false);
@@ -2268,9 +2293,16 @@ Never say you are an AI. Output ONLY the reply message text with no name prefix,
                                                         onClick={async () => {
                                                             try {
                                                                 await supabase.rpc('send_proximity_wave', { p_recipient_id: wave.from_id });
+                                                                
                                                                 const newIds = [...wavedBackIds, wave.from_id];
                                                                 setWavedBackIds(newIds);
                                                                 localStorage.setItem('waved_back_' + session?.user?.id, JSON.stringify(newIds));
+                                                                
+                                                                // Also save to sent_waves in the database so it persists across logouts
+                                                                const currentSentWaves = profile?.sent_waves || [];
+                                                                const newSentWave = { to_id: wave.from_id, timestamp: new Date().toISOString() };
+                                                                await supabase.from('profiles').update({ sent_waves: [...currentSentWaves, newSentWave] }).eq('id', session.user.id);
+                                                                
                                                                 alert(`Waved back at ${wave.from_name}! 👋`);
                                                             } catch (err) {
                                                                 console.error("Error waving back:", err);

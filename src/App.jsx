@@ -2997,6 +2997,7 @@ function App() {
                                                         radius={radius}
                                                         refreshTrigger={feedTrigger}
                                                         session={session}
+                                                        profile={profile}
                                                         activeNeighborsCount={activeNeighbors.filter(n => n.id !== session?.user?.id).length}
                                                         waves={waves}
                                                         activeChats={activeChats}
